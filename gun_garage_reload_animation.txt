@@ -1,0 +1,73 @@
+@name Gun Garage Reload Animation
+@inputs 
+@outputs 
+@persist 
+@strict
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_animations"
+
+if (initial()) {
+    
+    box("Background", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=29, "g"=29, "b"=29, "radius"=0))
+    
+    # Bottom Section
+    circle("Bottom", table("x"=227.73, "y"=345.84, "w"=89.5, "h"=57.5, "r"=217, "g"=217, "b"=217))
+    box("Rectangle439", table("x"=118.0, "y"=382.91, "w"=104.49, "h"=46.24, "r"=29, "g"=29, "b"=29, "radius"=19.0))
+    EGP:egpAngle(Elements:get("Rectangle439"), vec2(118.0, 382.91), vec2(0, 0), 67.44)
+    circle("Ellipse126", table("x"=451.32, "y"=287.84999999999997, "w"=89.5, "h"=55.43, "r"=217, "g"=217, "b"=217))
+    EGP:egpAngle(Elements:get("Ellipse126"), vec2(286, 305), vec2(0, 0), -105.0)
+    circle("Ellipse128", table("x"=226.23, "y"=316.34, "w"=52.0, "h"=39.0, "r"=29, "g"=29, "b"=29))
+    circle("Ellipse124", table("x"=242.23, "y"=259.84000000000003, "w"=56.0, "h"=66.5, "r"=217, "g"=217, "b"=217))
+    box("Rectangle436", table("x"=318.7, "y"=196.17, "w"=44.08, "h"=112.08, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle436"), vec2(318.7, 196.17), vec2(0, 0), -11.5)
+    circle("Ellipse127", table("x"=282.33, "y"=236.215, "w"=26.25, "h"=37.935, "r"=29, "g"=29, "b"=29))
+    EGP:egpAngle(Elements:get("Ellipse127"), vec2(268, 244), vec2(0, 0), -20.51)
+    box("Rectangle438", table("x"=295.91, "y"=218.99, "w"=39.0, "h"=44.6, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle438"), vec2(295.91, 218.99), vec2(0, 0), -11.03)
+    box("Rectangle437", table("x"=157.15, "y"=210.68, "w"=199.92, "h"=47.42, "r"=29, "g"=29, "b"=29, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle437"), vec2(157.15, 210.68), vec2(0, 0), 14.09)
+
+    # Top Section
+    let Top1 = circle("Top", table("x"=270.83500000000004, "y"=159.03, "w"=83.305, "h"=57.61, "r"=217, "g"=217, "b"=217))
+    EGP:egpAngle(Elements:get("Ellipse121"), vec2(264, 169), vec2(0, 0), -6.86)
+    let Top2 = box("Rectangle440", table("x"=175.33, "y"=177.76, "w"=20.56, "h"=71.99, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle440"), vec2(175.33, 177.76), vec2(0, 0), -6.22)
+    let Top3 = circle("Ellipse122", table("x"=204.08, "y"=186.89, "w"=25.02, "h"=60.61, "r"=217, "g"=217, "b"=217))
+    EGP:egpAngle(Elements:get("Ellipse122"), vec2(200, 189), vec2(0, 0), -4.61)
+    let Top4 = circle("1" + "Ellipse125", table("x"=287.0, "y"=200.14, "w"=27.23, "h"=65.14, "r"=217, "g"=217, "b"=217))
+    EGP:egpAngle(Elements:get("1" + "Ellipse125"), vec2(232, 200), vec2(0, 0), -46.39)
+    let Top5 = circle("1" + "Ellipse124", table("x"=275.445, "y"=191.355, "w"=25.785, "h"=40.125, "r"=29, "g"=29, "b"=29))
+    EGP:egpAngle(Elements:get("1" + "Ellipse124"), vec2(265, 197), vec2(0, 0), -14.97)
+    let Top6 = box("Rectangle433", table("x"=310.79, "y"=102.56, "w"=57.17, "h"=100.57, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle433"), vec2(310.79, 102.56), vec2(0, 0), -11.6)
+    let Top7 = box("Rectangle435", table("x"=292.86, "y"=168.43, "w"=15.29, "h"=54.14, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle435"), vec2(292.86, 168.43), vec2(0, 0), -11.6)
+    let Top8 = box("1" + "Rectangle436", table("x"=221.99, "y"=152.6, "w"=24.25, "h"=79.5, "r"=217, "g"=217, "b"=217, "radius"=0))
+    EGP:egpAngle(Elements:get("1" + "Rectangle436"), vec2(221.99, 152.6), vec2(0, 0), -11.6)
+    let Top9 = box("1" + "Rectangle437", table("x"=238.9, "y"=191.4, "w"=11.59, "h"=42.95, "r"=29, "g"=29, "b"=29, "radius"=0))
+    EGP:egpAngle(Elements:get("1" + "Rectangle437"), vec2(238.9, 191.4), vec2(0, 0), -11.6)
+    let Top10 = box("1" + "Rectangle438", table("x"=285.78, "y"=181.04, "w"=4.53, "h"=41.01, "r"=29, "g"=29, "b"=29, "radius"=0))
+    EGP:egpAngle(Elements:get("1" + "Rectangle438"), vec2(285.78, 181.04), vec2(0, 0), -11.6)
+    let Top11 = box("Rectangle432", table("x"=164.0, "y"=249.63, "w"=210.97, "h"=8.33, "r"=29, "g"=29, "b"=29, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle432"), vec2(164.0, 249.63), vec2(0, 0), 13.85)
+    let Top12 = box("Rectangle434", table("x"=308.65, "y"=94.0, "w"=58.0, "h"=20.0, "r"=29, "g"=29, "b"=29, "radius"=0))
+    
+    Top1:giveChild(Top2)
+    Top1:giveChild(Top3)
+    Top1:giveChild(Top4)
+    Top1:giveChild(Top5)
+    Top1:giveChild(Top6)
+    Top1:giveChild(Top7)
+    Top1:giveChild(Top8)
+    Top1:giveChild(Top9)
+    Top1:giveChild(Top10)
+    Top1:giveChild(Top11)
+    Top1:giveChild(Top12)
+    
+    moveTo("Top", 0.2, vec2(270.835+30, 159.03-10))
+    timer(0.3, function() {
+        moveTo("Top", 0.2, vec2(270.835, 159.03))
+    })
+}
+

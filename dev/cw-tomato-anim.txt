@@ -1,0 +1,101 @@
+@name CW-Bank the front
+@persist A
+
+if (~EGP) {reset()}
+if (first() || dupefinished()) {
+    #include "library/tomato_lib"
+    
+    Dark = vec(40,40,40)
+    Primary = vec(0,0,0)
+    
+    
+    function background() {
+        EGP:egpClear()
+        createBox("Background",size(vec2(ScreenXY,ScreenXY)), color(Dark), coords(vec2(0,0)))
+        createText("A Tomato Animation",size(16),align(1),coords(vec2(ScreenXY/2,ScreenXY-20))) 
+        createBox("Bar1",size(vec2(10,ScreenXY)), color(Primary), coords(vec2(0,0)))
+        createBox("Bar2",size(vec2(10,ScreenXY)), color(Primary), coords(vec2(ScreenXY-10,0)))
+        createBox("Bar3",size(vec2(ScreenXY,10)), color(Primary), coords(vec2(0,0)))
+        createBox("Bar4",size(vec2(ScreenXY,10)), color(Primary), coords(vec2(0,ScreenXY-10)))
+    }
+    
+    background()
+    
+    
+}
+
+if(A) {
+    local SubText = "Andrew Tate's bank." 
+    local SubFontSize = 35
+    local BackgroundColour = vec(40,40,40)
+    local BorderColour = vec(0,0,0)
+    
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    EGP:egpBox(1, vec2(0,52), vec2(512,400))
+    EGP:egpColor(1,BackgroundColour)
+    EGP:egpBoxOutline(50, vec2(0,52), vec2(512,400))
+    EGP:egpColor(50,BorderColour)
+    EGP:egpSize(50,6)
+    
+    EGP:egpLine(51,vec2(52,357),vec2(460,357))
+    EGP:egpColor(51,vec(0,0,0))
+    EGP:egpSize(51,3)
+    local VERTICIES = array(
+        vec2(0.0, -0.5),
+        vec2(0.5, 0.0),
+        vec2(0.0, 0.5),
+        vec2(-0.5, 0.0)
+    )
+    
+    for(I = 1, VERTICIES:count()) {
+      VERTICIES[I, vector2] = vec2(256, 196) + (VERTICIES[I, vector2] * 236)
+    }
+    EGP:egpPoly(2, VERTICIES)
+    EGP:egpColor(2,vec(254, 202, 10))
+    
+    local VERTICIES2 = array(
+        vec2(0.0, 0.5),
+        vec2(0.20, 0.04),
+        vec2(0.35, 0.15)
+    )
+    for(I = 1, VERTICIES2:count()) {
+      VERTICIES2[I, vector2] = vec2(256, 196) + (VERTICIES2[I, vector2] * 236)
+    }
+    
+    EGP:egpPoly(3, VERTICIES2)
+    EGP:egpColor(3,vec(0,0,0))
+    
+    local VERTICIES3 = array(
+        vec2(0.20, 0.04),
+        vec2(0.37, -0.13),
+        vec2(0.5, 0.0),
+        vec2(0.35, 0.15)
+    )
+    for(I = 1, VERTICIES3:count()) {
+      VERTICIES3[I, vector2] = vec2(256, 196) + (VERTICIES3[I, vector2] * 236)
+    }
+    
+    EGP:egpPoly(4, VERTICIES3)
+    EGP:egpColor(4,vec(0,0,0))
+    
+    EGP:egpText(5,"Commonwealth",vec2(216, 316))
+    EGP:egpAlign(5,1,0)
+    EGP:egpSize(5,41)
+    EGP:egpColor(5,vec(255,255,0))
+    
+    
+    EGP:egpText(6,"Bank",vec2(396, 318))
+    EGP:egpAlign(6,1,0)
+    EGP:egpSize(6,40)
+    EGP:egpColor(6,vec(255,255,0))
+    EGP:egpFont(6,"Arial")
+    
+    
+    EGP:egpTextLayout(7,SubText,vec2(0, 365),vec2(500,200))
+    EGP:egpAlign(7,1,0)
+    EGP:egpSize(7,SubFontSize)
+    EGP:egpColor(7,vec(255,255,0))
+    EGP:egpFont(7,"Arial")
+}
+

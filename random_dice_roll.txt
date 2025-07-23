@@ -1,0 +1,127 @@
+@name Random Dice Roll
+@inputs EGP:wirelink User:entity 
+@persist Elements:table Profile:entity
+
+function number userInput() {
+    return ~User && User:isValid()
+}
+function number userInput(Player:entity) { # Check for specific player input
+    return ~User && Player:isValid()
+}
+
+function string cursorObj() {
+    const Cursor = EGP:egpCursor(User)
+    const Objects = EGP:egpObjectIndexes()
+    const Names = Elements:flip()
+
+    # Iterate through objects in reverse order
+    for (I = Objects:count(), 1, -1) {
+        const ID = Objects[I, number]
+        
+        # Skip 'blank' numeric names
+        if (Names[ID, number] > 1) {
+            continue
+        }
+
+        # Check if the object contains the cursor
+        const Object = EGP:egpobject(ID)
+        if (Object:containsPoint(Cursor)) {
+            return Elements:flip()[ID, string]
+        }
+    }
+
+    return ""
+}
+
+function number table:get(Name:string) {
+    if (This:exists(Name)) {
+        return This[Name, number]
+    }
+    local FreeID = This:flip():ncount()+1
+
+    if (FreeID >= 300) {
+        error("Too many elements being drawn.")
+    }
+
+    This[Name, number] = FreeID
+    return FreeID
+}
+
+function void wirelink:clear() {
+    This:egpClear()
+    Elements:clear()
+}
+
+    function egpobject text(ID:number, ARGS:table) {
+    return EGP:egpTextLayout(ID, ARGS)
+}
+
+function egpobject circle(ID:number, ARGS:table) {
+    if (ARGS["outline", number]) {
+        return EGP:egpCircleOutline(ID, ARGS)
+    }
+    return EGP:egpCircle(ID, ARGS)
+}
+
+function egpobject box(ID:number, ARGS:table) {
+    if (ARGS["outline", number]) {
+        return EGP:egpRoundedBoxOutline(ID, ARGS)
+    }
+    return EGP:egpRoundedBox(ID, ARGS)
+}
+
+function egpobject line(ID:number, ARGS:table) {
+    return EGP:egpBox(ID, ARGS)
+}
+
+function spin(Amount:number) { 
+    let Roll = randint(0,100)
+    EGP:egpSetText(Elements:get("YouRolled"), "You rolled: " + Roll)
+    if (Roll >= 65) {
+        Profile:tauSendChatMsg("Congrats, you won!")
+        EGP:egpColor(Elements:get("Menu"), vec(63, 127, 0))
+        print(Amount)
+        moneyGive(Profile, Amount*2)
+    }
+    else {
+        Profile:tauSendChatMsg("Better Luck Next Time...")
+    }
+    timer(1, function() {
+        EGP:egpSetText(Elements:get("YouRolled"), "...")
+        EGP:egpColor(Elements:get("Menu"), vec(69, 69, 69))
+        Profile = noentity()
+    })
+}
+
+if (userInput()) {
+    if (!Profile:isValid()) {
+    	   let Cursor = cursorObj()
+        if (Cursor == "Button") {
+            Profile = User
+            moneyRequest(Profile, 50000, "Buy Spin?")
+        }
+    }
+}
+
+if (moneyClk()) {
+    spin(moneyClkAmount())  
+    print(moneyClkAmount())
+}
+
+if (first() || dupefinished() || ~EGP) {
+    Elements = table()
+    
+    EGP:clear()
+    EGP:egpDrawTopLeft(1)
+
+    box(Elements:get("Background"), table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box(Elements:get("Menu"), table("x"=11.0, "y"=12.0, "w"=492.0, "h"=488.0, "r"=69, "g"=69, "b"=69, "radius"=0))
+    
+    box(Elements:get("Button"), table("x"=138.0, "y"=359.0, "w"=237.0, "h"=77.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0))
+    text(Elements:get("Spin"), table("text"="Spin", "x"=210.0, "y"=370.0, "w"= 237.0, "h"=77.0, "r"=0, "g"=0, "b"=0, "size"=51, "halign"=0, "valign"=0))
+    
+    box(Elements:get("Rectangle4"), table("x"=80.0, "y"=50.0, "w"=353.0, "h"=68.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+    box(Elements:get("Rectangle5"), table("x"=134.0, "y"=128.0, "w"=244.0, "h"=78.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+    text(Elements:get("YouRolled"), table("text"="...", "x"=146.0, "y"=148.0, "w"=300.0, "h"=39.0, "r"=0, "g"=0, "b"=0, "size"=30, "halign"=0, "valign"=0))
+    text(Elements:get("RollOver65To"), table("text"="Roll Over 65 To Win!", "x"=99.0, "y"=61.0, "w"= 317.0, "h"=46.0, "r"=0, "g"=0, "b"=0, "size"=35, "halign"=0, "valign"=0))
+}

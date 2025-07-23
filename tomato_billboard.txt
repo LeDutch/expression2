@@ -1,0 +1,307 @@
+@name Tomato Billboard
+@inputs 
+@outputs 
+@persist Screen Profile:entity Choice
+@trigger 
+@strict
+
+if (~EGP) {reset()}
+if (first() || dupefinished()) {
+    #include "tomato_lib"
+    #include "themes/bank/tomato_betterbank"
+    Screen = 0
+    
+    function changeScreen(Time) {
+        Timer:setTime("t1",0)
+        Timer:setTime("t2",0)
+        timer("changed", Time)
+    }
+    
+    function boardBG() {
+        EGP:egpClear()
+        createBox("Background",size(vec2(ScreenXY,ScreenXY)), color(Dark), coords(vec2(0,0)))
+        createText("A Tomato Production",size(16),align(1),coords(vec2(ScreenXY/2,ScreenXY-30)))
+    }
+    
+    function emoji() {
+        local Smile = Elements:get("smile")
+        local Left = Elements:get("left")
+        local Right = Elements:get("right")
+        local LeftOutline = Elements:get("leftBG")
+        local RightOutline = Elements:get("rightBG")
+        
+        
+        #createCircle("mouth", 20, White, coords(vec2(ScreenXY/2,ScreenXY/2+20)))
+        #createCircle("smileBG", 20, Dark, coords(vec2(ScreenXY/2,ScreenXY/2+15)))
+        
+        createRoundedBox("mouth", size(vec2(50,5)), White, coords(vec2(ScreenXY/2-25,ScreenXY/2+20)))
+        
+        createCircle("leftBG", 30, White, coords(vec2(ScreenXY/2-100,ScreenXY/2-80)))
+        createCircle("rightBG", 30, White, coords(vec2(ScreenXY/2+100,ScreenXY/2-80)))
+        createCircle("left", 15, Dark, coords(vec2(ScreenXY/2-100,ScreenXY/2-80)))
+        createCircle("right", 15, Dark, coords(vec2(ScreenXY/2+100,ScreenXY/2-80)))
+        
+        createRoundedBox("leftbrow", size(vec2(90,10)), White, coords(vec2(ScreenXY/2-140,ScreenXY/2-115)))
+        createRoundedBox("rightbrow", size(vec2(90,10)), White, coords(vec2(ScreenXY/2+55,ScreenXY/2-115)))
+    }
+    function blink(Dur, Choice) {
+        local Left = Elements:get("leftBG")
+        local Right = Elements:get("rightBG")
+        local TimerID = "blink"
+        local LBrowID = Elements:get("leftbrow")
+        local RBrowID = Elements:get("rightbrow")
+        local LBrow = EGP:egpPos(LBrowID)
+        local RBrow = EGP:egpPos(RBrowID)
+        local Time = checkAnimation(TimerID, Dur, 0)
+        if (1 > Time < 0.8) {
+            EGP:egpPos(LBrowID, vec2(LBrow:x(), ScreenXY/2-80))
+            EGP:egpPos(RBrowID, vec2(RBrow:x(), ScreenXY/2-80))
+            EGP:egpAlpha(Left, 0)
+            EGP:egpAlpha(Right, 0)
+        }
+        elseif(Time < 0.7) {
+            if (Choice == 1) {
+                EGP:egpPos(LBrowID, vec2(LBrow:x(), ScreenXY/2-115))
+                EGP:egpAlpha(Left, 255)
+            }
+            elseif (Choice == 2) {
+                EGP:egpPos(RBrowID, vec2(RBrow:x(), ScreenXY/2-115))
+                EGP:egpAlpha(Right, 255)
+            }
+            elseif (Choice == 3) {
+                EGP:egpPos(LBrowID, vec2(LBrow:x(), ScreenXY/2-115))
+                EGP:egpPos(RBrowID, vec2(RBrow:x(), ScreenXY/2-115))
+                EGP:egpAlpha(Left, 255)
+                EGP:egpAlpha(Right, 255)
+            }
+        }
+    }
+    function moveEyes(Point:vector2, Person:entity) {
+        local Left = Elements:get("left")
+        local Right = Elements:get("right")
+        local RadiusLimit = 15
+        
+        # Calculate the direction vector from the center to the specified point
+        local DirXY = vec2(Point:x(), Point:y()*-1)
+        local Time = 1
+        if (!Person:isValid()) {
+            Time = checkAnimation("eyes", 1, 0)
+        }
+        
+        # Calculate the distance from the center to the point
+        local Distance = Point:length()
+        
+        # Normalize the direction vector and scale it by the RadiusLimit
+        if (Distance != 0) {
+            DirXY = DirXY / Distance * RadiusLimit
+        }
+        
+        local LeftPos = vec2(ScreenXY/2-100, ScreenXY/2-80) + DirXY*Time
+        local RightPos = vec2(ScreenXY/2+100, ScreenXY/2-80) + DirXY*Time
+        EGP:egpPos(Left, LeftPos)
+        EGP:egpPos(Right, RightPos)
+    }
+    timer("choice", 0)
+    changeScreen(1000)
+}
+
+interval(100)
+
+if (Animation) {
+    if (Screen == 1) {
+        blink(1, 3)
+    }
+    elseif(Screen == 3) {
+        if (proximityCheck(400)) {
+            local Left = Elements:get("leftBG")
+            local Right = Elements:get("rightBG")
+            local LBrowID = Elements:get("leftbrow")
+            local RBrowID = Elements:get("rightbrow")
+            local LBrow = EGP:egpPos(LBrowID)
+            local RBrow = EGP:egpPos(RBrowID)
+            EGP:egpPos(LBrowID, vec2(LBrow:x(), ScreenXY/2-115))
+            EGP:egpPos(RBrowID, vec2(RBrow:x(), ScreenXY/2-115))
+            EGP:egpAlpha(Left, 255)
+            EGP:egpAlpha(Right, 255)
+            EGP:egpAlpha(Elements:get("smileBG"), 0)
+            findIncludeClass("player")
+            local Person = findClosest(entity():pos())
+                
+            if(Profile != Person) {
+                Profile = Person
+                changeScreen(20000)
+            }
+            else {
+                local Distance = Person:pos() - entity():pos()
+                local Direction = vec2(Distance:x(), Distance:y())
+                moveEyes(Direction, Person)
+                createCircle("mouth", 20, White, coords(vec2(ScreenXY/2,ScreenXY/2+20)))
+            }
+        }
+        elseif(Profile:isValid()) {
+            Profile = noentity()
+            createRoundedBox("mouth", size(vec2(50,5)), White, coords(vec2(ScreenXY/2-25,ScreenXY/2+20)))
+            EGP:egpAlpha(Elements:get("smileBG"), 0)
+        }
+        else {
+            blink(8, Choice)
+        }
+    }
+    elseif(Screen == 4) {
+        fadeIn("t1", 0, 1)
+    }
+    elseif(Screen == 5) {
+        fadeIn("t2", 0, 1)
+    }
+    elseif(Screen == 6) {
+        fadeIn("t1", 0, 1)
+    }
+    elseif(Screen == 7) {
+        typeOut("t1", "Better")
+    }
+    elseif(Screen == 8) {
+        typeOut("t2", "Bank")
+    }
+    elseif(Screen == 9) {
+        moveX("t1", 1.1, 1, 13)
+    }
+    elseif(Screen == 10) {
+        fadeIn("t3", 0, 1)
+        fadeIn("t4", 0, 1)
+        fadeIn("smile", 0, 1)
+        fadeIn("left", 0, 1)
+        fadeIn("right", 0, 1)
+    }
+    elseif (Screen == 11) {
+        for (I=1, 4) {
+            fadeIn("logo_outer"+I, 0, 2)
+        }
+        fadeIn("logotip", 0, 2)
+        fadeIn("BB", 0, 2)
+        fadeIn("t1", -1, 2)
+        fadeIn("t2", -1, 2)
+    }
+    
+}
+
+if (clk("choice")) {
+    Choice = randint(1,3)
+    timer("choice", randint(1000,5000))
+}
+
+if (clk("changed")) {
+    Animation = 1
+    Screen += 1
+    if (Screen == 1) {
+        boardBG()
+        emoji()
+        changeScreen(1500)
+    }
+    elseif(Screen == 2) {
+        createCircle("mouth", 20, White, coords(vec2(ScreenXY/2,ScreenXY/2+20)))
+        createCircle("smileBG", 20, Dark, coords(vec2(ScreenXY/2,ScreenXY/2+15)))
+        EGP:egpAlpha(Elements:get("smileBG"), 255)
+        changeScreen(2000)
+    }
+    elseif(Screen == 3) {
+        
+    }
+    elseif (Screen == 4) {
+        boardBG()
+        local ID1 = Elements:get("t1")
+        createText("t1",size(40),align(1),coords(vec2(ScreenXY/2-73,ScreenXY/2-40)))
+        EGP:egpSetText(ID1, "Hey you")
+        EGP:egpAlpha(ID1, 0)
+        changeScreen(2000)
+    }
+    elseif (Screen == 5) {
+        local ID2 = Elements:get("t2")
+        createText("t2",size(40),align(1),coords(vec2(ScreenXY/2+73,ScreenXY/2-40)))
+        EGP:egpSetText(ID2, ", yes you.")
+        EGP:egpAlpha(ID2, 0)
+        changeScreen(3000)
+    }
+    elseif (Screen == 6) {
+        boardBG()
+        local ID1 = Elements:get("t1")
+        createText("t1",size(30),align(1),coords(vec2(ScreenXY/2,ScreenXY/2-30)))
+        EGP:egpSetText(ID1, "Why not try something better?")
+        EGP:egpAlpha(ID1, 0)
+        changeScreen(3000)
+    }
+    elseif (Screen == 7) {
+        boardBG()
+        local ID1 = Elements:get("t1")
+        createText("t1",size(50),align(0),coords(vec2(ScreenXY/2-115,ScreenXY/2-50)))
+        EGP:egpSetText(ID1, "")
+        changeScreen(800)
+    }
+    elseif (Screen == 8) {
+        local ID2 = Elements:get("t2")
+        createText("t2",size(50),align(0),coords(vec2(ScreenXY/2+15,ScreenXY/2-50)))
+        EGP:egpSetText(ID2, "")
+        changeScreen(2000)
+    }
+    elseif (Screen == 9) {
+        local ID1 = Elements:get("t1")
+        local ID2 = Elements:get("t2")
+        EGP:egpSetText(ID1, "B")
+        EGP:egpSetText(ID2, "B")
+        changeScreen(3000)
+    }
+    elseif(Screen == 10) {
+        local ID1 = Elements:get("t1")
+        local ID2 = Elements:get("t2")
+        local ID3 = Elements:get("t3")
+        local ID4 = Elements:get("t4")
+        local Smile = Elements:get("smile")
+        local Left = Elements:get("left")
+        local Right = Elements:get("right")
+        createText("t1",size(50),align(0),coords(vec2(ScreenXY/2-15,ScreenXY/2-50)))
+        createText("t2",size(50),align(0),coords(vec2(ScreenXY/2+15,ScreenXY/2-50)))
+        createText("t3",size(50),align(1),coords(vec2(ScreenXY/2+65,ScreenXY/2-50)))
+        createText("t4",size(30),align(1),coords(vec2(ScreenXY/2,ScreenXY/2+30)))
+        
+        createCircle("smile", 25, White, coords(vec2(ScreenXY/2-90,ScreenXY/2-20)))
+        createCircle("smileBG", 25, Dark, coords(vec2(ScreenXY/2-90,ScreenXY/2-25)))
+        
+        createCircle("left", 5, White, coords(vec2(ScreenXY/2-110,ScreenXY/2-50)))
+        createCircle("right", 7, White, coords(vec2(ScreenXY/2-70,ScreenXY/2-50)))
+        createCircle("rightBG", 7, Dark, coords(vec2(ScreenXY/2-70,ScreenXY/2-46)))
+        
+        EGP:egpSetText(ID1, "B")
+        EGP:egpSetText(ID2, "B")
+        EGP:egpSetText(ID3, "y.")
+        EGP:egpSetText(ID4, "Rent your own space.")
+        EGP:egpAlpha(ID3, 0)
+        EGP:egpAlpha(ID4, 0)
+        EGP:egpAlpha(Smile, 0)
+        EGP:egpAlpha(Left, 0)
+        EGP:egpAlpha(Right, 0)
+        
+        changeScreen(4000)
+    }
+    elseif(Screen == 11) {
+        boardBG()
+        logo()
+        local ID1 = Elements:get("t1")
+        local ID2 = Elements:get("t2")
+        createText("t1",size(40),align(1),coords(vec2(ScreenXY/2,ScreenXY/2-40)))
+        createText("t2",size(20),align(1),coords(vec2(ScreenXY/2,ScreenXY/2)))
+        EGP:egpSetText(ID1, "BetterBank")
+        EGP:egpSetText(ID2, "Est. 18.12.23")
+        EGP:egpAlpha(ID1, 0)
+        EGP:egpAlpha(ID2, 0)
+        for (I=1, 4) {
+            EGP:egpAlpha(Elements:get("logo_outer"+I), 0)
+        }
+        EGP:egpAlpha(Elements:get("logotip"), 0)
+        EGP:egpAlpha(Elements:get("BB"), 0)
+        changeScreen(5000)
+    }
+    else {
+        Screen = 0
+        changeScreen(3000)
+    }
+    
+}

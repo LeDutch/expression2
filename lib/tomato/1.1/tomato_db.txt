@@ -1,0 +1,147 @@
+@name Tomato Database Library
+@inputs 
+@outputs 
+@persist ProjectPath:string Response:number
+@persist [FileLoadQueue]:array [DB FileSaveQueue]:table
+@trigger 
+@strict 
+
+#include "lib/tomato_core"
+
+#[
+    How to initialize:
+    DB = loadDB("Name")
+    DB["Structure", function] = function(PlayerToSave:entity) {
+        const Player = table(
+            "Steam" = PlayerToSave:steamID64(),
+            "Name" = PlayerToSave:name(),
+            "Balance" = PlayerToSave:money()
+        )
+        return Player
+    })
+]#
+
+if (first()) {
+    DB = table(
+        "Settings" = table(),
+        "Players" = table(),
+        "Response" = table(),
+        "Structure" = function() {},
+        "OnResponse" = function() {}
+    )
+    FileSaveQueue = table()
+    FileLoadQueue = array()
+    ProjectPath = ""
+    Response = 0
+    
+    timer(0.3, 0, function() {
+        if(FileLoadQueue:count()) {
+            if(fileCanLoad()) {
+                fileLoad(FileLoadQueue[1, string])
+                FileLoadQueue:shiftString()
+            } else { break }
+        }
+        if(FileSaveQueue:count()) {
+            if(fileCanWrite()) {
+                let PlayerData = FileSaveQueue[1, table]
+                let Steam = PlayerData["Steam", string]
+                fileWrite(ProjectPath + "/players/" + Steam + ".txt", jsonEncode(PlayerData, 1))
+                FileSaveQueue:remove(1)
+            } else { break }
+        }
+    })
+}
+
+function response() {
+    if (Response) {
+        Response = 0
+        return 1
+    }
+    return 0
+}
+
+function saveDB() {
+    let Base = DB["Settings", table]
+    let Players = DB["Players", table]
+    foreach(_:string, PlayerData:table = Players) {
+        FileSaveQueue:pushTable(PlayerData)
+    }
+    fileWrite(ProjectPath + "/base.txt", jsonEncode(Base, 1))
+}
+
+function saveDB(Delay:number) {
+    if (timerExists("DatabaseSave")) {
+        timerRestart("DatabaseSave")
+    }
+    else {
+        timer("DatabaseSave", Delay, function() {
+            saveDB()
+        })
+    }
+}
+
+function loadDB(Name:string) {
+    ProjectPath = "tomato/" + Name
+    let Address = ProjectPath + "/base.txt"
+    FileLoadQueue:pushString(Address)
+}
+
+function loadPlayer(Player:entity) {
+    let Steam = Player:steamID64()
+    let Address = ProjectPath + "/players/" + Steam + ".txt"
+    FileLoadQueue:pushString(Address)
+}
+
+event fileLoaded(FilePath:string, Data:string) {
+    if (FilePath:startsWith(ProjectPath)) {
+        let FileName = FilePath:sub(ProjectPath:length() + 2, FilePath:length() - 4)
+        switch (FileName) {
+            case "base",
+                DB["Settings", table] = jsonDecode(Data):merge(DB["Settings", table])
+                print("Loaded database: " + ProjectPath:sub(8))
+            break
+            default,
+                let Steam = FileName:sub(9)
+                if (!DB["Players",table][Steam, table]) {
+                    let PlayerData = jsonDecode(Data)
+                    DB["Players",table][Steam, table] = PlayerData
+                    DB["Response", table] = PlayerData
+                }
+                DB["OnResponse", function]()
+            break
+        }
+        Response = 1
+    }
+}
+
+event playerDisconnected(Player:entity) {
+    let Steam64 = Player:steamID64()
+    if (DB["Players",table]:exists(Steam64)) {
+        DB:remove(Steam64)
+    }
+}
+
+event fileErrored(FilePath:string, Status:number) {
+    if (FilePath:startsWith(ProjectPath)) {
+        let FileName = FilePath:sub(ProjectPath:length() + 2, FilePath:length() - 4)
+        switch (FileName) {
+            case "base",
+                print("Creating new database for " + ProjectPath:sub(8))
+                saveDB()
+            break
+            default,
+                let Steam = FileName:sub(9)
+                let PlayerData = DB["Structure", function](findPlayerBySteamID64(Steam))[table]
+                FileSaveQueue:pushTable(PlayerData)
+                DB["Players",table][Steam, table] = PlayerData
+                DB["Response", table] = PlayerData
+                DB["OnResponse", function]()
+                print("yes")
+            break
+        }
+    }
+}
+
+
+
+

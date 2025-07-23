@@ -1,0 +1,63 @@
+@name Tomato DJ Visuals
+@inputs  Time:number Texture:string Color:vector
+@inputs  [Prop1 Prop2 Prop3 Prop4 Prop5 Prop6 Prop7 Prop8 Prop9]:entity
+@persist Rotate
+@trigger 
+
+###################################################
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+###################################################
+
+if (first() || dupefinished() || ~EGP) {
+    #include "lib/tomato_lib"
+    
+    #Program Specific Functions
+    #-------------------------------------------#
+    
+    #Draw initial screen
+    #-------------------------------------------#
+    EGP:egpClear()
+    
+    #Generic
+    createMaterial("Background", size(vec2(ScreenXY + 200,ScreenXY + 200)), coords(vec2(200,200)), "models/props_lab/warp_sheet")
+    
+    EGP:egpCircle(Elements:get("Circle"), vec2(ScreenXY/2, ScreenXY/2), vec2(100))
+    EGP:egpMaterial(Elements:get("Circle"),"models/foodnhouseholditems/tomato.mdl")
+    
+    createText("A Tomato Production",size(20),color(Dark),align(1),coords(vec2(ScreenXY/2,ScreenXY - 50)))
+    Timer:setTime("Circle", 2)
+}
+
+interval(100)
+Prop1:setColor(Color) 
+Prop2:setColor(Color) 
+Prop3:setColor(Color) 
+Prop4:setColor(Color) 
+Prop5:setColor(Color) 
+Prop6:setColor(Color) 
+Prop7:setColor(Color) 
+Prop8:setColor(Color)
+Prop9:setColor(Color)
+
+Sec = Timer:getTime("Circle")
+if (Sec > 0.1) {
+    Rotate-=Sec
+    EGP:egpAngle(Elements:get("Circle"),Rotate)
+    EGP:egpSize(Elements:get("Circle"),vec2(Sec*10+100))
+}
+if (Sec == 0.1) {
+    local Rotation = randint(0,360)
+    rotateCentreAxis("Background", vec2(ScreenXY/2,ScreenXY/2), Rotation)
+    if (Texture != "") {
+        EGP:egpMaterial(Elements:get("Circle"),Texture)
+    }
+    Timer:addTime("Circle", Time*2)
+}
+Timer:reduceTime("Circle", 0.1)
+
+
+#RGB:vector FOV On Texture:string Brightness
+
+
+
+

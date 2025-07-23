@@ -1,0 +1,268 @@
+@name Tomato Core
+@persist Functions:table
+
+if (first()) {
+    # Initialize variables
+    Prefix = "E2"
+    PrefixColour = "!#d4af37"
+    Functions = table()
+    if (PrefixColour) {}
+    
+    entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
+    entity():setSubMaterial(3, "zerochain/props_methlab/gasmask/zmlab2_gasmask_straps_diff")
+    entity():setColor(vec(255,0,0))
+}
+
+#[ =================== Messaging ========================= #
+ The below two functions are for a messaging system. 
+ You can modify the syntax depending on the server you are playing on.
+]#
+
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+    #print(Text)
+}
+
+function void array:msgAll(Text:string) {
+    foreach (_:number, Player:entity = This) {
+        if (Player:isValid()) {
+            #Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+            print(Text)
+        }
+    }
+}
+
+# ==================== Player functions ================== #
+
+function entity string:findPlayer() {
+    return This:sub(1, 5):upper() == "STEAM" ? findPlayerBySteamID(This) : findPlayerByName(This)
+}
+
+function number isPlayerNearby(Radius:number) {
+    if(findCanQuery()) {
+        findIncludeClass("player")
+        findInSphere(entity():pos(), Radius)
+        if (findToArray():count()) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number isPlayerNearby(Player:entity, Radius:number) {
+    if(findCanQuery()) {
+        findIncludeClass("player")
+        findInSphere(entity():pos(), Radius)
+        let Array = findToArray()
+        let Find = function() {
+            foreach(_:number, Ent:entity = Array) {
+                if (Ent == Player) {
+                    return 1
+                }
+            }
+            return 0
+        }
+        if (Find()[number]) {
+            return 1
+        }
+    }
+    return isPlayerNearby(Player, Radius)
+}
+
+function number isPlayerNearbyToEnt(Player:entity, Radius:number, Entity:entity) {
+    if(findCanQuery()) {
+        findIncludeClass("player")
+        findInSphere(Entity:pos(), Radius)
+        let Array = findToArray()
+        let Find = function() {
+            foreach(_:number, Ent:entity = Array) {
+                if (Ent == Player) {
+                    return 1
+                }
+            }
+            return 0
+        }
+        if (Find()[number]) {
+            return 1
+        }
+    }
+    return isPlayerNearbyToEnt(Player, Radius, Entity)
+}
+
+# Function to get the names of a given array of players
+function array array:getPlayerNames() {
+    let Array = array()
+    for (I = 1, This:count()) {
+        Array:pushString(This[I,entity]:name())
+    }
+    return Array
+}
+
+# ==================== Number functions ================== #
+
+function string abbreviateNum(Number:number) {
+    if (Number >= 1000000) {
+        return round(Number / 1000000, 2) + "M"
+    }
+    if (Number >= 1000) {
+        return round(Number / 1000, 2) + "K"
+    }
+    return toString(round(Number))
+}
+
+function string formatTimeInHours(Number:number) {
+    if (Number >= 24) {
+        return round(Number / 24, 2) + " days"
+    }
+    if (Number >= 1) {
+        return round(Number, 2) + (Number > 1 ? " hrs" : " hr")
+    }
+    return round(Number * 60, 2) + (Number > 0.1 ? " mins" : " min")
+}
+
+function string formatTimeInSeconds(Number:number) {
+    if (Number > 60) {
+        return round(Number / 60, 2) + " mins"
+    }
+    if (Number == 60) {
+        return "1 min"
+    }
+    return Number + (Number == 1 ? " sec" : " secs")
+}
+
+
+# ==================== String functions ================== #
+
+function number string:startsWith(String:string) {
+    return This:left(String:length()) == String
+}
+
+function number array:findString(E:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == E) {return I}
+    }
+    return 0
+}
+
+function number table:findString(E:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == E) {return I}
+    }
+    return 0
+}
+
+function string string:removeText(Text:string) {
+    if (Text == "") { return This } # Avoid infinite loop with empty substring
+
+    let Result = This
+    while (Result:find(Text) != -1) { # Continue until the substring is no longer found
+        let StartIndex = Result:find(Text) # Find the starting position of the substring
+        let Before = Result:sub(1, StartIndex - 1) # Part of the string before the substring
+        let After = Result:sub(StartIndex + Text:length()) # Part of the string after the substring
+        Result = Before + After # Concatenate the two parts
+    }
+    return Result
+}
+
+
+function string truncate(Text:string, Chars:number) {
+    if (Text:length() > Chars) {
+        Text = Text:sub(1, Chars-3) + "..."
+    }
+    return Text
+}
+
+function string getDate() {
+    let Date = dateUTC()
+    return toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])
+        
+}
+
+# ==================== Array functions =================== #
+
+function array array:reverse() {
+    let Temp = array()
+    for (I = This:count(), 1, -1) {
+        Temp:pushNumber(This[I, number])
+    }
+    return Temp
+}
+
+function number array:exists(A:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number array:exists(A:entity) {
+    for (I = 1, This:count()) {
+        if (This[I, entity] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number array:numExists(A:number) {
+    # default func array:exists(num) is a dumb function that returns if any value exists
+    for (I = 1, This:count()) {
+        if (This[I, number] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function string array:implode(Delimiter:string) {
+    let Result = ""
+    for (I = 1, This:count()) {
+        Result += This[I, string]
+        if (I < This:count()) {
+            Result += Delimiter
+        }
+    }
+    return Result
+}
+
+# ==================== Chat functions ==================== #
+
+function chat(Command:string, Func:function, ...Players:array) {
+    Functions[Command, table] = table(
+        "Function" = Func,
+        "Players" = Players
+    )
+}
+
+function chat(Command:string, Description:string, Func:function, ...Players:array) {
+    Functions[Command, table] = table(
+        "Function" = Func,
+        "Description" = Description,
+        "Players" = Players
+    )
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Message[1] == "!") {
+        let Args = Message:sub(2):explode(" ")
+        let Command = Args:shiftString():lower()
+        if (Functions:exists(Command)) {
+            let Function = Functions[Command, table]
+            let Users = Function["Players", array]
+            if (Users:exists(Player) || !Users:count()) {
+                Function["Function", function](Player, Args)
+            }
+        }
+        elseif(Command == "help") {
+            foreach(_:string, Function:table = Functions) {
+                let Description = Function["Description", string]
+                Player:msg(Description)
+            }
+        }
+    }
+}
+
+

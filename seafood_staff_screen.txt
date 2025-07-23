@@ -1,0 +1,235 @@
+@name Seafood Staff Screen
+@persist Animations:array Page:number
+@persist [Orders]:table
+# Automagically Compiled via https://odev.pro (Credits Odin & Bob Tomato)
+
+if (first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #include "library/tomato_animations"
+    Elements = table()
+    Animation = 0
+    Prefix = "Seafood"
+    PrefixColour = "cyan"
+    Orders = table()
+    Animations = array()
+    Page = 1
+    
+    function void table:deleteItem(Category:string, Name:string) {
+        This[Category, table]:removeNumber(Name)
+    }
+    
+    function void wirelink:clear() {
+        This:egpClear()
+        Elements:clear()
+    }
+
+    function void text(ID:number, MSG:string, Pos:vector2, VSize:vector2, Color:vector, Size:number, WA:number, HA:number) {
+        EGP:egpTextLayout(ID, MSG, Pos, VSize)
+        EGP:egpColor(ID, Color)
+        EGP:egpSize(ID, Size)
+        EGP:egpAlign(ID, WA > 0, HA > 0)
+    }
+
+    function void box(Outline:number, Radius:number, Rad:number, ID:number, Pos:vector2, Size:vector2, BSize:number, Color:vector) {
+        if (Outline) {
+            if (Radius) {
+                EGP:egpRoundedBoxOutline(ID, Pos, Size)
+                EGP:egpRadius(ID, Rad)
+            } else {
+                EGP:egpBoxOutline(ID, Pos, Size)
+            }
+        } else {
+            if (Radius) {
+                EGP:egpRoundedBox(ID, Pos, Size)
+                EGP:egpRadius(ID, Rad)
+            } else {
+                EGP:egpBox(ID, Pos, Size)
+            }
+        }
+
+        EGP:egpSize(ID, BSize)
+        EGP:egpColor(ID, Color)
+    }
+
+    function void line(ID:number, Pos:vector2, Size:vector2, Color:vector) {
+        EGP:egpBox(ID, Pos, Size)
+        EGP:egpColor(ID, Color)
+    }
+    
+    function void animations() {
+        foreach(_:number, Name:string = Animations) {
+            fadeIn(Name, 0, 0.5)
+        }
+    }
+    
+    function staticState(ID:number) {
+        let Array = array(Elements:get("Order"+ID), 
+                    Elements:get("Order"+ID+"Name"), 
+                    Elements:get("Order"+ID+"Item"), 
+                    Elements:get("Delete"+ID),
+                    Elements:get("Ready"+ID))
+        foreach(_:number, Num:number = Array) {
+            EGP:egpAlpha(Num, 255)
+        }
+    }
+    
+    function void updateOrders(Anim:number) {
+        let Keys = Orders:keys()
+        EGP:egpSetText(Elements:get("PageNum"), "Page "+Page+"/"+ceil(Orders:count()/5))
+        for (I=1, 5) {
+            let Order = Orders[Keys[I+(Page-1)*5, number], table]
+            let ID1 = Elements:get("Order"+I)
+            let ID2 = Elements:get("Order"+I+"Name")
+            let ID3 = Elements:get("Order"+I+"Item")
+            let ID4 = Elements:get("Ready"+I)
+            let ID5 = Elements:get("Delete"+I)
+            
+            if (Order) {       
+                box(0, 1, 9.0, ID1, vec2(24.0, 186.0) + vec2(0,(I-1)*53.0), vec2(464.0, 50.0), 0, vec(244,220,196))
+                text(ID2, Order["Name", string], vec2(47.0, 186.0) + vec2(0,(I-1)*53), vec2(242.0, 50.0), vec(0,0,0), 19, 0, 1)
+                text(ID3, Order["Item", string], vec2(214.0, 186.0) + vec2(0,(I-1)*53), vec2(240.0, 50.0), vec(0,0,0), 19, 0, 1)
+                if (Order["Text", string] == "Being Made") {
+                    box(0, 1, 9.0, ID4, vec2(388.0, 191.0)+ vec2(0,(I-1)*53), vec2(40.0, 40.0), 0, vec(0,128,0))
+                }
+                elseif(Order["Text", string] == "Expired") {
+                    box(0, 1, 9.0, ID4, vec2(388.0, 191.0)+ vec2(0,(I-1)*53), vec2(40.0, 40.0), 0, vec(167,0,0))
+                }
+                else {
+                    box(0, 1, 9.0, ID4, vec2(388.0, 191.0)+ vec2(0,(I-1)*53), vec2(40.0, 40.0), 0, vec(128,128,128))
+                }
+                box(0, 1, 9.0, ID5, vec2(438.0, 186.0)+ vec2(0,(I-1)*53), vec2(50.0, 50.0), 0, vec(167,0,0))
+                EGP:egpMaterial(ID4, "materials/zerochain/zerolib/ui/icon_time.png")
+                EGP:egpMaterial(ID5, "materials/zerochain/zerolib/ui/delete.png")
+                
+                if (Anim) {
+                    EGP:egpAlpha(ID1, 0)
+                    EGP:egpAlpha(ID2, 0)
+                    EGP:egpAlpha(ID3, 0)
+                    EGP:egpAlpha(ID4, 0)
+                    EGP:egpAlpha(ID5, 0)
+                    staticState(I-1)
+                    Animations = array("Order"+I, "Order"+I+"Name", "Order"+I+"Item", "Ready"+I, "Delete"+I)
+                    animations()
+                    timer("animation", 300)
+                }
+            }
+            elseif(EGP:egpHasObject(ID1)) {
+                EGP:egpRemove(ID1)
+                EGP:egpRemove(ID2)
+                EGP:egpRemove(ID3)
+                EGP:egpRemove(ID4)
+                EGP:egpRemove(ID5)
+            }
+        }
+    }
+    
+    function void draw() {
+        EGP:clear()
+        EGP:egpDrawTopLeft(1)
+    
+        box(0, 0, 0, Elements:get("BACKGROUND"), vec2(0, 0), vec2(512.0, 512.0), 0, vec(244,220,196))
+        box(0, 0, 0, Elements:get("Rectangle213"), vec2(8.0, 9.0), vec2(495.0, 495.0), 0, vec(69,211,255))
+        text(Elements:get("ATomatoProduc"), "A Tomato Production", vec2(8.0, 483.0), vec2(495.0, 21.0), vec(244,220,196), 15, 1, 1)  
+              
+        box(0, 0, 0, Elements:get("Image"), vec2(8.0, -110.0), vec2(495.0, 282.0), 0, vec(255, 255, 255))
+        
+        tauPrecacheMaterial("9759383")
+        EGP:egpMaterial(Elements:get("Image"), "../data/tau/cache/files/1a2b6f5882d9172b7dbf5f353c16c62a.png")
+        
+        box(0, 0, 0, Elements:get("Rectangle252"), vec2(23.0, 117.0), vec2(76.0, 55.0), 0, vec(69,211,255))
+        box(0, 0, 0, Elements:get("Rectangle253"), vec2(379.0, 117.0), vec2(104.0, 55.0), 0, vec(69,211,255))
+        
+        text(Elements:get("StaffScreen"), "Staff Screen", vec2(8.0, 146.0), vec2(495.0, 31.0), vec(0,158,220), 30, 1, 1)
+        
+        box(0, 1, 9.0, Elements:get("NextBox"), vec2(423.0, 455.0), vec2(65.0, 42.0), 0, vec(244,220,196))
+        text(Elements:get("Next"), "Next", vec2(423.0, 455.0), vec2(65.0, 42.0), vec(0,0,0), 19, 1, 1)
+        box(0, 1, 9.0, Elements:get("PrevBox"), vec2(23.0, 455.0), vec2(65.0, 42.0), 0, vec(244,220,196))
+        text(Elements:get("Prev"), "Prev", vec2(23.0, 455.0), vec2(65.0, 42.0), vec(0,0,0), 19, 1, 1)
+        text(Elements:get("PageNum"), "Page 1/1", vec2(23.0, 451.0), vec2(465.0, 26.0), vec(255,255,255), 14, 1, 1)
+    }
+
+    draw()
+}
+
+if (clk("draw") || ~EGP) {
+    draw()
+}
+
+if (clk("animation")) {
+    Animation = 1
+}
+
+if (userInput()) {
+    if (cursorPos(Elements:get("PrevBox"))) {
+        if (Page > 1) {
+            Page--
+            updateOrders(0)
+        }
+    }
+    elseif (cursorPos(Elements:get("NextBox"))) {
+        if (Page * 5 < Orders:count()) {
+            Page++
+            updateOrders(0)
+        }
+    }
+    else {
+        for (I=1, 5) {
+            if (cursorPos(Elements:get("Delete"+I))) {
+                let Index = I+(Page-1)*5
+                let Name = Orders[Index, table]["Name", string]
+                let Item = Orders[Index, table]["Item", string]
+                if (Index % 5 == 1 && Index == Orders:count()) {
+                    Page--
+                }
+                owner():msg("Order completed (" + Name + " - " + Item + ")")
+                Orders:removeTable(Index)
+                broadcastRemoteEvent(Orders)
+                updateOrders(0)
+            }
+            elseif(cursorPos(Elements:get("Ready"+I))) {
+                let Index = I+(Page-1)*5
+                let Item = Orders[Index, table]["Item", string]
+                let Player = findPlayerBySteamID(Orders[Index, table]["Steam", string])
+                Player:msg("Your " + Item + " is ready - you have 5 minutes to collect your food")
+                Orders[Index, table]["Text", string] = "Ready"
+                Orders[Index, table]["ReadyTime", number] = 5
+                EGP:egpColor(Elements:get("Ready"+I), vec(128,128,128))
+                broadcastRemoteEvent(Orders)
+            }
+        }
+    }
+    timer("time", 60000)
+}
+
+interval(100)
+if (Animation) {
+    animations()
+}
+
+if(clk("time")) {
+    foreach(_:number, Order:table = Orders) {
+        let Time = Order["ReadyTime", number]
+        if (Time) {
+            if (Time == 1) {
+                let Item = Order["Item", string]
+                let Player = findPlayerBySteamID(Order["Steam", string])
+                Player:msg("Your " + Item + " has expired as you did not collect within 5 minutes.")
+                owner():msg(Player:name() + "'s order of " + Item + "has expired.") 
+                Order["Text", string] = "Expired"
+                broadcastRemoteEvent(Orders)
+            }
+            Order["ReadyTime", number] = Time - 1
+        }
+    }
+    timer("time", 60000)
+}
+
+event remote(Sender:entity, Player:entity, Payload:table) {
+    if (Player == owner()) {
+        Orders = Payload
+        if (Page * 5 < Orders:count()) {
+            Page = ceil(Orders:count()/5)
+        }
+        updateOrders(1)
+    }
+}

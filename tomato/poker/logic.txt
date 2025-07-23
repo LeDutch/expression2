@@ -1,0 +1,307 @@
+@name Tomato Poker Logic
+
+# =================== Poker Core Functions ================= #
+
+# Function to create the Deck
+function table deckCreate() {
+    let Deck = table()
+    
+    # Lambda to create a card
+    let Card_create = function(Rank:string, Suit:string) {
+        let Card = table()
+        Card["Rank"] = Rank
+        Card["Suit"] = Suit
+        Card["toString"] = function() {
+            return Card["Rank", string] + " of " + Card["Suit", string]
+        }
+        return Card
+    }
+    Deck["Cards"] = table()
+    
+    # Initialize the deck
+    Deck["initialize"] = function() {
+        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
+        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+        
+        foreach(_:number, Suit:string = Suits) {
+            foreach(_:number, Rank:string = Ranks) {
+                let Card = Card_create(Rank, Suit)[table]
+                Deck["Cards", table]:pushTable(Card)
+            }
+        }
+    }
+    
+    # Shuffle the deck
+    Deck["shuffle"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        for (I = Count, 1, -1) {
+            let J = randint(1, I) # Random index between 0 and I
+            # Swap Cards[I] and Cards[J]
+            let Temp = Cards[I, table]
+            Cards[I] = Cards[J, table]
+            Cards[J] = Temp
+        }
+    }
+    
+    # Draw a card
+    Deck["draw"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        if (Count > 0) {
+            let LastCard = Cards[Count, table] # Get the last card
+            Deck["Cards", table]:pop()
+            return LastCard
+        }
+        return table() # Deck is empty
+    }
+    
+    return Deck
+}
+
+function table gameCreate() {
+    let Game = table()
+    
+    # Poker game state functions
+    Game["State", string] = "Pre-Game"
+    Game["StateIndex", number] = 1
+    
+    Game["UpdateState", function] = function() {
+        let States = array("Pre-Game", "Deal", "Pre-Flop", "Flop", "Turn", "River", "Showdown")
+        
+        Game["StateIndex", number] = (Game["StateIndex", number] % States:count()) + 1
+        
+        let CurrentState = States[Game["StateIndex", number], string]
+        Game["State", string] = CurrentState
+        
+        switch(CurrentState) {
+            case "Deal",
+                assignCoin()
+                drawDeck()
+                let SortDescending = function(Array:array) {
+                    for (I = 1, Array:count() - 1) {
+                        for (J = I + 1, Array:count()) {
+                            let A = Array[J, number]
+                            let B = Array[I, number]
+                            if (A > B) {
+                                let Temp = Array[I, number]
+                                Array[I] = Array[J, number]
+                                Array[J] = Temp
+                            }
+                        }
+                    }
+                    return Array
+                }
+                let SeatsInPlay = array()
+                CommunityCards = table()
+                Deck["initialize", function]()
+                Deck["shuffle", function]()
+                foreach(_:string, Player:table = Players) {
+                    let SeatNum = Player["Seat", number]
+                    drawPlayerCards(SeatNum)
+                    SeatsInPlay:pushNumber(SeatNum)
+                }
+                let DealCard = function(SeatNum:number, CardNum:number) {
+                    EGP = SeatNum > 3 ? Table2 : Table1
+                    let CardMainID = SeatNum+"Card"+CardNum
+                    let CardID = SeatNum+"Card"+CardNum+"_Border"
+                    let XPos = SeatNum > 3 ? 0 : 418
+                    DealCards:pushTable(table(
+                        "ID"=CardNum, 
+                        "Seat"=SeatNum,
+                        "Pos"=EGP:egpPos(Elements:get(CardID)),
+                        "Angle"=EGP:egpAngle(Elements:get(CardID))
+                    ))
+                    EGP:egpPos(Elements:get(CardMainID), vec2(XPos,60))
+                    EGP:egpPos(Elements:get(CardID), vec2(XPos,60))
+                    EGP:egpAngle(Elements:get(CardID), 75)
+                    EGP:egpAngle(Elements:get(CardMainID), 75)
+                }
+                let DealAnimation = function() {}
+                DealAnimation = function() {
+                    let Count = DealCards:count()
+                    if (Count) {   
+                        DealCards:shift()
+                        
+                        let DealtCard = DealCards[1, table]
+                        let ID = DealtCard["ID", number]
+                        let Seat = DealtCard["Seat", number]
+                        let Pos = DealtCard["Pos", vector2]
+                        let Angle = DealtCard["Angle", number]
+                        EGP = Seat > 3 ? Table2 : Table1
+                        
+                        moveTo(Seat + "Card"+ID, 1, Pos)
+                        moveTo(Seat + "Card"+ID+"_Border", 1, Pos)
+                        rotateTo(Seat + "Card"+ID, 1, Angle)
+                        rotateTo(Seat + "Card"+ID+"_Border", 1, Angle)
+                        fadeIn(Seat + "Card"+ID, 1)
+                        fadeIn(Seat + "Card"+ID+"_Border", 1)
+                        
+                        if(Count > 1) {
+                            soundPlay(1,0.5,"pcasino/card/card_"+randint(1,4)+".wav")
+                        }
+                        timer(1.1, function() { DealAnimation() }) 
+                    }
+                    else {
+                        for (Seat = 1, 6) {
+                            EGP = Seat > 3 ? Table2 : Table1
+                            fadeIn(Seat + "Card_Text1", 1)
+                            fadeIn(Seat + "Card_Text2", 1)
+                        }
+                        updateGameState()
+                    }
+                }
+                timer(0.1, function() {
+                    DealCard(0, 1)
+                    for(Card=1, 2) {
+                        foreach(_:number, Seat:number = SortDescending(SeatsInPlay)[array]) {
+                            DealCard(Seat, Card) # Deal from the left
+                        }
+                    }
+                    DealAnimation()
+                })
+            break
+            case "Pre-Flop",
+                foreach(_:string, Player:table = Players) {
+                    Player["InPlay", number] = 1
+                    Player["Cards", table] = table()
+                    Notify_Player(Player)
+                    Card_Draw(Player)
+                    Card_Draw(Player)
+                }
+                SetAction()
+            break
+            case "Flop",
+                let Num = 1
+                let Deal3Cards = function() {}
+                Deal3Cards = function(Num:number) {
+                    EGP = Table1
+                    Draw_Flop(Num)
+                    if (Num <= 2) {
+                        Num++
+                        timer(0.2, function() { Deal3Cards(Num) }) 
+                        # Pass the function reference explicitly
+                    }
+                    else {
+                        foreach(_:string, Player:table = Players) {
+                            Notify_Player(Player)
+                        }
+                        SetAction()
+                    }
+                }
+                Deal3Cards(Num)
+            break
+            case "Turn",
+            case "River",
+                EGP = Table2
+                let Index = NewState == "Turn" ? 4 : 5
+                let Card = Deck["draw", function]()[table]
+                let Suit = Card["Suit", string]
+                let Rank = Card["Rank", string]
+                
+                if (Index == 4) {
+                    # Flop 2 Section
+                    box("Turn", table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+                    box("Turn_Border", table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+                }
+                else {
+                    box("River", table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+                    box("River_Border", table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+                }
+                CommunityCards:pushTable(Card)
+                suit(Suit, Index) 
+                rank(Rank, Index)
+                foreach(_:string, Player:table = Players) {
+                    Notify_Player(Player)
+                }
+                SetAction()
+            break
+            case "Showdown",
+                GameState = 0
+                if(CommunityCards:count() != 5) {
+                    timer(0.5, function() {
+                        updateGameState()
+                    })
+                    return ""
+                }
+                let OrderedRanks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+                let BestHand = table("Points"=0, "HighCards"=array())
+                let Winners = array()
+            
+                foreach(PlayerID:string, Player:table = Players) {
+                    let EvaluatedHand = evaluateHand(Player)
+            
+                    # Check if the current hand is better than the best hand so far
+                    if (EvaluatedHand["Points", number] > BestHand["Points", number]) {
+                        BestHand = EvaluatedHand
+                        Winners = array(PlayerID) # Update the winner list to the current player
+                    } 
+                    # If hand ranks are the same, compare the top 5 cards
+                    elseif (EvaluatedHand["Points", number] == BestHand["Points", number]) {
+                        let BestCards = BestHand["HighCards", array]
+                        let CurrentBestCards = EvaluatedHand["HighCards", array]
+                        let Tie = 1 # Assume a tie unless proven otherwise
+            
+                        foreach(Index:number, HighCard:string = BestCards) {
+                            let BestRank = indexOf(HighCard, OrderedRanks)
+                            let CurrentRank = indexOf(CurrentBestCards[Index, string], OrderedRanks)
+                        
+                            if (CurrentRank > BestRank) {
+                                BestHand = EvaluatedHand
+                                Winners = array(PlayerID) # Update winner list to the current player
+                                Tie = 0 # Break tie
+                                break
+                            } elseif (CurrentRank < BestRank) {
+                                Tie = 0 # Current player loses; no need to add them as a winner
+                                break
+                            }
+                        }
+            
+                        # If there is a tie, add the current player to the Winners list
+                        if (Tie) {
+                            Winners:pushString(PlayerID)
+                        }
+                    }
+                }
+            
+                # Generate winner names
+                let GetNames = function() {
+                    let Result = ""
+                    foreach(Index:number, PlayerID:string = Winners) {
+                        let Entity = Players[PlayerID, table]["Entity", entity]
+                        let Name = Entity:isValid() ? Entity:name() : "Player " + PlayerID
+                        Result += Name
+                        if (Index < Winners:count()) {
+                            Result += ", "
+                        }
+                    }
+                    return Result
+                }
+            
+                # Message the result
+                Players:keys():msgAll((Winners:count() > 1 ? "Split Pot: " : "Winner: ") + GetNames()[string] + 
+                " with " + BestHand["Description", string])
+                
+                let PayOuts = table()
+                
+                # Reveal all winners hands
+                foreach(_:number, PlayerID:string = Winners) {
+                    let Player = Players[PlayerID, table]
+                    revealHand(PlayerID)
+                    PayOuts:pushTable(
+                        table(
+                            "Seat" = Player["Seat", number], 
+                            "MaxPot" = Player["MaxPot", number]
+                        )
+                    )
+                }
+                payWinners(PayOuts)
+                ResetBoard()
+            break
+            default,
+            break
+        }
+    }
+    
+    return Game
+}

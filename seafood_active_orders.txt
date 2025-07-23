@@ -1,0 +1,150 @@
+@name Seafood Active Orders
+@persist Animations:array Anim:number Count:number
+@persist [Orders]:table
+# Automagically Compiled via https://odev.pro (Credits Odin & Bob Tomato)
+
+if (first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #include "library/tomato_animations"
+    Elements = table()
+    Animation = 0
+    Prefix = "Seafood"
+    PrefixColour = "cyan"
+    Orders = table()
+    Animations = array()
+    Anim = 0
+    Count = 0
+    
+    function void wirelink:clear() {
+        This:egpClear()
+        Elements:clear()
+    }
+
+    function void text(ID:number, MSG:string, Pos:vector2, VSize:vector2, Color:vector, Size:number, WA:number, HA:number) {
+        EGP:egpTextLayout(ID, MSG, Pos, VSize)
+        EGP:egpColor(ID, Color)
+        EGP:egpSize(ID, Size)
+        EGP:egpAlign(ID, WA > 0, HA > 0)
+    }
+
+    function void box(Outline:number, Radius:number, Rad:number, ID:number, Pos:vector2, Size:vector2, BSize:number, Color:vector) {
+        if (Outline) {
+            if (Radius) {
+                EGP:egpRoundedBoxOutline(ID, Pos, Size)
+                EGP:egpRadius(ID, Rad)
+            } else {
+                EGP:egpBoxOutline(ID, Pos, Size)
+            }
+        } else {
+            if (Radius) {
+                EGP:egpRoundedBox(ID, Pos, Size)
+                EGP:egpRadius(ID, Rad)
+            } else {
+                EGP:egpBox(ID, Pos, Size)
+            }
+        }
+
+        EGP:egpSize(ID, BSize)
+        EGP:egpColor(ID, Color)
+    }
+
+    function void line(ID:number, Pos:vector2, Size:vector2, Color:vector) {
+        EGP:egpBox(ID, Pos, Size)
+        EGP:egpColor(ID, Color)
+    }
+    
+    function void animations() {
+        foreach(_:number, Name:string = Animations) {
+            fadeIn(Name, 0, 0.5)
+        }
+    }
+    
+    function staticState(ID:number) {
+        let Array = array(Elements:get("Order"+ID), Elements:get("Order"+ID+"Name"), Elements:get("Order"+ID+"Item"))
+        foreach(_:number, Num:number = Array) {
+            EGP:egpAlpha(Num, 255)
+        }
+    }
+    
+    function void updateOrders() {
+        let Keys = Orders:keys()
+        for (I=1, 5) {
+            let Order = Orders[Keys[I, number], table]
+            let ID1 = Elements:get("Order"+I)
+            let ID2 = Elements:get("Order"+I+"Name")
+            let ID3 = Elements:get("Order"+I+"Item")
+            
+            if (Order) {       
+                box(0, 1, 9.0, ID1, vec2(24.0, 186.0) + vec2(0,(I-1)*53.0), vec2(464.0, 50.0), 0, vec(244,220,196))
+                text(ID2, Order["Name", string], vec2(47.0, 186.0) + vec2(0,(I-1)*53), vec2(242.0, 50.0), vec(0,0,0), 19, 0, 1)
+                text(ID3, Order["Item", string] + " -  " + Order["Text", string], vec2(214.0, 186.0) + vec2(0,(I-1)*53), vec2(240.0, 50.0), vec(0,0,0), 19, 0, 1)
+                
+                if (Anim) {
+                    EGP:egpAlpha(ID1, 0)
+                    EGP:egpAlpha(ID2, 0)
+                    EGP:egpAlpha(ID3, 0)
+                    staticState(I-1)
+                    Animations = array("Order"+I, "Order"+I+"Name", "Order"+I+"Item")
+                    animations()
+                    timer("animation", 300)
+                }
+            }
+            elseif(EGP:egpHasObject(ID1)) {
+                EGP:egpRemove(ID1)
+                EGP:egpRemove(ID2)
+                EGP:egpRemove(ID3)
+            }
+        }
+    }
+    
+    function void draw() {
+        EGP:clear()
+        EGP:egpDrawTopLeft(1)
+    
+        box(0, 0, 0, Elements:get("BACKGROUND"), vec2(0, 0), vec2(512.0, 512.0), 0, vec(244,220,196))
+        box(0, 0, 0, Elements:get("Rectangle213"), vec2(8.0, 9.0), vec2(495.0, 495.0), 0, vec(69,211,255))
+        text(Elements:get("ATomatoProduc"), "A Tomato Production", vec2(8.0, 483.0), vec2(495.0, 21.0), vec(244,220,196), 15, 1, 1)  
+              
+        box(0, 0, 0, Elements:get("Image"), vec2(8.0, -110.0), vec2(495.0, 282.0), 0, vec(255, 255, 255))
+        
+        tauPrecacheMaterial("9759383")
+        EGP:egpMaterial(Elements:get("Image"), "../data/tau/cache/files/1a2b6f5882d9172b7dbf5f353c16c62a.png")
+        box(0, 0, 0, Elements:get("Rectangle252"), vec2(23.0, 117.0), vec2(76.0, 55.0), 0, vec(69,211,255))
+        box(0, 0, 0, Elements:get("Rectangle253"), vec2(379.0, 117.0), vec2(104.0, 55.0), 0, vec(69,211,255))
+        
+        text(Elements:get("ActiveOrders"), "Active Orders", vec2(8.0, 146.0), vec2(495.0, 31.0), vec(0,158,220), 30, 1, 1)
+    }
+
+    draw()
+}
+
+if (clk("draw") || ~EGP) {
+    draw()
+}
+
+if (clk("animation")) {
+    Animation = 1
+}
+if (clk("update")) {
+    Count = Orders:count()
+    updateOrders()
+}
+
+interval(100)
+if (Animation) {
+    animations()
+}
+
+event remote(Sender:entity, Player:entity, Payload:table) {
+    if (Player == owner()) {
+        let PayLoadCount = Payload:count()
+        Orders = Payload
+        if (PayLoadCount > Count && PayLoadCount <= 5) {
+            Anim = 1
+        }
+        else {
+            Anim = 0
+        }
+        timer("update", 200)
+    }
+}

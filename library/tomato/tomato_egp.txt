@@ -1,0 +1,222 @@
+@name Tomato EGP
+@persist Elements:table CurrentUser:entity
+@inputs EGP:wirelink User:entity
+@strict
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: dutch99
+ To compile graphics: https://www.egpcompiler.com/
+]#
+
+#[ =================== To DO ============================ #
+ - EGP Compiler parenting system
+ - EGP Compiler transition system
+]#
+
+if (first()) {
+    # Initialize variables
+    Elements = table()
+    CurrentUser = noentity()
+    if(CurrentUser) {}
+}
+
+# =================== Parenting Functions ================= #
+
+# EGP Objects
+function void egpobject:giveParent(Parent:egpobject) {
+    # This == Child
+    const Pos = vec2(This["x", number], This["y", number])
+    const ParentPos = vec2(Parent["x", number], Parent["y", number])
+    const NewPos = (Pos - ParentPos):normalized()*ParentPos:distance(Pos)
+    This["x", number] = NewPos:x()
+    This["y", number] = NewPos:y()
+    This:parentTo(Parent)
+}
+
+function void egpobject:giveChild(Child:egpobject) {
+    # This == Parent
+    const Pos = vec2(This["x", number], This["y", number])
+    const ChildPos = vec2(Child["x", number], Child["y", number])
+    const NewPos = (ChildPos - Pos):normalized()*Pos:distance(ChildPos)
+    Child["x", number] = NewPos:x()
+    Child["y", number] = NewPos:y()
+    Child:parentTo(This)
+}
+
+# ID System
+function void number:giveParent(ParentID:number) {
+    const Parent = EGP:egpobject(ParentID)
+    const Child = EGP:egpobject(This)
+    Child:giveParent(Parent)
+}
+
+function void number:giveChild(ChildID:number) {
+    const Child = EGP:egpobject(ChildID)
+    const Parent = EGP:egpobject(This)
+    Parent:giveChild(Child)
+}
+
+# Combined for graphic funcs
+function void number:giveChild(Child:egpobject) {
+    const Parent = EGP:egpobject(This)
+    Parent:giveChild(Child)
+}
+
+# =================== Graphic Functions =================== #
+
+function number initial() {
+    return ->EGP && (first() || duped() || ~EGP)
+}
+
+function number table:get(...Args:array) {
+    const Name = Args[1, string]
+    if (Name) {
+        if (This:exists(Name)) {
+            return This[Name, number]   
+        }
+        const FreeID = This:flip():ncount()+1
+        This[Name, number] = FreeID
+        return FreeID
+    }
+    const FreeID = This:flip():ncount()+1
+    This[toString(FreeID), number] = FreeID
+    return FreeID
+}
+
+function void wirelink:clear() {
+    This:egpClear()
+    Elements:clear()
+}
+
+function egpobject text(Name:string, Args:table) {
+    const ID = Elements:get(Name)
+    const Parent = Args["parent", string]
+    const Object = EGP:egpTextLayout(ID, Args)
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
+        return Object
+    }
+    return Object
+}
+function egpobject text(Args:table) {
+    return text("", Args)
+}
+
+function egpobject circle(Name:string, Args:table) {
+    const ID = Elements:get(Name)
+    const Parent = Args["parent", string]
+    const Object = Args["outline", number] ? EGP:egpCircleOutline(ID, Args) : EGP:egpCircle(ID, Args)
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
+    }
+    return Object
+}
+function egpobject circle(Args:table) {
+    return circle("", Args)
+}
+
+function egpobject box(Name:string, Args:table) {
+    const ID = Elements:get(Name)
+    const Parent = Args["parent", string]
+    const Object = Args["outline", number] & Args["radius", number] ? EGP:egpRoundedBoxOutline(ID, Args) 
+        : Args["outline", number] ? EGP:egpBoxOutline(ID, Args) 
+        : Args["radius", number] ? EGP:egpRoundedBox(ID, Args:add(table("fidelity"=50))) # Radius sometimes glitches
+        : EGP:egpBox(ID, Args)
+
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
+    }
+    return Object
+}
+function egpobject box(Args:table) {
+    return box("", Args)
+}
+
+function void opacity(Name:string, Value:number) {
+    const ID = Elements:get(Name)
+    EGP:egpAlpha(ID, Value)
+}
+
+# =================== Interaction Functions =============== #
+
+function number userInput() {
+    const Pressed = ~User && User:isValid()
+    if (Pressed) {
+        CurrentUser = User
+    }
+    return Pressed
+}
+function number userInput(Player:entity) { # Check for specific player input
+    return ~User && Player:isValid()
+}
+
+# Check all egp objects on screen - checks in reverse to reduce lag but will require ops if many objects
+function string cursorObj() {
+    const Cursor = EGP:egpCursor(User)
+    const Objects = EGP:egpObjectIndexes()
+    const Names = Elements:flip()
+
+    # Helper function to find the topmost parent of an object
+    const FindTopParent = function(Object:egpobject, Index:number) {
+        while (Object:parentIndex()) {
+            Index = Object:parentIndex()
+            Object = EGP:egpobject(Index)
+        }
+        return Index
+    }
+
+    # Iterate through objects in reverse order
+    for (I = Objects:count(), 1, -1) {
+        const ID = Objects[I, number]
+        
+        # Skip 'blank' numeric names
+        if (Names[ID, string]:toNumber()) {
+            continue
+        }
+
+        # Check if the object contains the cursor
+        const Object = EGP:egpobject(ID)
+        if (Object:containsPoint(Cursor)) {
+            return Names[FindTopParent(Object, ID)[number], string]
+        }
+    }
+
+    return ""
+}
+
+# Checks an array of ONLY given object names - more efficient but doesn't check parents.
+function string cursorObj(...Names:array) {
+    const Cursor = EGP:egpCursor(User)
+    # Iterate through objects
+    for (I = 1, Names:count()) {
+        const ID = Elements:get(Names[I, string])
+        const Object = EGP:egpobject(ID)
+        if (Object:containsPoint(Cursor)) {
+            return Names[I, string]
+        }
+    }
+
+    return ""
+}
+
+# Same function but takes an array (for use in UI)
+function string cursorArray(Names:array) {
+    const Cursor = EGP:egpCursor(User)
+    # Iterate through objects
+    for (I = 1, Names:count()) {
+        const ID = Elements:get(Names[I, string])
+        const Object = EGP:egpobject(ID)
+        if (Object:containsPoint(Cursor)) {
+            return Names[I, string]
+        }
+    }
+
+    return ""
+}
+
+if (initial()) {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+}

@@ -1,0 +1,101 @@
+@name Tomato Animations
+@persist FPS:number
+
+#include "library/tomato/tomato_egp"
+
+if (first()) {
+    FPS = 30 # Frames per second
+}
+
+# ==================== Animation Core ==================== #
+
+function number repeats(Dur:number) {
+    return Dur * FPS
+}
+
+function void startAnimation(Func:function, Dur:number) {
+    Func() # Start immediately
+    timer(1/FPS, repeats(Dur)-1, function() {
+        Func()
+    })
+}
+
+function void fadeIn(Name:string, Dur:number) {
+    let Object = EGP:egpobject(Elements:get(Name))
+    let Repeats = repeats(Dur)
+    let Animation = function() {
+        Object["a", number] = Object["a", number] + 255/Repeats
+    }
+    startAnimation(Animation, Dur)
+}
+
+function void fadeOut(Name:string, Dur:number) {
+    let Object = EGP:egpobject(Elements:get(Name))
+    let Repeats = repeats(Dur)
+    let Animation = function() {
+        Object["a", number] = Object["a", number] - 255/Repeats
+    }
+    startAnimation(Animation, Dur)
+}
+
+function void moveTo(Name:string, Dur:number, Target:vector2) {
+    let ID = Elements:get(Name)
+    let Object = EGP:egpobject(ID)
+    let Pos = EGP:egpPos(ID)
+    let Direction = (Target - Pos):normalized()
+    let Distance = Target:distance(Pos)
+    let Repeats = repeats(Dur)
+    let Animation = function() {
+        Object["x", number] = Object["x", number] + Direction:x()*Distance/Repeats
+        Object["y", number] = Object["y", number] + Direction:y()*Distance/Repeats
+    }
+    startAnimation(Animation, Dur)
+}
+
+function void rotateTo(Name:string, Dur:number, Angle:number) {
+    let ID = Elements:get(Name)
+    let Object = EGP:egpobject(ID)
+    let Distance = Angle - Object["angle", number]
+    let Step = Distance/repeats(Dur)
+    let Animation = function() {
+        Object["angle", number] = Object["angle", number] + Step
+    }
+    startAnimation(Animation, Dur)
+}
+
+function void transform(Name:string, Dur:number, TargetSize:vector2) {
+    let ID = Elements:get(Name)
+    let Object = EGP:egpobject(ID)
+    let Size = EGP:egpSize(ID)
+    let WDist = TargetSize:x() - Size:x()
+    let HDist = TargetSize:y() - Size:y()
+    let Repeats = repeats(Dur)
+    let Animation = function() {
+        Object["w", number] = Object["w", number] + WDist/Repeats
+        Object["h", number] = Object["h", number] + HDist/Repeats
+    }
+    startAnimation(Animation, Dur)
+}
+
+function void typeOut(Name:string, Word:string) {
+    let Object = EGP:egpobject(Elements:get(Name))
+    let Index = 1
+    let Count = 1
+    let Length = Word:length()
+    
+    let Animation = function() {
+        if (Count > repeats(Length)) {
+            Object["text", string] = Object["text", string] + Word[Index]
+            Index++
+            Count = 0
+        }
+        else {
+            Count++
+        }
+    }
+
+    startAnimation(Animation, Length)
+}
+
+
+

@@ -1,0 +1,222 @@
+@name Compiled Figma to EGP
+@inputs EGP:wirelink
+@persist Elements:table
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
+
+if (first() || dupefinished()) {
+    Elements = table()
+    function number table:get(Name:string) {
+        if (This:exists(Name)) {
+            return This[Name, number]
+        }
+        local FreeID = This:flip():ncount()+1
+
+        if (FreeID >= 300) {
+            error("Too many elements being drawn.")
+        }
+
+        This[Name, number] = FreeID
+        return FreeID
+    }
+
+    function void wirelink:clear() {
+        This:egpClear()
+        Elements:clear()
+    }
+
+        function egpobject text(ID:number, ARGS:table) {
+        return EGP:egpTextLayout(ID, ARGS)
+    }
+
+    function egpobject circle(ID:number, ARGS:table) {
+        if (ARGS["outline", number]) {
+            return EGP:egpCircleOutline(ID, ARGS)
+        }
+        return EGP:egpCircle(ID, ARGS)
+    }
+
+    function egpobject box(ID:number, ARGS:table) {
+        if (ARGS["outline", number]) {
+            return EGP:egpRoundedBoxOutline(ID, ARGS)
+        }
+        return EGP:egpRoundedBox(ID, ARGS)
+    }
+
+    function egpobject line(ID:number, ARGS:table) {
+        return EGP:egpBox(ID, ARGS)
+    }
+}
+
+if (first() || dupefinished()) {
+    function void draw() {
+        EGP:clear()
+        EGP:egpDrawTopLeft(1)
+
+        box(Elements:get("RectangleTable"), table("x"=1515.0, "y"=108.0, "w"=512.0, "h"=512.0, "r"=227, "g"=176, "b"=75, "radius"=0))
+        box(Elements:get("RectangleBackg"), table("x"=0.0, "y"=4.0, "w"=508.0, "h"=504.0, "r"=106, "g"=23, "b"=23, "radius"=0))
+
+        # Player 4 Section
+
+        # Cards Section
+        box(Elements:get("Rectangle239"), table("x"=215.5, "y"=377.41, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("Rectangle239_Border"), table("x"=215.5, "y"=377.41, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("Rectangle239"), vec2(215.5, 377.41), vec2(0, 0), 11.83)
+        EGP:egpAngle(Elements:get("Rectangle239_Border"), vec2(215.5, 377.41), vec2(0, 0), 11.83)
+        text(Elements:get("A"), table("text"="A", "x"=218.1, "y"=380.58, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("A"), vec2(225.21, 387.69), vec2(-7.11, -7.11), 15.02)
+        box(Elements:get("Rectangle240"), table("x"=239.83, "y"=368.0, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("Rectangle240_Border"), table("x"=239.83, "y"=368.0, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("Rectangle240"), vec2(239.83, 368.0), vec2(0, 0), -9.88)
+        EGP:egpAngle(Elements:get("Rectangle240_Border"), vec2(239.83, 368.0), vec2(0, 0), -9.88)
+        text(Elements:get("1" + "A"), table("text"="A", "x"=241.08, "y"=371.91, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "A"), vec2(248.19000000000003, 379.02000000000004), vec2(-7.11, -7.11), -6.7)
+        box(Elements:get("Rectangle363"), table("x"=236.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("Rectangle363_Border"), table("x"=236.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("Rectangle363"), vec2(236.49, 447.33), vec2(0, -10.56), 160)
+        EGP:egpAngle(Elements:get("Rectangle363_Border"), vec2(236.49, 447.33), vec2(0, -10.56), 160)
+        box(Elements:get("Rectangle364"), table("x"=272.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("Rectangle364_Border"), table("x"=272.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("Rectangle364"), vec2(272.5, 447.33), vec2(0, 0), 20.0)
+        EGP:egpAngle(Elements:get("Rectangle364_Border"), vec2(272.5, 447.33), vec2(0, 0), 20.0)
+        box(Elements:get("Rectangle360"), table("x"=228.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("Rectangle360_Border"), table("x"=228.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        box(Elements:get("Rectangle359"), table("x"=215.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("Rectangle359_Border"), table("x"=215.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        text(Elements:get("BobTomato"), table("text"="Bob Tomato", "x"=215.5, "y"=431.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+        text(Elements:get("$1000"), table("text"="$1000", "x"=228.5, "y"=450.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+
+        # Buttons Section
+        box(Elements:get("Rectangle355"), table("x"=154.0, "y"=474.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        box(Elements:get("Rectangle356"), table("x"=222.09, "y"=474.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        box(Elements:get("Rectangle357"), table("x"=290.18, "y"=474.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        text(Elements:get("Fold"), table("text"="Fold", "x"=154.0, "y"=474.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        text(Elements:get("Call"), table("text"="Call", "x"=222.09, "y"=474.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        text(Elements:get("Raise"), table("text"="Raise", "x"=290.18, "y"=474.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+
+        # Player 5 Section
+        EGP:egpAngle(Elements:get("Player"), vec2(455.5, 202.01), vec2(-100.5, -62.01), 180.0)
+
+        # Cards Section
+        EGP:egpAngle(Elements:get("1" + "Cards"), vec2(332.5, 189.0), vec2(-39.0, -49.0), 180.0)
+        box(Elements:get("1" + "Rectangle239"), table("x"=293.5, "y"=129.59, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("1" + "Rectangle239_Border"), table("x"=293.5, "y"=129.59, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle239"), vec2(293.5, 129.59), vec2(0, 0), -168.17)
+        EGP:egpAngle(Elements:get("1" + "Rectangle239_Border"), vec2(293.5, 129.59), vec2(0, 0), -168.17)
+        text(Elements:get("2" + "A"), table("text"="A", "x"=290.9, "y"=126.42, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "A"), vec2(298.01, 133.53), vec2(-7.11, -7.11), -164.98)
+        box(Elements:get("1" + "Rectangle240"), table("x"=269.17, "y"=139.0, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("1" + "Rectangle240_Border"), table("x"=269.17, "y"=139.0, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle240"), vec2(269.17, 139.0), vec2(0, 0), 170.12)
+        EGP:egpAngle(Elements:get("1" + "Rectangle240_Border"), vec2(269.17, 139.0), vec2(0, 0), 170.12)
+        text(Elements:get("3" + "A"), table("text"="A", "x"=267.92, "y"=135.09, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("3" + "A"), vec2(275.03000000000003, 142.20000000000002), vec2(-7.11, -7.11), 173.3)
+        box(Elements:get("1" + "Rectangle363"), table("x"=272.51, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("1" + "Rectangle363_Border"), table("x"=272.51, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle363"), vec2(272.51, 59.67), vec2(0, -10.56), -20)
+        EGP:egpAngle(Elements:get("1" + "Rectangle363_Border"), vec2(272.51, 59.67), vec2(0, -10.56), -20)
+        box(Elements:get("1" + "Rectangle364"), table("x"=236.5, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("1" + "Rectangle364_Border"), table("x"=236.5, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle364"), vec2(236.5, 59.67), vec2(0, 0), -160.0)
+        EGP:egpAngle(Elements:get("1" + "Rectangle364_Border"), vec2(236.5, 59.67), vec2(0, 0), -160.0)
+        box(Elements:get("1" + "Rectangle360"), table("x"=280.5, "y"=57.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("1" + "Rectangle360_Border"), table("x"=280.5, "y"=57.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle360"), vec2(280.5, 57.0), vec2(0, 0), 180.0)
+        EGP:egpAngle(Elements:get("1" + "Rectangle360_Border"), vec2(280.5, 57.0), vec2(0, 0), 180.0)
+        box(Elements:get("1" + "Rectangle359"), table("x"=293.5, "y"=76.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("1" + "Rectangle359_Border"), table("x"=293.5, "y"=76.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("1" + "Rectangle359"), vec2(293.5, 76.0), vec2(0, 0), 180.0)
+        EGP:egpAngle(Elements:get("1" + "Rectangle359_Border"), vec2(293.5, 76.0), vec2(0, 0), 180.0)
+        text(Elements:get("1" + "BobTomato"), table("text"="Bob Tomato", "x"=293.5, "y"=76.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "BobTomato"), vec2(332.5, 86.0), vec2(-39.0, -10.0), 180.0)
+        text(Elements:get("1" + "$1000"), table("text"="$1000", "x"=280.5, "y"=57.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "$1000"), vec2(306.5, 64.5), vec2(-26.0, -7.5), 180.0)
+
+        # Buttons Section
+        EGP:egpAngle(Elements:get("1" + "Button"), vec2(455.5, 41.51), vec2(-100.5, -8.51), 180.0)
+        box(Elements:get("1" + "Rectangle355"), table("x"=355.0, "y"=33.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("1" + "Rectangle355"), vec2(355.0, 33.0), vec2(0, 0), 180.0)
+        box(Elements:get("1" + "Rectangle356"), table("x"=286.91, "y"=33.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("1" + "Rectangle356"), vec2(286.91, 33.0), vec2(0, 0), 180.0)
+        box(Elements:get("1" + "Rectangle357"), table("x"=218.82, "y"=33.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("1" + "Rectangle357"), vec2(218.82, 33.0), vec2(0, 0), 180.0)
+        text(Elements:get("1" + "Fold"), table("text"="Fold", "x"=355.0, "y"=33.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "Fold"), vec2(387.40999999999997, 41.51), vec2(-32.41, -8.51), 180.0)
+        text(Elements:get("1" + "Call"), table("text"="Call", "x"=286.91, "y"=33.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "Call"), vec2(319.32000000000005, 41.51), vec2(-32.41, -8.51), 180.0)
+        text(Elements:get("1" + "Raise"), table("text"="Raise", "x"=218.82, "y"=33.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("1" + "Raise"), vec2(251.23, 41.51), vec2(-32.41, -8.51), 180.0)
+
+        # Player 6 Section
+        EGP:egpAngle(Elements:get("Player"), vec2(471.5, 419.01), vec2(-100.5, -62.01), 90.0)
+
+        # Cards Section
+        EGP:egpAngle(Elements:get("2" + "Cards"), vec2(410.0, 344.5), vec2(-39.0, -49.0), 90.0)
+        box(Elements:get("2" + "Rectangle239"), table("x"=381.41, "y"=295.5, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("2" + "Rectangle239_Border"), table("x"=381.41, "y"=295.5, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle239"), vec2(381.41, 295.5), vec2(0, 0), 101.83)
+        EGP:egpAngle(Elements:get("2" + "Rectangle239_Border"), vec2(381.41, 295.5), vec2(0, 0), 101.83)
+        text(Elements:get("4" + "A"), table("text"="A", "x"=384.58, "y"=292.9, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("4" + "A"), vec2(391.69, 300.01), vec2(-7.11, -7.11), 105.02)
+        box(Elements:get("2" + "Rectangle240"), table("x"=372.0, "y"=271.17, "w"=50.78, "h"=77.67, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+        box(Elements:get("2" + "Rectangle240_Border"), table("x"=372.0, "y"=271.17, "w"=50.78, "h"=77.67, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle240"), vec2(372.0, 271.17), vec2(0, 0), 80.12)
+        EGP:egpAngle(Elements:get("2" + "Rectangle240_Border"), vec2(372.0, 271.17), vec2(0, 0), 80.12)
+        text(Elements:get("5" + "A"), table("text"="A", "x"=375.91, "y"=269.92, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("5" + "A"), vec2(383.02000000000004, 277.03000000000003), vec2(-7.11, -7.11), 83.3)
+        box(Elements:get("2" + "Rectangle363"), table("x"=451.33, "y"=274.51, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("2" + "Rectangle363_Border"), table("x"=451.33, "y"=274.51, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle363"), vec2(451.33, 274.51), vec2(0, -10.56), -110)
+        EGP:egpAngle(Elements:get("2" + "Rectangle363_Border"), vec2(451.33, 274.51), vec2(0, -10.56), -110)
+        box(Elements:get("2" + "Rectangle364"), table("x"=451.33, "y"=238.5, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+        box(Elements:get("2" + "Rectangle364_Border"), table("x"=451.33, "y"=238.5, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle364"), vec2(451.33, 238.5), vec2(0, 0), 110.0)
+        EGP:egpAngle(Elements:get("2" + "Rectangle364_Border"), vec2(451.33, 238.5), vec2(0, 0), 110.0)
+        box(Elements:get("2" + "Rectangle360"), table("x"=454.0, "y"=282.5, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("2" + "Rectangle360_Border"), table("x"=454.0, "y"=282.5, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle360"), vec2(454.0, 282.5), vec2(0, 0), 90.0)
+        EGP:egpAngle(Elements:get("2" + "Rectangle360_Border"), vec2(454.0, 282.5), vec2(0, 0), 90.0)
+        box(Elements:get("2" + "Rectangle359"), table("x"=435.0, "y"=295.5, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+        box(Elements:get("2" + "Rectangle359_Border"), table("x"=435.0, "y"=295.5, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        EGP:egpAngle(Elements:get("2" + "Rectangle359"), vec2(435.0, 295.5), vec2(0, 0), 90.0)
+        EGP:egpAngle(Elements:get("2" + "Rectangle359_Border"), vec2(435.0, 295.5), vec2(0, 0), 90.0)
+        text(Elements:get("2" + "BobTomato"), table("text"="Bob Tomato", "x"=435.0, "y"=295.5, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "BobTomato"), vec2(474.0, 305.5), vec2(-39.0, -10.0), 90.0)
+        text(Elements:get("2" + "$1000"), table("text"="$1000", "x"=454.0, "y"=282.5, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "$1000"), vec2(480.0, 290.0), vec2(-26.0, -7.5), 90.0)
+
+        # Buttons Section
+        EGP:egpAngle(Elements:get("2" + "Button"), vec2(578.5, 365.51), vec2(-100.5, -8.51), 90.0)
+        box(Elements:get("2" + "Rectangle355"), table("x"=478.0, "y"=357.0, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("2" + "Rectangle355"), vec2(478.0, 357.0), vec2(0, 0), 90.0)
+        box(Elements:get("2" + "Rectangle356"), table("x"=478.0, "y"=288.91, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("2" + "Rectangle356"), vec2(478.0, 288.91), vec2(0, 0), 90.0)
+        box(Elements:get("2" + "Rectangle357"), table("x"=478.0, "y"=220.82, "w"=64.82, "h"=17.02, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        EGP:egpAngle(Elements:get("2" + "Rectangle357"), vec2(478.0, 220.82), vec2(0, 0), 90.0)
+        text(Elements:get("2" + "Fold"), table("text"="Fold", "x"=478.0, "y"=357.0, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "Fold"), vec2(510.40999999999997, 365.51), vec2(-32.41, -8.51), 90.0)
+        text(Elements:get("2" + "Call"), table("text"="Call", "x"=478.0, "y"=288.91, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "Call"), vec2(510.40999999999997, 297.42), vec2(-32.41, -8.51), 90.0)
+        text(Elements:get("2" + "Raise"), table("text"="Raise", "x"=478.0, "y"=220.82, "w"= 64.82, "h"=17.02, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("2" + "Raise"), vec2(510.40999999999997, 229.32999999999998), vec2(-32.41, -8.51), 90.0)
+
+        # Flop 2 Section
+        box(Elements:get("Rectangle241"), table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+        box(Elements:get("Rectangle241_Border"), table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+        box(Elements:get("Rectangle242"), table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+        box(Elements:get("Rectangle242_Border"), table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+
+        # Pot Section
+        EGP:egpAngle(Elements:get("Pot"), vec2(169.5, 252.5), vec2(-55.5, -31.5), 180.0)
+        text(Elements:get("POT"), table("text"="POT", "x"=114.0, "y"=221.0, "w"= 111.0, "h"=33.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("POT"), vec2(169.5, 237.5), vec2(-55.5, -16.5), 180.0)
+        text(Elements:get("$10k"), table("text"="$10k", "x"=99.75, "y"=191.0, "w"= 82.5, "h"=33.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+        EGP:egpAngle(Elements:get("$10k"), vec2(141.0, 207.5), vec2(-41.25, -16.5), 180.0)
+
+    }
+
+    draw()
+}
+
+if (clk("draw") || ~EGP || first() || dupefinished()) {
+    draw()
+}

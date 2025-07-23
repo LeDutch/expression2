@@ -1,0 +1,2336 @@
+@name Tomato Poker
+@persist [Players Deck CommunityCards DealCards AllIn]:table
+@persist [InputUser]:entity
+@persist [GameState CheckCards CoinSeat BuyIn InPlay ActionSeat Pot CurrentBet MinBet]:number
+@persist [Prefix PrefixColour]:string
+@persist [SortedInPlay]:array
+@inputs [Table1 Table2]:wirelink [User1 User2]:entity
+@strict 
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: dutch99
+ Graphics compiled on https://www.egpcompiler.com/
+]#
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_ui"
+
+# Initialize variables
+if (first() || dupefinished()) {
+    InputUser = noentity()
+    Players = table()
+    Deck = table()
+    CommunityCards = table()
+    DealCards = table()
+    AllIn = table()
+    SortedInPlay = array()
+    
+    GameState = 0
+    CheckCards = 0
+    CoinSeat = 0
+    ActionSeat = 0
+    BuyIn = 100000
+    InPlay = 0
+    Pot = 0
+    MinBet = BuyIn/100
+    CurrentBet = 0
+    CurrentBet = 0
+    Prefix = "Tomato Poker"
+    PrefixColour = "#d4af37"
+}
+
+# Modified indexOf function to find index in 'array' table
+function number indexOf(Value:string, Array:array) {
+    for (Index = 1, Array:count()) {
+        if (Array[Index, string] == Value) {
+            return Index
+        }
+    }
+    return 0
+}
+
+function number tableInput() {
+    if (~User1 || ~User2) {
+        let User1Valid = User1:isValid()
+        if (User1Valid || User2:isValid()) {
+            let UserNum = User1Valid ? 1 : 2
+            InputUser = User1Valid ? User1 : User2
+            return UserNum
+        }
+        return 0
+    }
+    return 0
+}
+
+function string wirelink:cursorObj(Arr:array) {
+    let Cursor = This:egpCursor(InputUser)
+    foreach(_:number, Index:string = Arr) {
+        let ID = Elements:get(Index)
+        if (This:egpObjectContainsPoint(ID, Cursor)) {
+            return Index
+        }
+    }
+    return ""
+}
+
+# =================== Graphics Core ======================= #
+# From here on out the code will get messy as I took the compiled graphics from my compiler (egpcompiler.com)
+# Bit lazy but w/e
+
+function void suit(Suit:string, Card:number) {
+    let XPadding = 0
+    if (Card > 3) {
+        EGP = Table2
+        XPadding = (Card - 1) * 57 - 512
+    }
+    else {
+        EGP = Table1
+        XPadding = (Card - 1) * 57
+    }
+    switch (Suit) {
+        case "Hearts",
+            circle(Card+"_suit1", table("x"=XPadding + 375.04, "y"=257.24, "w"=6.17, "h"=7.24, "r"=255, "g"=11, "b"=7))
+            circle(Card+"_suit2", table("x"=XPadding + 369.95, "y"=265.83, "w"=7.51, "h"=7.78, "r"=255, "g"=11, "b"=7))
+            circle(Card+"_suit3", table("x"=XPadding + 365.92, "y"=257.24, "w"=6.17, "h"=7.24, "r"=255, "g"=11, "b"=7))
+            circle(Card+"_suit4", table("x"=XPadding + 377.22, "y"=278.75, "w"=9.42, "h"=3.54, "r"=43, "g"=43, "b"=40))
+            EGP:egpAngle(Elements:get(Card+"_suit4"), vec2(XPadding + 376, 270.8), vec2(0, 0), 54)
+            circle(Card+"_suit5", table("x"=XPadding + 382.57, "y"=278.75, "w"=9.42, "h"=3.54, "r"=43, "g"=43, "b"=40))
+            EGP:egpAngle(Elements:get(Card+"_suit5"), vec2(XPadding + 371, 266), vec2(0, -7.08), 125)
+        break
+        case "Spades",
+            box(Card+"_suit1", table("x"=XPadding + 365, "y"=264.28, "w"=11.51, "h"=8.77, "r"=255, "g"=255, "b"=255, "radius"=0))
+            circle(Card+"_suit2", table("x"=XPadding + 364, "y"=268.12, "w"=5.48, "h"=5.48, "r"=43, "g"=43, "b"=40))
+            circle(Card+"_suit3", table("x"=XPadding + 377, "y"=268.12, "w"=5.48, "h"=5.48, "r"=43, "g"=43, "b"=40))
+            circle(Card+"_suit4", table("x"=XPadding + 377, "y"=263, "w"=5.755, "h"=6.305, "r"=255, "g"=255, "b"=255))
+            circle(Card+"_suit5", table("x"=XPadding + 370, "y"=256.615, "w"=8.77, "h"=8.225, "r"=255, "g"=255, "b"=255))
+            circle(Card+"_suit6", table("x"=XPadding + 364, "y"=263, "w"=5.755, "h"=6.305, "r"=255, "g"=255, "b"=255))
+            circle(Card+"_suit7", table("x"=XPadding + 381, "y"=246, "w"=9.415, "h"=3, "r"=43, "g"=43, "b"=40))
+            EGP:egpAngle(Elements:get(Card+"_suit7"), vec2(XPadding + 378, 252), vec2(0, 0), -45.0)
+            circle(Card+"_suit8", table("x"=XPadding + 378, "y"=246, "w"=9.415, "h"=3, "r"=43, "g"=43, "b"=40))
+            EGP:egpAngle(Elements:get(Card+"_suit8"), vec2(XPadding + 360, 248), vec2(0, -5.5), -130)
+        break
+        case "Diamonds",
+            box(Card+"_suit1", table("x"=XPadding + 355.39, "y"=261.91, "w"=20.97, "h"=20.09, "r"=255, "g"=11, "b"=7, "radius"=0))
+            EGP:egpAngle(Elements:get(Card+"_suit1"), vec2(XPadding + 355.39, 261.91), vec2(0, 0), 45.6)
+            box(Card+"_suit2", table("x"=XPadding + 368.06, "y"=245.36, "w"=3.65, "h"=25, "r"=43, "g"=43, "b"=40, "radius"=0))
+            EGP:egpAngle(Elements:get(Card+"_suit2"), vec2(XPadding + 368.06, 245.36), vec2(0, 0), 38.42)
+            box(Card+"_suit3", table("x"=XPadding + 370.13, "y"=243.0, "w"=3.73, "h"=25, "r"=43, "g"=43, "b"=40, "radius"=0))
+            EGP:egpAngle(Elements:get(Card+"_suit3"), vec2(XPadding + 370.13, 243.0), vec2(0, 0), -38.82)
+            box(Card+"_suit4", table("x"=XPadding + 372.62, "y"=278.13, "w"=3.53, "h"=25, "r"=43, "g"=43, "b"=40, "radius"=0))
+            EGP:egpAngle(Elements:get(Card+"_suit4"), vec2(XPadding + 372.62, 278.13), vec2(0, 0), -142)
+            box(Card+"_suit5", table("x"=XPadding + 370.67, "y"=280.59, "w"=3.89, "h"=25, "r"=43, "g"=43, "b"=40, "radius"=0))
+            EGP:egpAngle(Elements:get(Card+"_suit5"), vec2(XPadding + 370.67, 280.59), vec2(0, 0), 141.18)
+        break
+        case "Clubs",
+            box(Card+"_suit1", table("x"=XPadding + 364, "y"=264.43, "w"=11.5, "h"=8.67, "r"=255, "g"=255, "b"=255, "radius"=0))
+            circle(Card+"_suit2", table("x"=XPadding + 364, "y"=268, "w"=5.475, "h"=5.475, "r"=43, "g"=43, "b"=40))
+            circle(Card+"_suit3", table("x"=XPadding + 377, "y"=268, "w"=5.475, "h"=5.475, "r"=43, "g"=43, "b"=40))
+            circle(Card+"_suit4", table("x"=XPadding + 376, "y"=262.5, "w"=6.0, "h"=6.5, "r"=255, "g"=255, "b"=255))
+            circle(Card+"_suit5", table("x"=XPadding + 370, "y"=255.0, "w"=6.0, "h"=6.5, "r"=255, "g"=255, "b"=255))
+            circle(Card+"_suit6", table("x"=XPadding + 365.0, "y"=262.5, "w"=6.0, "h"=6.5, "r"=255, "g"=255, "b"=255))
+            
+        break
+        default,
+        break
+    }
+}
+
+function void rank(Rank:string, Card:number) {
+    let XPadding = 0
+    if (Card > 3) {
+        EGP = Table2
+        XPadding = (Card - 1) * 57 - 512
+    }
+    else {
+        EGP = Table1
+        XPadding = (Card - 1) * 57
+    }
+    text(Card+"_rank1", table("text"=Rank, "x"=XPadding + 344.0, "y"=221.0, "w"= 25.0, "h"=25.0, "r"=255, "g"=255, "b"=255, "size"=15, "halign"=1, "valign"=1))
+    text(Card+"_rank2", table("text"=Rank, "x"=XPadding + 398.0, "y"=303.0, "w"= 25.0, "h"=25.0, "r"=255, "g"=255, "b"=255, "size"=15, "halign"=1, "valign"=1))
+    EGP:egpAngle(Elements:get(Card+"_rank2"), vec2(XPadding + 410.5, 315.5), vec2(-12.5, -12.5), -180.0)
+}
+
+function void drawEmptySeat(Num:number) {
+    # Select the correct table
+    EGP = Num > 3 ? Table2 : Table1
+
+    # Define seat positions and properties
+    let SeatData = table(
+        table("Pos"=vec2(359.0, 76.0), "Angle"=-180.0),
+        table("Pos"=vec2(78.0, 156.0), "Angle"=-90.0),
+        table("Pos"=vec2(161.0, 431.0), "Angle"=0.0),
+        table("Pos"=vec2(154.0, 431.0), "Angle"=0.0),
+        table("Pos"=vec2(435.0, 357.0), "Angle"=90.0),
+        table("Pos"=vec2(355.0, 76.0), "Angle"=-180.0)
+    )
+
+    # Define text-specific anchor offsets
+    let TextOffsets = table(
+        vec2(-200, -28.5*2), # Seat 1
+        vec2(-75, -125), # Seat 2
+        vec2(0, 0), # Seat 3
+        vec2(0, 0), # Seat 4
+        vec2(-125, 28.5*2.66), # Seat 5
+        vec2(-200, -28.5*2)  # Seat 6
+    )
+
+    # Extract data for the selected seat
+    let Seat = SeatData[Num, table]
+    let TextOffset = TextOffsets[Num, vector2]
+
+    # Draw the seat box
+    let SeatBoxParams = table(
+        "x"=Seat["Pos", vector2]:x(),
+        "y"=Seat["Pos", vector2]:y(),
+        "w"=201.0, "h"=60.0,
+        "r"=255, "g"=255, "b"=255,
+        "radius"=0,
+        "angle"=Seat["Angle", number],
+        "a"=40
+        
+    )
+    box("Seat" + Num, SeatBoxParams)
+    
+    # Draw the seat text
+    let SeatTextParams = table(
+        "text"="SIT",
+        "x"=Seat["Pos", vector2]:x(),
+        "y"=Seat["Pos", vector2]:y(),
+        "w"=201.0, "h"=57.0,
+        "r"=255, "g"=255, "b"=255,
+        "size"=17, "halign"=1, "valign"=1
+    )
+    text("Seat" + Num + "Text", SeatTextParams)
+    EGP:egpAngle(Elements:get("Seat" + Num + "Text"), Seat["Pos", vector2], TextOffset, Seat["Angle", number])
+}
+
+function void deleteEmptySeat(Num:number) {
+    # Select the correct table
+    EGP = Num > 3 ? Table2 : Table1
+
+    # Define element names for the specified seat
+    let SeatElements = array(
+        "Seat" + Num,            # Box element for the seat
+        "Seat" + Num + "Text"    # Text element for the seat
+    )
+
+    # Delete each element associated with the seat
+    foreach(_:number, ElementName:string = SeatElements) {
+        EGP:egpRemove(Elements:get(ElementName))
+    }
+}
+
+
+function void drawTable() {
+    # Table 1
+    EGP = Table1
+    EGP:clear()
+    EGP:egpDrawTopLeft(1)
+    box(table("x"=4.0, "y"=4.0, "w"=508.0, "h"=504.0, "r"=227, "g"=176, "b"=75, "radius"=1, "size"=11, "outline"=1))
+    box(table("x"=4.0, "y"=4.0, "w"=509.0, "h"=504.0, "r"=106, "g"=23, "b"=23, "radius"=0))
+    
+    text(table("text"="No\nTexas", "x"=410.0, "y"=405.0, "w"= 100.0, "h"=50.0, "r"=163, "g"=104, "b"=47, "size"=15, "halign"=2, "valign"=1))
+    text(table("text"="A Tomato ", "x"=442.0, "y"=497.0, "w"= 70.0, "h"=11.0, "r"=163, "g"=104, "b"=47, "size"=9, "halign"=2, "valign"=1))
+
+    # Logo 1
+    circle("Ellipse36", table("x"=511.5, "y"=157.5, "w"=48.5, "h"=48.5, "r"=163, "g"=104, "b"=47))
+    box("Rectangle228", table("x"=479.0, "y"=157.0, "w"=65.0, "h"=171.0, "r"=163, "g"=104, "b"=47, "radius"=0))
+    box("Rectangle229", table("x"=465.82, "y"=327.82, "w"=64.8, "h"=65.3, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle229"), vec2(465.82, 327.82), vec2(0, 0), 45.0)
+    box("Rectangle230", table("x"=463.37, "y"=130.63, "w"=68.78, "h"=69.47, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle230"), vec2(463.37, 130.63), vec2(0, 0), 45.0)
+    circle("Ellipse23", table("x"=410.0, "y"=246.5, "w"=91.0, "h"=117.5, "r"=106, "g"=23, "b"=23))
+    box("Rectangle223", table("x"=467.48, "y"=313.38, "w"=68.78, "h"=75.16, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle223"), vec2(467.48, 313.38), vec2(0, -75.16), -144)
+    box("Rectangle220", table("x"=511.8, "y"=82.26, "w"=68.78, "h"=91.31, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle220"), vec2(511.8, 82.26), vec2(0, -91.31), 151)
+    circle("Ellipse29", table("x"=411.5, "y"=236.5, "w"=29.5, "h"=31.5, "r"=163, "g"=104, "b"=47))
+    circle("Ellipse34", table("x"=399.635, "y"=221.16, "w"=8.685, "h"=26.16, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse34"), vec2(393, 223), vec2(0, 0), -14.33)
+    circle("Ellipse35", table("x"=484.58, "y"=304.925, "w"=9.06, "h"=24.505, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse35"), vec2(464, 304), vec2(0, 0), -47.1)
+    circle("Ellipse32", table("x"=437.43, "y"=213.985, "w"=47.5, "h"=32.745, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse32"), vec2(437, 216), vec2(0, 0), -2.15)
+    circle("Ellipse33", table("x"=548.5, "y"=219.0, "w"=57.5, "h"=26.0, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse33"), vec2(465, 251), vec2(0, 0), -90.0)
+    circle("Ellipse30", table("x"=445.0, "y"=297.5, "w"=23.0, "h"=24.5, "r"=163, "g"=104, "b"=47))
+    circle("Ellipse25", table("x"=425.5, "y"=233.5, "w"=10.5, "h"=12.5, "r"=106, "g"=23, "b"=23))
+    circle("Ellipse26", table("x"=440.5, "y"=228.0, "w"=23.5, "h"=12.0, "r"=106, "g"=23, "b"=23))
+    circle("Ellipse27", table("x"=487.68, "y"=228.0, "w"=23.5, "h"=12.0, "r"=106, "g"=23, "b"=23))
+    EGP:egpAngle(Elements:get("Ellipse27"), vec2(459, 242), vec2(0, 0), -75.0)
+    circle("Ellipse28", table("x"=504.62, "y"=251.585, "w"=27.65, "h"=12.245, "r"=106, "g"=23, "b"=23))
+    EGP:egpAngle(Elements:get("Ellipse28"), vec2(458, 263), vec2(0, 0), -105.0)
+    box("Rectangle225", table("x"=436.95, "y"=231.08, "w"=5.97, "h"=9.01, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle225"), vec2(436.95, 231.08), vec2(0, 0), -15.0)
+    box("Rectangle226", table("x"=436.62, "y"=230.0, "w"=3.35, "h"=10.86, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle226"), vec2(436.62, 230.0), vec2(0, 0), -31.16)
+    box("Rectangle227", table("x"=451.9, "y"=232.13, "w"=12.29, "h"=41.74, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle227"), vec2(451.9, 232.13), vec2(0, -41.74), 178)
+    box("Rectangle236", table("x"=464.0, "y"=244.0, "w"=96.0, "h"=29.0, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+
+    # Table 2
+    EGP = Table2
+    EGP:clear()
+    EGP:egpDrawTopLeft(1)
+    box(table("x"=0.0, "y"=4.0, "w"=508.0, "h"=504.0, "r"=227, "g"=176, "b"=75, "radius"=0, "size"=10, "outline"=1))
+    box(table("x"=0.0, "y"=4.0, "w"=508.0, "h"=504.0, "r"=106, "g"=23, "b"=23, "radius"=0))
+
+    text(table("text"=" Limits\n Hold'em", "x"=0.0, "y"=405.0, "w"= 100.0, "h"=50.0, "r"=163, "g"=104, "b"=47, "size"=15, "halign"=0, "valign"=1))
+    text(table("text"=" Production", "x"=1.0, "y"=497.0, "w"= 70.0, "h"=11.0, "r"=163, "g"=104, "b"=47, "size"=9, "halign"=0, "valign"=1))
+
+    # Logo 2
+    circle("Ellipse21", table("x"=-0.5, "y"=157.5, "w"=48.5, "h"=48.5, "r"=163, "g"=104, "b"=47))
+    box("Rectangle224", table("x"=-33.0, "y"=157.0, "w"=65.0, "h"=171.0, "r"=163, "g"=104, "b"=47, "radius"=0))
+    box("Rectangle221", table("x"=-46.18, "y"=327.82, "w"=64.8, "h"=65.3, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle221"), vec2(-46.18, 327.82), vec2(0, 0), 45.0)
+    box("Rectangle218", table("x"=-48.63, "y"=130.63, "w"=68.78, "h"=69.47, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle218"), vec2(-48.63, 130.63), vec2(0, 0), 45.0)
+    circle("Ellipse36", table("x"=284.1, "y"=246.5, "w"=91.0, "h"=117.5, "r"=106, "g"=23, "b"=23))
+    EGP:egpAngle(Elements:get("Ellipse36"), vec2(103, 12), vec2(0, -235.0), -180)
+    box("Rectangle228", table("x"=44.61, "y"=313.38, "w"=68.78, "h"=75.16, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle228"), vec2(44.61, 313.38), vec2(0, 0), -36.41)
+    box("Rectangle229", table("x"=0.3, "y"=82.26, "w"=68.78, "h"=91.31, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle229"), vec2(0.3, 82.26), vec2(0, 0), 28.92)
+    circle("Ellipse37", table("x"=100.5, "y"=299.5, "w"=29.5, "h"=31.5, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse37"), vec2(101, 300), vec2(0, -63.0), 0)
+    circle("Ellipse38", table("x"=112.905, "y"=225.46, "w"=8.685, "h"=26.16, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse38"), vec2(120, 223), vec2(0, 0), 14.33)
+    circle("Ellipse39", table("x"=33.2, "y"=318.195, "w"=9.06, "h"=24.505, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse39"), vec2(49, 304), vec2(0, 0), 47.1)
+    circle("Ellipse40", table("x"=74.64, "y"=217.555, "w"=47.5, "h"=32.745, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse40"), vec2(76, 216), vec2(0, 0), 2.15)
+    circle("Ellipse41", table("x"=78.5, "y"=334.0, "w"=57.5, "h"=26.0, "r"=163, "g"=104, "b"=47))
+    EGP:egpAngle(Elements:get("Ellipse41"), vec2(47, 251), vec2(0, 0), 90.0)
+    circle("Ellipse42", table("x"=67.0, "y"=297.5, "w"=23.0, "h"=24.5, "r"=163, "g"=104, "b"=47))
+    circle("Ellipse43", table("x"=86.5, "y"=233.5, "w"=10.5, "h"=12.5, "r"=106, "g"=23, "b"=23))
+    circle("Ellipse44", table("x"=71.5, "y"=228.0, "w"=23.5, "h"=12.0, "r"=106, "g"=23, "b"=23))
+    circle("Ellipse45", table("x"=59.15, "y"=273.4, "w"=23.5, "h"=12.0, "r"=106, "g"=23, "b"=23))
+    EGP:egpAngle(Elements:get("Ellipse45"), vec2(54, 242), vec2(0, 0), 75.0)
+    circle("Ellipse46", table("x"=77.0, "y"=304.995, "w"=27.65, "h"=12.245, "r"=106, "g"=23, "b"=23))
+    EGP:egpAngle(Elements:get("Ellipse46"), vec2(55, 263), vec2(0, 0), 105.0)
+    box("Rectangle232", table("x"=75.05, "y"=231.08, "w"=5.97, "h"=9.01, "r"=163, "g"=104, "b"=47, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle232"), vec2(75.05, 231.08), vec2(0, -9.01), -165)
+    box("Rectangle233", table("x"=75.38, "y"=230.0, "w"=3.35, "h"=10.86, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle233"), vec2(75.38, 230.0), vec2(0, -10.86), -149)
+    box("Rectangle234", table("x"=60.1, "y"=232.13, "w"=12.29, "h"=41.78, "r"=106, "g"=23, "b"=23, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle234"), vec2(60.1, 232.13), vec2(0, 0), 2.34)
+    box("Rectangle235", table("x"=-48.0, "y"=244.0, "w"=96.0, "h"=29.0, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+
+    for(I=1, 6) {
+        drawEmptySeat(I)
+    }
+}
+
+function void drawSeatButton(SeatNum:number) {
+    # Define EGP table dynamically
+    EGP = SeatNum > 3 ? Table2 : Table1
+
+    # Button positions and angles for seats
+    let ButtonData = table(
+        table("Pos"=vec2(359.0, 33.0), "Angle"=-180.0), # Seat 1
+        table("Pos"=vec2(35.0, 156.0), "Angle"=270.0),  # Seat 2
+        table("Pos"=vec2(162.0, 474.0), "Angle"=0.0),   # Seat 3
+        table("Pos"=vec2(154.0, 474.0), "Angle"=0.0),   # Seat 4
+        table("Pos"=vec2(478.0, 357.0), "Angle"=90.0),  # Seat 5
+        table("Pos"=vec2(355.0, 33.0), "Angle"=-180.0)  # Seat 6
+    )
+
+    # Helper function to draw a button
+    let DrawButtons = function() {
+        let Pos = ButtonData[SeatNum, table]["Pos", vector2]
+        let Angle = ButtonData[SeatNum, table]["Angle", number]
+        let Box1 = box("ActionCheck"+ SeatNum, table("x"=Pos:x(), "y"=Pos:y(), "w"=65.33, "h"=17.0, "r"=217, "g"=217, "b"=217, "radius"=5.0, "angle"=Angle))
+        let Box2 = box("ActionRaise" + SeatNum, table("x"=67.66, "y"=0, "w"=65.33, "h"=17.0, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        let Box3 = box("ActionFold" + SeatNum, table("x"=135.67, "y"=0, "w"=65.33, "h"=17.0, "r"=217, "g"=217, "b"=217, "radius"=5.0))
+        
+        EGP:egpParent(Box2, Box1)
+        EGP:egpParent(Box3, Box1)
+        return Box1
+    }
+
+    # Draw buttons for the seat
+    let Buttons = DrawButtons()[egpobject]
+    let CheckOrCall = CurrentBet > 0 ? "Call" : "Check"
+
+    # Seat-specific text elements
+    switch (SeatNum) {
+        case 1,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=359.0, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("CheckText"+SeatNum), vec2(391.665, 41.5), vec2(-32.665, -8.5), -180.0)
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=291.34, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("RaiseText"+SeatNum), vec2(324.005, 41.5), vec2(-32.665, -8.5), -180.0)
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=223.33, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("FoldText"+SeatNum), vec2(255.995, 41.5), vec2(-32.665, -8.5), -180.0)
+        break
+        case 2,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=35.0, "y"=156.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("CheckText"+SeatNum), vec2(67.66499999999999, 164.5), vec2(-32.665, -8.5), -90.0)
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=35.0, "y"=223.66, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("RaiseText"+SeatNum), vec2(67.66499999999999, 232.16), vec2(-32.665, -8.5), -90.0)
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=35.0, "y"=291.67, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("FoldText"+SeatNum), vec2(67.66499999999999, 300.17), vec2(-32.665, -8.5), -90.0)
+        break
+        case 3,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=162.0, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=229.66, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=297.67, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        break
+        case 4,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=154.0, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=221.66, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=289.67, "y"=474.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+        break
+        case 5,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=478.0, "y"=357.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("CheckText"+SeatNum), vec2(510.665, 365.5), vec2(-32.665, -8.5), 90.0)
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=478.0, "y"=289.34, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("RaiseText"+SeatNum), vec2(510.665, 297.84), vec2(-32.665, -8.5), 90.0)
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=478.0, "y"=221.33, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("FoldText"+SeatNum), vec2(510.665, 229.83), vec2(-32.665, -8.5), 90.0)
+        break
+        case 6,
+            text("CheckText"+SeatNum, table("text"=CheckOrCall, "x"=355.0, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("CheckText"+SeatNum), vec2(387.665, 41.5), vec2(-32.665, -8.5), 180.0)
+            text("RaiseText"+SeatNum, table("text"="Raise", "x"=287.34, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("RaiseText"+SeatNum), vec2(320.005, 41.5), vec2(-32.665, -8.5), 180.0)
+            text("FoldText"+SeatNum, table("text"="Fold", "x"=219.33, "y"=33.0, "w"= 65.33, "h"=17.0, "r"=0, "g"=0, "b"=0, "size"=16, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("FoldText"+SeatNum), vec2(251.995, 41.5), vec2(-32.665, -8.5), 180.0)
+        break
+    }
+
+    # Background and timer elements
+    let BG = box(SeatNum + "BGTime", table("x"=1.0, "y"=20.0, "w"=200.0, "h"=4.0, "r"=125, "g"=125, "b"=125, "radius"=0))
+    let Time = box(SeatNum + "Time", table("x"=0.0, "y"=20.0, "w"=201.0, "h"=4.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+    let TimePixel = box(SeatNum + "TimePixel", table("x"=-2.0, "y"=20.0, "w"=2.0, "h"=4.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+
+    # Set parent for timer elements
+    EGP:egpParent(BG, Buttons)
+    EGP:egpParent(Time, Buttons)
+    EGP:egpParent(TimePixel, Buttons)
+}
+
+function void deleteSeatButton(SeatNum:number) {
+    # Select the correct table
+    EGP = SeatNum > 3 ? Table2 : Table1
+
+    # Define button element names for the seat
+    let ButtonElements = array(
+        "ActionCheck" + SeatNum,
+        "ActionCall" + SeatNum,
+        "ActionRaise" + SeatNum,
+        "ActionFold" + SeatNum,
+        "CheckText" + SeatNum,
+        "CallText" + SeatNum,
+        "RaiseText" + SeatNum,
+        "FoldText" + SeatNum,
+        SeatNum+"BGTime",
+        SeatNum+"Time",
+        SeatNum+"TimePixel"
+    )
+
+    # Iterate through the elements and delete them
+    foreach(_:number, ElementName:string = ButtonElements) {
+        if (Elements:exists(ElementName)) {
+            EGP:egpRemove(Elements:get(ElementName))
+        }
+    }
+}
+
+function void drawDeck() {
+    EGP = Table1
+    # Deck Section
+    box("Rectangle246", table("x"=418.0, "y"=84.47, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Rectangle246_Border", table("x"=418.0, "y"=84.47, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+    EGP:egpAngle(Elements:get("Rectangle246"), vec2(418.0, 84.47), vec2(0, 0), 75.0)
+    EGP:egpAngle(Elements:get("Rectangle246_Border"), vec2(418.0, 84.47), vec2(0, 0), 75.0)
+    box("Rectangle247", table("x"=418.0, "y"=81.16, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Rectangle247_Border", table("x"=418.0, "y"=81.16, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+    EGP:egpAngle(Elements:get("Rectangle247"), vec2(418.0, 81.16), vec2(0, 0), 75.0)
+    EGP:egpAngle(Elements:get("Rectangle247_Border"), vec2(418.0, 81.16), vec2(0, 0), 75.0)
+    box("Rectangle248", table("x"=418.0, "y"=79.16, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Rectangle248_Border", table("x"=418.0, "y"=79.16, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+    EGP:egpAngle(Elements:get("Rectangle248"), vec2(418.0, 79.16), vec2(0, 0), 75.0)
+    EGP:egpAngle(Elements:get("Rectangle248_Border"), vec2(418.0, 79.16), vec2(0, 0), 75.0)
+    box("Rectangle249", table("x"=418.0, "y"=76.16, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Rectangle249_Border", table("x"=418.0, "y"=76.16, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+    EGP:egpAngle(Elements:get("Rectangle249"), vec2(418.0, 76.16), vec2(0, 0), 75.0)
+    EGP:egpAngle(Elements:get("Rectangle249_Border"), vec2(418.0, 76.16), vec2(0, 0), 75.0)
+    box("Rectangle250", table("x"=418.0, "y"=74.16, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Rectangle250_Border", table("x"=418.0, "y"=74.16, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+    EGP:egpAngle(Elements:get("Rectangle250"), vec2(418.0, 74.16), vec2(0, 0), 75.0)
+    EGP:egpAngle(Elements:get("Rectangle250_Border"), vec2(418.0, 74.16), vec2(0, 0), 75.0)
+    text("DeckLogo", table("text"="Tomato Poker", "x"=433.02, "y"=24.75, "w"= 78.23, "h"=48.62, "r"=85, "g"=85, "b"=85, "size"=17, "halign"=1, "valign"=1))
+    EGP:egpAngle(Elements:get("DeckLogo"), vec2(472.135, 49.06), vec2(-39.115, -24.31), -15.0)
+}
+
+function void deleteDeck() {
+    EGP = Table1
+    # Define element names for the deck
+    let DeckElements = array(
+        "Rectangle246", "Rectangle246_Border",
+        "Rectangle247", "Rectangle247_Border",
+        "Rectangle248", "Rectangle248_Border",
+        "Rectangle249", "Rectangle249_Border",
+        "Rectangle250", "Rectangle250_Border",
+        "DeckLogo"
+    )
+
+    # Iterate over the elements and remove them
+    foreach(_:number, ElementName:string = DeckElements) {
+        EGP:egpRemove(Elements:get(ElementName))
+    }
+}
+
+function dealerCoin(CoinSeat:number) {
+    EGP = CoinSeat > 3 ? Table2 : Table1
+    switch (CoinSeat) {
+        case 1,
+        # DealerCoin Section
+        circle("Coin1", table("x"=384.09, "y"=147.39, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(345, 122), vec2(0, 0), -167.21)
+        circle("Coin2", table("x"=384.09, "y"=148.39, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(345, 123), vec2(0, 0), -167.21)
+        circle("Coin3", table("x"=384.09, "y"=150.39, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(345, 125), vec2(0, 0), -167.21)
+        break
+        case 2,
+        # DealerCoin Section
+        circle("Coin1", table("x"=134.89, "y"=162.0, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(106, 169), vec2(0, 0), -77.21)
+        circle("Coin2", table("x"=135.89, "y"=162.0, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(107, 169), vec2(0, 0), -77.21)
+        circle("Coin3", table("x"=137.89, "y"=162.0, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(109, 169), vec2(0, 0), -77.21)
+        break
+        case 3,
+        # DealerCoin Section
+        circle("Coin1", table("x"=171.5, "y"=401.19, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(175, 397), vec2(0, 0), 12.79)
+        circle("Coin2", table("x"=171.5, "y"=400.19, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(175, 396), vec2(0, 0), 12.79)
+        circle("Coin3", table("x"=171.5, "y"=398.19, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(175, 394), vec2(0, 0), 12.79)
+        break
+        case 4,
+        # DealerCoin Section
+        circle("Coin1", table("x"=157.5, "y"=401.19, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(161, 397), vec2(0, 0), 12.79)
+        circle("Coin2", table("x"=157.5, "y"=400.19, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(161, 396), vec2(0, 0), 12.79)
+        circle("Coin3", table("x"=157.5, "y"=398.19, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(161, 394), vec2(0, 0), 12.79)
+        break
+        case 5,
+        # DealerCoin Section
+        circle("Coin1", table("x"=403.69, "y"=205.72, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(396, 170), vec2(0, 0), 102.79)
+        circle("Coin2", table("x"=402.69, "y"=205.72, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(395, 170), vec2(0, 0), 102.79)
+        circle("Coin3", table("x"=400.69, "y"=205.72, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(393, 170), vec2(0, 0), 102.79)
+        break
+        case 6,
+        # DealerCoin Section
+        circle("Coin1", table("x"=222.22, "y"=140.26, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin1"), vec2(183, 115), vec2(0, 0), -167.21)
+        circle("Coin2", table("x"=222.22, "y"=141.26, "w"=18.5, "h"=15.0, "r"=139, "g"=139, "b"=139))
+        EGP:egpAngle(Elements:get("Coin2"), vec2(183, 116), vec2(0, 0), -167.21)
+        circle("Coin3", table("x"=222.22, "y"=143.26, "w"=18.5, "h"=15.0, "r"=194, "g"=194, "b"=194))
+        EGP:egpAngle(Elements:get("Coin3"), vec2(183, 118), vec2(0, 0), -167.21)
+        break
+    }
+}
+
+function assignCoin() {
+    let SeatsInPlay = function() {
+        let Array = array()
+        foreach(_:string, Player:table = Players) {
+            let Seat = Player["Seat", number]
+            Array:pushNumber(Seat)
+        }
+        return Array
+    }
+    let SortDescending = function(Array:array) {
+        for (I = 1, Array:count() - 1) {
+            for (J = I + 1, Array:count()) {
+                let A = Array[J, number]
+                let B = Array[I, number]
+                if (A > B) {
+                    let Temp = Array[I, number]
+                    Array[I] = Array[J, number]
+                    Array[J] = Temp
+                }
+            }
+        }
+        return Array
+    }
+    let NextCoinSeat = function(Sorted:array, CoinSeat:number) {
+        return Sorted[(Sorted:indexOf(CoinSeat) % Sorted:count()) + 1, number]
+    }
+    let Seats = SeatsInPlay()[array]
+    EGP = CoinSeat > 3 ? Table2 : Table1
+    if (!CoinSeat) {
+        CoinSeat = Seats[randint(1, Seats:count()), number]
+        Players:keys():msgAll("Dealercoin assigned randomly.")
+    }
+    else {
+        let Sorted = SortDescending(Seats)[array]
+        CoinSeat = NextCoinSeat(Sorted, CoinSeat)[number]
+        for (I=1, 3) {
+            EGP:egpRemove(Elements:get("Coin"+I))
+        }
+    }
+    dealerCoin(CoinSeat)
+}
+
+function drawPlayerCards(SeatNum:number) {
+    EGP = SeatNum <= 3 ? Table1 : Table2
+    switch (SeatNum) {
+        case 1,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=302.0, "y"=140.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Card1", table("x"=300.0, "y"=129.59, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=300.0, "y"=129.59, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=297.4, "y"=126.42, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            box(SeatNum + "Card2", table("x"=275.67, "y"=139.0, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=275.67, "y"=139.0, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=274.42, "y"=135.09, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(300.0, 129.59), vec2(0, 0), -168.17)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(300.0, 129.59), vec2(0, 0), -168.17)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(304.51, 133.53), vec2(-7.11, -7.11), -164.98)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(275.67, 139.0), vec2(0, 0), 170.12)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(275.67, 139.0), vec2(0, 0), 170.12)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(281.53000000000003, 142.20000000000002), vec2(-7.11, -7.11), 173.3)
+            EGP:egpAngle(Elements:get("CardCheck"+SeatNum), vec2(302.0, 140.0), vec2(0, 0), -180.0)
+        break
+        case 2,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=142.0, "y"=215.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Card1", table("x"=131.61, "y"=215.0, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=131.61, "y"=215.0, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=128.44, "y"=217.6, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            box(SeatNum + "Card2", table("x"=141.02, "y"=239.33, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=141.02, "y"=239.33, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=137.11, "y"=240.58, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("CardCheck"+SeatNum), vec2(142.0, 215.0), vec2(0, 0), -90.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(131.61, 215.0), vec2(0, 0), -78.17)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(131.61, 215.0), vec2(0, 0), -78.17)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(135.55, 224.71), vec2(-7.11, -7.11), -74.98)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(141.02, 239.33), vec2(0, 0), -99.88)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(141.02, 239.33), vec2(0, 0), -99.88)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(144.22000000000003, 247.69000000000003), vec2(-7.11, -7.11), -96.7)
+        break
+        case 3,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=222.0, "y"=367.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Card1", table("x"=222.5, "y"=377.41, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=222.5, "y"=377.41, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=225.1, "y"=380.58, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            box(SeatNum + "Card2", table("x"=246.83, "y"=368.0, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=246.83, "y"=368.0, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=248.08, "y"=371.91, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(222.5, 377.41), vec2(0, 0), 11.83)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(222.5, 377.41), vec2(0, 0), 11.83)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(232.21, 387.69), vec2(-7.11, -7.11), 15.02)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(246.83, 368.0), vec2(0, 0), -9.88)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(246.83, 368.0), vec2(0, 0), -9.88)
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(255.19000000000003, 379.02000000000004), vec2(-7.11, -7.11), -6.7)
+        break
+        case 4,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=216.0, "y"=367.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Card1", table("x"=215.5, "y"=377.41, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=215.5, "y"=377.41, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(215.5, 377.41), vec2(0, 0), 11.83)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(215.5, 377.41), vec2(0, 0), 11.83)
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=218.1, "y"=380.58, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(225.21, 387.69), vec2(-7.11, -7.11), 15.02)
+            box(SeatNum + "Card2", table("x"=239.83, "y"=368.0, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=239.83, "y"=368.0, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(239.83, 368.0), vec2(0, 0), -9.88)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(239.83, 368.0), vec2(0, 0), -9.88)
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=241.08, "y"=371.91, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(248.19000000000003, 379.02000000000004), vec2(-7.11, -7.11), -6.7)
+        break
+        case 5,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=371.0, "y"=295.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            EGP:egpAngle(Elements:get("CardCheck"+SeatNum), vec2(371.0, 295.0), vec2(0, 0), 90.0)
+            box(SeatNum + "Card1", table("x"=381.41, "y"=295.5, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=381.41, "y"=295.5, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(381.41, 295.5), vec2(0, 0), 101.83)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(381.41, 295.5), vec2(0, 0), 101.83)
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=384.58, "y"=292.9, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(391.69, 300.01), vec2(-7.11, -7.11), 105.02)
+            box(SeatNum + "Card2", table("x"=372.0, "y"=271.17, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=372.0, "y"=271.17, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(372.0, 271.17), vec2(0, 0), 80.12)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(372.0, 271.17), vec2(0, 0), 80.12)
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=375.91, "y"=269.92, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(383.02000000000004, 277.03000000000003), vec2(-7.11, -7.11), 83.3)
+        break
+        case 6,
+            box("CardCheck"+SeatNum, table("a"=0, "x"=293.0, "y"=139.0, "w"=77.0, "h"=64.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            EGP:egpAngle(Elements:get("CardCheck"+SeatNum), vec2(293.0, 139.0), vec2(0, 0), -180.0)
+            box(SeatNum + "Card1", table("x"=293.5, "y"=129.59, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card1_Border", table("x"=293.5, "y"=129.59, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card1"), vec2(293.5, 129.59), vec2(0, 0), -168.17)
+            EGP:egpAngle(Elements:get(SeatNum + "Card1_Border"), vec2(293.5, 129.59), vec2(0, 0), -168.17)
+            text(SeatNum + "Card_Text1", table("text"="A", "x"=290.9, "y"=126.42, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text1"), vec2(298.01, 133.53), vec2(-7.11, -7.11), -164.98)
+            box(SeatNum + "Card2", table("x"=269.17, "y"=139.0, "w"=50.78, "h"=68, "r"=43, "g"=43, "b"=40, "radius"=7.0))
+            box(SeatNum + "Card2_Border", table("x"=269.17, "y"=139.0, "w"=50.78, "h"=68, "r"=227, "g"=176, "b"=75, "radius"=7.0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card2"), vec2(269.17, 139.0), vec2(0, 0), 170.12)
+            EGP:egpAngle(Elements:get(SeatNum + "Card2_Border"), vec2(269.17, 139.0), vec2(0, 0), 170.12)
+            text(SeatNum + "Card_Text2", table("text"="A", "x"=267.92, "y"=135.09, "w"= 14.22, "h"=14.22, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Card_Text2"), vec2(275.03000000000003, 142.20000000000002), vec2(-7.11, -7.11), 173.3)
+        break
+    }
+}
+function void opacityCards(SeatNum:number, Opacity:number) {
+    # Select the correct table
+    EGP = SeatNum <= 3 ? Table1 : Table2
+
+    # Define element names for the player at the given seat
+    let PlayerElements = array(
+        # Cards 
+        SeatNum + "Card1", SeatNum + "Card1_Border",
+        SeatNum + "Card2", SeatNum + "Card2_Border",
+        SeatNum + "Card_Text1", SeatNum + "Card_Text2"
+    )
+
+    # Iterate over the elements and remove them
+    foreach(_:number, ElementName:string = PlayerElements) {
+        EGP:egpAlpha(Elements:get(ElementName), Opacity)
+    }
+}
+
+function void resetTable() {
+    EGP = Table1
+    EGP:egpRemove(Elements:get("Flop1"))
+    EGP:egpRemove(Elements:get("Flop2"))
+    EGP:egpRemove(Elements:get("Flop3"))
+    EGP:egpRemove(Elements:get("Flop1_Border"))
+    EGP:egpRemove(Elements:get("Flop2_Border"))
+    EGP:egpRemove(Elements:get("Flop3_Border"))
+    EGP = Table2
+    EGP:egpRemove(Elements:get("Turn"))
+    EGP:egpRemove(Elements:get("River"))
+    EGP:egpRemove(Elements:get("Turn_Border"))
+    EGP:egpRemove(Elements:get("River_Border"))
+    EGP = Table1
+    for(I=1, 5) {
+        if (I == 4) {
+            EGP = Table2
+        }
+        for (J=1, 8) {
+            EGP:egpRemove(Elements:get(I+"_suit"+J))
+        }
+        for (Z=1, 2) {
+            EGP:egpRemove(Elements:get(I+"_rank"+Z))
+        }
+    }
+    for(SeatNum=1,6) {
+        opacityCards(SeatNum, 0)
+        deleteSeatButton(SeatNum)
+        EGP = Table2
+        EGP:egpRemove(Elements:get("Burner"+SeatNum))
+        EGP:egpRemove(Elements:get("Burner"+SeatNum+"_Border"))
+    }
+    foreach(_:string, Player:table = Players) {
+        Player["InPlay", number] = 0
+        Player["TotalBet", number] = 0
+    }
+    stopAllTimers()
+    deleteDeck()
+}
+
+function drawChips(SeatNum:number, Chips:number) {
+    #EGP = SeatNum <= 3 ? Table1 : Table2
+    switch (SeatNum) {
+        case 1,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=287.0, "y"=57.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Chips"), vec2(313.0, 64.5), vec2(-26.0, -7.5), 180.0)
+        break
+        case 2,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=59.02, "y"=228.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Chips"), vec2(85.02000000000001, 235.5), vec2(-26.0, -7.5), -90.0)
+        break
+        case 3,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=235.5, "y"=450.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+        break
+        case 4,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=228.5, "y"=450.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+        break
+        case 5,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=454.0, "y"=282.5, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Chips"), vec2(480.0, 290.0), vec2(-26.0, -7.5), 90.0)
+        break
+        case 6,
+            text(SeatNum + "Chips", table("text"=abbreviateNum(Chips), "x"=280.5, "y"=57.0, "w"= 52.0, "h"=15.0, "r"=21, "g"=74, "b"=34, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Chips"), vec2(306.5, 64.5), vec2(-26.0, -7.5), 180.0)
+        break
+    }
+}
+
+function drawCurrentBet(SeatNum:number, Chips:number) {
+    let Action = "Check"
+    if (Chips) {
+        Action = abbreviateNum(Chips)
+    }
+    switch (SeatNum) {
+        case 1,
+            text("1Bet", table("text"=Action, "x"=302.0, "y"=159.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("1Bet"), vec2(340.5, 168.5), vec2(-38.5, -9.5), -180.0)
+        break
+        case 2,
+            text("2Bet", table("text"=Action, "x"=161.0, "y"=215.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("2Bet"), vec2(199.5, 224.5), vec2(-38.5, -9.5), -90.0)
+        break
+        case 3,
+            text("3Bet", table("text"=Action, "x"=222.0, "y"=348.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        break
+        case 4,
+            text("4Bet", table("text"=Action, "x"=216.0, "y"=348.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+        break
+        case 5,
+            text("5Bet", table("text"=Action, "x"=352.0, "y"=294.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("5Bet"), vec2(390.5, 303.5), vec2(-38.5, -9.5), 90.0)
+        break
+        case 6,
+            text("6Bet", table("text"=Action, "x"=294.0, "y"=158.0, "w"= 77.0, "h"=19.0, "r"=255, "g"=255, "b"=255, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get("6Bet"), vec2(332.5, 167.5), vec2(-38.5, -9.5), -180.0)
+        break
+    }
+}
+
+function drawPlayer(SeatNum:number, Name:string, Chips:number) {
+    EGP = SeatNum <= 3 ? Table1 : Table2
+    deleteEmptySeat(SeatNum)
+    drawPlayerCards(SeatNum)
+    switch (SeatNum) {
+        case 1,
+            box(SeatNum + "Info1", table("x"=279.01, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=279.01, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            box(SeatNum + "Info2", table("x"=243.0, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=243.0, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            box(SeatNum + "Info3", table("x"=287.0, "y"=57.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=287.0, "y"=57.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            box(SeatNum + "Info4", table("x"=300.0, "y"=76.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=300.0, "y"=76.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=300.0, "y"=76.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+            
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(279.01, 59.67), vec2(0, -10.56), -20)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(279.01, 59.67), vec2(0, -10.56), -20)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(243.0, 59.67), vec2(0, 0), -160.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(243.0, 59.67), vec2(0, 0), -160.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info3"), vec2(287.0, 57.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info3_Border"), vec2(287.0, 57.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info4"), vec2(300.0, 76.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info4_Border"), vec2(300.0, 76.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "PlayerName"), vec2(339.0, 86.0), vec2(-39.0, -10.0), 180.0)
+        break
+        
+        case 2,
+            box(SeatNum + "Info1", table("x"=61.7, "y"=235.99, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=61.7, "y"=235.99, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(61.7, 235.99), vec2(0, -10.56), 70)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(61.7, 235.99), vec2(0, -10.56), 70)
+            box(SeatNum + "Info2", table("x"=61.7, "y"=272.0, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=61.7, "y"=272.0, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(61.7, 272.0), vec2(0, 0), -70.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(61.7, 272.0), vec2(0, 0), -70.0)
+            box(SeatNum + "Info3", table("x"=59.02, "y"=228.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=59.02, "y"=228.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info3"), vec2(59.02, 228.0), vec2(0, 0), -90.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info3_Border"), vec2(59.02, 228.0), vec2(0, 0), -90.0)
+            box(SeatNum + "Info4", table("x"=78.02, "y"=215.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=78.02, "y"=215.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info4"), vec2(78.02, 215.0), vec2(0, 0), -90.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info4_Border"), vec2(78.02, 215.0), vec2(0, 0), -90.0)
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=78.02, "y"=215.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "PlayerName"), vec2(117.02, 225.0), vec2(-39.0, -10.0), -90.0)
+        break
+        
+        case 3,
+            box(SeatNum + "Info1", table("x"=243.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=243.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(243.49, 447.33), vec2(0, -10.56), 160)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(243.49, 447.33), vec2(0, -10.56), 160)
+            box(SeatNum + "Info2", table("x"=279.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=279.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(279.5, 447.33), vec2(0, 0), 20.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(279.5, 447.33), vec2(0, 0), 20.0)
+            box(SeatNum + "Info3", table("x"=235.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=235.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            box(SeatNum + "Info4", table("x"=222.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=222.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=222.5, "y"=431.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+        break
+        
+        case 4,
+            box(SeatNum + "Info1", table("x"=236.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=236.49, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(236.49, 447.33), vec2(0, -10.56), 160)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(236.49, 447.33), vec2(0, -10.56), 160)
+            box(SeatNum + "Info2", table("x"=272.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=272.5, "y"=447.33, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(272.5, 447.33), vec2(0, 0), 20.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(272.5, 447.33), vec2(0, 0), 20.0)
+            box(SeatNum + "Info3", table("x"=228.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=228.5, "y"=450.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            box(SeatNum + "Info4", table("x"=215.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=215.5, "y"=431.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=215.5, "y"=431.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+        break
+        
+        case 5,
+            box(SeatNum + "Info1", table("x"=451.33, "y"=274.51, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=451.33, "y"=274.51, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(451.33, 274.51), vec2(0, -10.56), -110)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(451.33, 274.51), vec2(0, -10.56), -110)
+            box(SeatNum + "Info2", table("x"=451.33, "y"=238.5, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=451.33, "y"=238.5, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(451.33, 238.5), vec2(0, 0), 110.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(451.33, 238.5), vec2(0, 0), 110.0)
+            box(SeatNum + "Info3", table("x"=454.0, "y"=282.5, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=454.0, "y"=282.5, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info3"), vec2(454.0, 282.5), vec2(0, 0), 90.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info3_Border"), vec2(454.0, 282.5), vec2(0, 0), 90.0)
+            box(SeatNum + "Info4", table("x"=435.0, "y"=295.5, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=435.0, "y"=295.5, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info4"), vec2(435.0, 295.5), vec2(0, 0), 90.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info4_Border"), vec2(435.0, 295.5), vec2(0, 0), 90.0)
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=435.0, "y"=295.5, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "PlayerName"), vec2(474.0, 305.5), vec2(-39.0, -10.0), 90.0)
+
+        break
+        case 6,
+            box(SeatNum + "Info1", table("x"=272.51, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info1_Border", table("x"=272.51, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info1"), vec2(272.51, 59.67), vec2(0, -10.56), -20)
+            EGP:egpAngle(Elements:get(SeatNum + "Info1_Border"), vec2(272.51, 59.67), vec2(0, -10.56), -20)
+            box(SeatNum + "Info2", table("x"=236.5, "y"=59.67, "w"=18.5, "h"=10.56, "r"=125, "g"=125, "b"=125, "radius"=0))
+            box(SeatNum + "Info2_Border", table("x"=236.5, "y"=59.67, "w"=18.5, "h"=10.56, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info2"), vec2(236.5, 59.67), vec2(0, 0), -160.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info2_Border"), vec2(236.5, 59.67), vec2(0, 0), -160.0)
+            box(SeatNum + "Info3", table("x"=280.5, "y"=57.0, "w"=52.0, "h"=15.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info3_Border", table("x"=280.5, "y"=57.0, "w"=52.0, "h"=15.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info3"), vec2(280.5, 57.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info3_Border"), vec2(280.5, 57.0), vec2(0, 0), 180.0)
+            box(SeatNum + "Info4", table("x"=293.5, "y"=76.0, "w"=78.0, "h"=20.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+            box(SeatNum + "Info4_Border", table("x"=293.5, "y"=76.0, "w"=78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "Info4"), vec2(293.5, 76.0), vec2(0, 0), 180.0)
+            EGP:egpAngle(Elements:get(SeatNum + "Info4_Border"), vec2(293.5, 76.0), vec2(0, 0), 180.0)
+            text(SeatNum + "PlayerName", table("text"=truncate(Name, 14), "x"=293.5, "y"=76.0, "w"= 78.0, "h"=20.0, "r"=0, "g"=0, "b"=0, "size"=13, "halign"=1, "valign"=1))
+            EGP:egpAngle(Elements:get(SeatNum + "PlayerName"), vec2(332.5, 86.0), vec2(-39.0, -10.0), 180.0)
+        break
+        default,
+        break
+    }
+    drawChips(SeatNum, Chips)
+    opacityCards(SeatNum, 0)
+}
+
+function void deletePlayer(SeatNum:number) {
+    # Select the correct table
+    EGP = SeatNum <= 3 ? Table1 : Table2
+
+    # Define element names for the player at the given seat
+    let PlayerElements = array(
+        # Cards 
+        SeatNum + "Card1", SeatNum + "Card1_Border",
+        SeatNum + "Card2", SeatNum + "Card2_Border",
+        # Player Info
+        SeatNum + "Info1", SeatNum + "Info1_Border",
+        SeatNum + "Info2", SeatNum + "Info2_Border",
+        SeatNum + "Info3", SeatNum + "Info3_Border",
+        SeatNum + "Info4", SeatNum + "Info4_Border",
+        # Text Elements
+        SeatNum + "Card_Text1", SeatNum + "Card_Text2",
+        SeatNum + "PlayerName", SeatNum + "Chips",
+        SeatNum + "Fold", SeatNum + "Call", SeatNum + "Raise",
+        # Buttons
+        SeatNum + "FoldButton", SeatNum + "CallButton", SeatNum + "RaiseButton",
+        SeatNum + "CardCheck"
+    )
+
+    # Iterate over the elements and remove them
+    foreach(_:number, ElementName:string = PlayerElements) {
+        EGP:egpRemove(Elements:get(ElementName))
+    }
+}
+
+# =================== Poker Core Functions ================= #
+
+# Function to create the Deck
+function table deckCreate() {
+    # Lambda to create a card
+    let Card_create = function(Rank:string, Suit:string) {
+        let Card = table()
+        Card["Rank"] = Rank
+        Card["Suit"] = Suit
+        Card["toString"] = function() {
+            return Card["Rank", string] + " of " + Card["Suit", string]
+        }
+        return Card
+    }
+    let Deck = table()
+    Deck["Cards"] = table()
+    
+    # Initialize the deck
+    Deck["initialize"] = function() {
+        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
+        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+        
+        foreach(_:number, Suit:string = Suits) {
+            foreach(_:number, Rank:string = Ranks) {
+                let Card = Card_create(Rank, Suit)[table]
+                Deck["Cards", table]:pushTable(Card)
+            }
+        }
+    }
+    
+    # Shuffle the deck
+    Deck["shuffle"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        for (I = Count, 1, -1) {
+            let J = randint(1, I) # Random index between 0 and I
+            # Swap Cards[I] and Cards[J]
+            let Temp = Cards[I, table]
+            Cards[I] = Cards[J, table]
+            Cards[J] = Temp
+        }
+    }
+    
+    # Draw a card
+    Deck["draw"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        if (Count > 0) {
+            let LastCard = Cards[Count, table] # Get the last card
+            Deck["Cards", table]:pop()
+            return LastCard
+        }
+        return table() # Deck is empty
+    }
+    
+    return Deck
+}
+
+# Function when a player reveals their hand
+function void revealHand(PlayerID:string) {
+    let HandtoString = function(Cards:table) {
+        let CardsString = ""
+        foreach (Index:number, Card:table = Cards) {
+            CardsString += Card["toString", function]()[string]
+            if (Index < Cards:count()) {
+                CardsString += ", "
+            }
+        }
+        return CardsString
+    }
+    let RevealedPlayer = Players[PlayerID, table]
+    let Hand = HandtoString(RevealedPlayer["Cards", table])[string]
+    let Entity = RevealedPlayer["Entity", entity]
+    let Name = Entity:isValid() ? Entity:name() : "Player " + PlayerID
+    Players:keys():msgAll((Name + " revealed " + Hand))
+}
+
+# Function to evaluate a hand and assign a point value
+function table evaluateHand(Player:table) {
+    if (!Player["InPlay", number]) {
+        return table("Points"=0, "Description"="folded.", "HighCards"=array())
+    }
+    let PlayerCards = Player["Cards", table]
+    let OrderedRanks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+    
+    # Helper function to combine PlayerCards hand and community cards
+    let Concat = function(Table1:table, Table2:table) {
+        let Primary = Table1:clone()
+        foreach(_:number, Value:table = Table2) {
+            Primary:pushTable(Value)
+        }
+        return Primary
+    }
+    
+    let Cards = Concat(PlayerCards, CommunityCards)[table]
+    let Suits = table()
+    let Ranks = table()
+
+    # Populate the suits and ranks frequency tables
+    foreach(_:number, Card:table = Cards) {
+        let Suit = Card["Suit", string]
+        let Rank = Card["Rank", string]
+        
+        Suits[Suit] = Suits[Suit, number] + 1
+        Ranks[Rank] = Ranks[Rank, number] + 1
+    }
+    
+    
+    # isStraight helper function
+    let IsStraight = function(Ranks:table) {
+        let Indices = array()
+        foreach(_:number, Rank:string = OrderedRanks) {
+            if (Ranks[Rank, number]) {
+                Indices:pushNumber(indexOf(Rank, OrderedRanks))
+            }
+        }
+        
+        for (I = 1, Indices:count() - 4) {
+            if (Indices[I + 4, number] - Indices[I, number] == 4) {
+                return OrderedRanks[Indices[I + 4, number], string]
+            }
+        }
+        return ""
+    }
+    
+    # Sort for Strings - Helper function
+    let SortDescending = function(Array:array) {
+        let RankAdjust = function(String:string) {
+            let Number = String:toNumber()
+            switch (String) {
+                case "A",
+                    Number = 13
+                break
+                case "K",
+                    Number = 12
+                break
+                case "J",
+                    Number = 11
+                break
+                default,
+                break
+            }
+            return Number
+        }
+        for (I = 1, Array:count() - 1) {
+            for (J = I + 1, Array:count()) {
+                let A = RankAdjust(Array[J, string])[number]
+                let B = RankAdjust(Array[I, string])[number]
+                if (A > B) {
+                    let Temp = Array[I, string]
+                    Array[I] = Array[J, string]
+                    Array[J] = Temp
+                }
+            }
+        }
+        return Array
+    }
+
+    # Check for flush and assign the highest rank in the flush
+    let FlushRank = ""
+    let FlushSuit = ""
+    foreach(Suit:string, Count:number = Suits) {
+        if (Count >= 5) {
+            # Collect cards of the flush suit
+            let FlushCards = array()
+            FlushSuit = Suit
+            foreach(_:number, Card:table = Cards) {
+                if (Card["Suit", string] == Suit) {
+                    FlushCards:pushString(Card["Rank", string])
+                }
+            }
+    
+            # Sort FlushCards to find the highest rank
+            FlushCards = SortDescending(FlushCards)[array]
+            FlushRank = FlushCards[1, string] # Assign the highest rank
+            break
+        }
+    }
+
+    # Check for straight flush and royal flush
+    if (FlushSuit != "") {
+        let FlushRanks = table()
+        foreach(_:number, Card:table = Cards) {
+            if (Card["Suit", string] == FlushSuit) {
+                FlushRanks[Card["Rank", string]] = 1
+            }
+        }
+        let HighestCardInStraight = IsStraight(FlushRanks)[string]
+        if (HighestCardInStraight != "") {
+            if (HighestCardInStraight == "A") {
+                return table("Points"=10, "Description"="Royal Flush", "HighCards"=table("A"))
+            }
+            return table("Points"=9, "Description"="Straight Flush", "HighCards"=table(HighestCardInStraight))
+        }
+    }
+
+    # Other hands: Four of a kind, full house, etc.
+    let FourKind = ""
+    let ThreeKind = ""
+    let PairRanks = array() # Array to track all pairs
+    let Kickers = array()
+    let HighestStraight = IsStraight(Ranks)[string]
+    
+    # Evaluate Ranks
+    foreach(Rank:string, Count:number = Ranks) {
+        if (Count == 4) {
+            FourKind = Rank
+        } elseif (Count == 3) {
+            ThreeKind = Rank
+        } elseif (Count == 2) {
+            PairRanks:pushString(Rank) # Track all pairs
+        }
+        else {
+            Kickers:pushString(Rank)
+        }
+    }
+    
+    # Sort PairRanks in descending order for tie-breaking
+    PairRanks = SortDescending(PairRanks)[array]
+    let SortedKickers = SortDescending(Kickers)[array]
+    
+    if (FourKind != "") {
+        return table("Points"=8, "Description"="Four of a Kind", "HighCards"=array(FourKind):add(SortedKickers))
+    }
+    if (ThreeKind != "" && PairRanks:count() > 0) {
+        return table("Points"=7, "Description"="Full House", "HighCards"=array(ThreeKind, PairRanks[1, string]))
+    }
+    if (FlushRank != "") {
+        return table("Points"=6, "Description"="Flush", "HighCards"=array(FlushRank))
+    }
+    if (HighestStraight != "") {
+        return table("Points"=5, "Description"="Straight", "HighCards"=array(HighestStraight))
+    }
+    if (ThreeKind != "") {
+        return table("Points"=4, "Description"="Three of a Kind", "HighCards"=array(ThreeKind):add(SortedKickers))
+    }
+    if (PairRanks:count() >= 2) {
+        let HighPair = PairRanks[1, string]
+        return table("Points"=3, "Description"="Two Pair", "HighCards"=array(HighPair):add(SortedKickers))
+    }
+    if (PairRanks:count() == 1) {
+        let HighPair = PairRanks[1, string]
+        return table("Points"=2, "Description"="One Pair", "HighCards"=array(HighPair):add(SortedKickers))
+    }
+
+    # If other checks fail, detect the high card
+    for (Index = OrderedRanks:count(), 1, -1) {
+        let Rank = OrderedRanks[Index, string]
+        if (Ranks[Rank, number]) {
+            return table("Points"=1, "Description"="High Card", "HighCards"=array(Rank):add(SortedKickers))
+        }
+    }
+
+    return table("Points"=0, "Description"="No Hand", "HighCards"=array())
+}
+
+function void updatePot() {
+    let Formatted = abbreviateNum(Pot)
+    EGP = Table1
+    text("Pot1", table("text"="POT\n"+Formatted, "x"=314.76, "y"=168.0, "w"= 174.0, "h"=89.76, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+    EGP:egpAngle(Elements:get("Pot1"), vec2(401.76, 212.88), vec2(-87.0, -44.88), -90.0)
+    for (I=1, 6) {
+        if (I == 4) {
+             EGP = Table2
+        }
+        EGP:egpRemove(Elements:get(I+"Bet"))
+    }
+    EGP = Table2
+    text("Pot2", table("text"="POT\n"+Formatted, "x"=194.0, "y"=343.0, "w"= 174.0, "h"=100.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+    EGP:egpAngle(Elements:get("Pot2"), vec2(281.0, 393.0), vec2(-87.0, -50.0), 90.0)
+}
+
+function void foldHand(Seat:number) {
+    EGP = Seat > 3 ? Table2 : Table1
+    opacity(Seat+"Card_Text1", 0)
+    opacity(Seat+"Card_Text2", 0)
+    let Name = "Player " + Seat
+    foreach(_:string, Player:table = Players) {
+        if (Player["Seat", number] == Seat) {
+            Player["InPlay", number] = 0
+            let Entity = Player["Entity", entity]
+            if (Entity:isValid()) {
+                Name = Entity:name()
+            }
+        }
+    }
+    
+    Players:keys():msgAll(Name + " has folded.")
+    let TargetPos = Seat > 3 ? vec2(192,218) : vec2(263, 218)
+    
+    for (I=1, 2) {
+        moveTo(Seat + "Card"+I, 0.5, TargetPos)
+        moveTo(Seat + "Card"+I+"_Border", 0.5, TargetPos)
+        fadeOut(Seat + "Card"+I, 0.5)
+        fadeOut(Seat + "Card"+I+"_Border", 0.5)
+    }
+}
+
+function string bet(Player:table) {
+    let Seat = Player["Seat", number]
+    let Entity = Player["Entity", entity]
+    let Chips = Player["Chips", number]
+    let PlayerBet = Player["CurrentBet", number]
+    let Amount = abs(CurrentBet - PlayerBet)
+    if (Chips - Amount < 0) {  # All in bets
+        Pot+=Chips
+        Player["Chips", number] = 0
+        Player["CurrentBet", number] = Chips
+        if(CurrentBet < Chips) {
+            CurrentBet = Chips
+        }
+        AllIn:pushTable(Player)
+    }
+    else {
+        Pot+=Amount
+        Player["Chips", number] = Chips - Amount
+        Player["CurrentBet", number] = CurrentBet
+    }
+    Player["TotalBet", number] = Player["TotalBet", number] + Player["CurrentBet", number]
+    Player["Action", number] = 1
+    timer(0, function() {
+        EGP = Seat > 3 ? Table2 : Table1
+        drawCurrentBet(Seat, Player["CurrentBet", number])
+        drawChips(Seat, Player["Chips", number])
+
+    })
+    return Entity:isValid() ? Entity:name() : "Player " + toString(Seat)
+}
+
+function void checkOrCall(Seat:number) {
+    let Name = "Player " + Seat
+    let Description = CurrentBet ? "called $" + CurrentBet : "checked."
+    foreach(_:string, Player:table = Players) {
+        if (Player["Seat", number] == Seat) {
+            Name = bet(Player)
+            if(Player["Chips", number] < CurrentBet) {
+                Description = "went all in (" + Player["Chips", number]+")."
+            }
+        }
+    }
+    Players:keys():msgAll(Name + " has " + Description)
+    if (CurrentBet) {
+        soundPlay(2,0.3,"pcasino/chip/chip_2.wav")
+    }
+}
+
+function void raise(Seat:number, Amount:number) {
+    CurrentBet = Amount
+    let Description = "raised $" + CurrentBet
+    let Name = "Player " + Seat
+    foreach(_:string, Player:table = Players) {
+        if (Player["Seat", number] == Seat) {
+            Name = bet(Player)
+            if(Player["Chips", number] < CurrentBet) {
+                Description = "went all in (" + Player["CurrentBet", number]+")."
+            }
+        }
+        else {
+            Player["Action", number] = 0
+        }
+    }
+    Players:keys():msgAll(Name + " has " + Description)
+    soundPlay(2,0.3,"pcasino/chip/chip_1.wav")
+}
+
+function void blind(Seat:number, Amount:number) {
+    CurrentBet = Amount
+    let Name = "Player " + Seat
+    let Blind = Amount == MinBet ? "big" : "small"
+    foreach(_:string, Player:table = Players) {
+        if (Player["Seat", number] == Seat) {
+            Name = bet(Player)
+            Player["Action", number] = 0
+        }
+    }
+    Players:keys():msgAll(Name + " has paid the " + Blind + " blind.")
+    soundPlay(2,0.3,"pcasino/chip/chip_2.wav")
+}
+
+function payWinners(Winners:table) {
+    # Calculate total side pots and remaining pot
+    let SidePots = 0
+    let TotalPot = Pot
+
+    # Helper function to find and update player information
+    let UpdatePlayerChips = function(Seat:number, Payout:number) {
+        foreach(_:string, Player:table = Players) {
+            if (Player["Seat", number] == Seat) {
+                let Entity = Player["Entity", entity]
+                Player["Chips", number] = Player["Chips", number] + Payout
+                drawChips(Seat, Player["Chips", number])
+                return Entity:isValid() ? Entity:name() : "Player " + Seat
+            }
+        }
+        return "Player " + Seat # Default to generic name
+    }
+
+    if (Winners:count() > 1) {
+        foreach(_:string, Winner:table = Winners) {
+            let MaxPot = Winner["MaxPot", number]
+            if (MaxPot) {
+                SidePots++
+                TotalPot -= MaxPot
+            }
+        }
+    
+        # Distribute winnings
+        foreach(_:string, Winner:table = Winners) {
+            let Seat = Winner["Seat", number]
+            let MaxPot = Winner["MaxPot", number]
+            let Payout = MaxPot ? MaxPot : floor(TotalPot / (Winners:count() - SidePots))
+    
+            # Update chips and get player name
+            let Name = UpdatePlayerChips(Seat, Payout)[string]
+    
+            # Announce the winner
+            Players:keys():msgAll(Name + " has won " + abbreviateNum(Payout))
+        }
+    }
+    else {
+        let Seat = Winners[1, table]["Seat", number]
+        let Payout = TotalPot
+    
+        # Update chips and get player name
+        let Name = UpdatePlayerChips(Seat, Payout)[string]
+    
+        # Announce the winner
+        Players:keys():msgAll(Name + " has won " + abbreviateNum(Payout))
+    }
+
+    # Reset the pot
+    Pot = 0
+}
+
+function array seatsInPlay() {
+    let Array = array()
+    foreach(_:string, Player:table = Players) {
+        if(Player["InPlay", number]) {
+            let Seat = Player["Seat", number]
+            Array:pushNumber(Seat)
+        }
+    }
+    return Array
+}
+
+function table:removePlayer(Seat:number) {
+    let GetEntity = function() {
+        foreach(_:string, Player:table = This) {
+            if (Player["Seat", number] == Seat) {
+                return Player["Entity", entity]
+            }
+        }
+        return noentity()
+    }
+    let Entity = GetEntity()[entity]
+    foreach(Steam:string, Player:table = This) {
+        if (Entity:isValid()) {
+            Player["Entity", entity]:msg(Entity:name() + " has left the table.")
+        }
+        else {
+            Player["Entity", entity]:msg("Player " + Seat + " has left the table.")
+        }
+        if (Player["Seat", number] == Seat) {
+            This:removeTable(Steam)
+            drawEmptySeat(Seat)
+            deletePlayer(Seat)
+        }
+    }
+}
+
+function void newAction() {
+    let Count = SortedInPlay:count()
+    deleteSeatButton(ActionSeat)
+    
+    # Recursive Lambda to filter out folded players
+    let FindNextAction = function() {}
+    FindNextAction = function(ActionSeat:number) {
+        let Index = SortedInPlay:indexOf(ActionSeat)
+        ActionSeat = SortedInPlay[Index % Count + 1, number]
+        foreach(_:string, Player:table = Players) {
+            if (ActionSeat == Player["Seat", number]) {
+                if (Player["InPlay", number]) {
+                    return ActionSeat
+                }
+                else {
+                    return FindNextAction(ActionSeat)[number]
+                }
+            }
+        }
+        return 0
+    }
+    let HasActioned = function(Seat:number) {
+        foreach(_:string, Player:table = Players) {
+            if(Player["Seat", number] == Seat) {
+                return Player["Action", number]
+            }
+        }
+        return 0
+    }
+    ActionSeat = FindNextAction(ActionSeat)[number]
+    if(!HasActioned(ActionSeat)[number]) {
+        drawSeatButton(ActionSeat)
+        EGP = ActionSeat > 3 ? Table2 : Table1
+        transform(ActionSeat+"Time", 15, vec2(0, 4))
+    }
+}
+
+# Function to progress the game
+function string updateGameState() {
+    GameState++
+    let States = array("Deal", "Pre-Flop", "Flop", "Turn", "River", "Showdown")
+    let NewState = States[GameState, string]
+    
+    #Local helper functions
+    let Header = function(Text:string) {
+        return "=== " + Text + " ==="
+    }
+    
+    let Card_Draw = function(Player:table) {
+        let Card = Deck["draw", function]()[table]
+        Player["Cards", table]:pushTable(Card)
+        Player["Entity", entity]:msg("You were dealt: " + Card["toString", function]()[string])
+    }
+    
+    let CommunityToString = function() {
+        let String = ""
+        let Count = CommunityCards:count()
+        foreach(Index:number, Card:table = CommunityCards) {
+            String += Card["toString", function]()[string]
+             if (Count > 1 && Index < Count) {
+                String += ", "
+            }
+        }
+        return String
+    }
+    
+    let SortDescending = function(Array:array) {
+        for (I = 1, Array:count() - 1) {
+            for (J = I + 1, Array:count()) {
+                let A = Array[J, number]
+                let B = Array[I, number]
+                if (A > B) {
+                    let Temp = Array[I, number]
+                    Array[I] = Array[J, number]
+                    Array[J] = Temp
+                }
+            }
+        }
+        return Array
+    }
+    
+    let ResetBoard = function() {
+        # Kick Players with no chips
+        foreach(_:string, Player:table = Players) {
+            if (Player["Chips", number] == 0) {
+                let SeatNum = Player["Seat", number]
+                deletePlayer(SeatNum)
+                drawEmptySeat(SeatNum)
+                Players:removePlayer(SeatNum)
+            }
+        }
+        # Reset board
+        ActionSeat = 0
+        CurrentBet = 0
+        Pot = 0
+        InPlay = 0
+        updatePot()
+        stoptimer("action")
+        stoptimer("fold")
+        timer(3, function() {
+            resetTable()
+            deleteDeck()
+            timer(5, function() {
+                InPlay = 1
+                GameState = 0
+                updateGameState()
+            })
+        })
+    }
+
+    let Action = function() {
+        # Timer animation for Player to make a move. 
+        drawSeatButton(ActionSeat)
+        EGP = ActionSeat > 3 ? Table2 : Table1
+        transform(ActionSeat+"Time", 15, vec2(0, 4))
+        let HasActioned = function(Seat:number) {
+            foreach(_:string, Player:table = Players) {
+                if(Player["Seat", number] == Seat) {
+                    return Player["Action", number]
+                }
+            }
+            return 0
+        }
+        let RestartTimer = function(Name:string, Delay:number, Function:function) {
+            if(timerExists(Name)) {
+                timerRestart(Name)
+                timerAdjust(Name, Delay, 1)
+            }
+            else {
+                timer(Name, Delay, function() {
+                    Function()
+                })
+            }
+        }
+        let ActionAnimation = function() {}
+        SortedInPlay = SortDescending(seatsInPlay())[array]
+        ActionAnimation = function() {
+            if (InPlay) {
+                if((seatsInPlay()):count() == 1) {
+                    # Insert winning logic here
+                    newAction()
+                    payWinners(
+                        table(
+                            table("Seat" = ActionSeat, "MaxPot" = 0)
+                        )
+                    )
+                    ResetBoard()
+                }
+                elseif(!HasActioned(ActionSeat)[number]) {
+                    RestartTimer("action", 16, function() {ActionAnimation()})
+                    RestartTimer("fold", 15, function() {
+                        foldHand(ActionSeat)
+                        timer(1.2, function() {
+                            newAction()
+                        })
+                    })
+                }
+                else {
+                    stoptimer("action")
+                    stoptimer("fold")
+                    updatePot()
+                    deleteSeatButton(ActionSeat)
+                    updateGameState()
+                }
+            }
+            else {
+                deleteSeatButton(ActionSeat)
+            }
+        }
+        timer("action", 16, function() {
+            ActionAnimation()
+        })
+        timer("fold", 15, function() {
+            foldHand(ActionSeat)
+            timer(1.2, function() {
+                newAction()
+            })
+        })
+    }
+
+    let SetAction = function() {
+        #[
+        Pre-Flop
+            The action starts with the player sitting to the left of the big blind.
+        Post-Flop (and Subsequent Betting Rounds)
+            The action starts with the player sitting to the left of the dealer button, if they are still in the hand.
+        Special Cases
+            In heads-up play (two players), the small blind acts first pre-flop, but the big blind acts first post-flop.
+        ]#
+        
+        CurrentBet = 0
+        foreach(_:string, Player:table = Players) {
+            Player["Action", number] = 0
+            Player["CurrentBet", number] = 0
+        }
+        foreach(PlayerID:string, _:table = AllIn) {
+            let Player = Players[PlayerID, table]
+            let TotalBet = Player["TotalBet", number]
+            Player["MaxPot", number] = TotalBet*seatsInPlay():count()
+        }
+        AllIn=table()
+        let PreFlop = function(Sorted:array, Index:number) {
+            let Count = Sorted:count()
+            return Sorted[(Index + 2) % Count + 1, number]
+        }
+        let PostFlop = function(Sorted:array, Index:number) {
+            let Count = Sorted:count()
+            return Sorted[Index % Count + 1, number]
+        }
+        let Sorted = SortDescending(seatsInPlay())[array]
+        let Index = Sorted:indexOf(CoinSeat)
+        let Count = Sorted:count()
+        if(Sorted:count() > 2) {
+            if (NewState == "Pre-Flop") {
+                # Pre-Flop
+                CurrentBet = MinBet
+                let SmallBlind = MinBet/2
+                blind(Sorted[Index % Count + 1, number], SmallBlind)
+                blind(Sorted[(Index + 1) % Count + 1, number], MinBet)
+                ActionSeat = PreFlop(Sorted, Index)[number]
+            }
+            else {
+                # Post-Flop
+                ActionSeat = PostFlop(Sorted, Index)[number]
+            }
+        }
+        else {
+            # Special cases
+            if (NewState == "Pre-Flop") {
+                # Pre-Flop
+                let SmallBlind = MinBet/2
+                ActionSeat = CoinSeat
+                blind(ActionSeat, SmallBlind)
+                blind(Sorted[Index % Count + 1, number], MinBet)
+            }
+            else {
+                # Post-Flop
+                ActionSeat = PostFlop(Sorted, Index)[number]
+            }
+        }
+        timer(1, function() {
+            Action()
+        })
+    }
+    
+    let Draw_Flop = function(Num:number) {
+        switch (Num) {
+            case 1,
+            box("Flop1", table("x"=344.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+            box("Flop1_Border", table("x"=344.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+            break
+            case 2,
+            box("Flop2", table("x"=401.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+            box("Flop2_Border", table("x"=401.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+            break
+            case 3,
+            box("Flop3", table("x"=458.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+            box("Flop3_Border", table("x"=458.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+            break
+        }  
+        let Card = Deck["draw", function]()[table]
+        let Suit = Card["Suit", string]
+        let Rank = Card["Rank", string]
+                    
+        CommunityCards:pushTable(Card)
+        suit(Suit, Num) 
+        rank(Rank, Num)
+    }
+    
+    let Notify_Player = function(Player:table) {
+        let PlayerEntity = Player["Entity", entity]
+        PlayerEntity:msg(Header(NewState)[string])
+        if (PlayerEntity:isValid()) {
+            let Cards = CommunityToString()[string]
+            if (Cards != "") {
+                let EvaluatedHand = evaluateHand(Player)
+                let Description = EvaluatedHand["Description", string]:lower()
+                PlayerEntity:msg(Cards)
+                PlayerEntity:msg("You have " + Description)
+            }
+        }
+    }
+    
+    switch(NewState) {
+        case "Deal",
+            assignCoin()
+            drawDeck()
+            let SortDescending = function(Array:array) {
+                for (I = 1, Array:count() - 1) {
+                    for (J = I + 1, Array:count()) {
+                        let A = Array[J, number]
+                        let B = Array[I, number]
+                        if (A > B) {
+                            let Temp = Array[I, number]
+                            Array[I] = Array[J, number]
+                            Array[J] = Temp
+                        }
+                    }
+                }
+                return Array
+            }
+            let SeatsInPlay = array()
+            CommunityCards = table()
+            Deck["initialize", function]()
+            Deck["shuffle", function]()
+            foreach(_:string, Player:table = Players) {
+                let SeatNum = Player["Seat", number]
+                drawPlayerCards(SeatNum)
+                SeatsInPlay:pushNumber(SeatNum)
+            }
+            let DealCard = function(SeatNum:number, CardNum:number) {
+                EGP = SeatNum > 3 ? Table2 : Table1
+                let CardMainID = SeatNum+"Card"+CardNum
+                let CardID = SeatNum+"Card"+CardNum+"_Border"
+                let XPos = SeatNum > 3 ? 0 : 418
+                DealCards:pushTable(table(
+                    "ID"=CardNum, 
+                    "Seat"=SeatNum,
+                    "Pos"=EGP:egpPos(Elements:get(CardID)),
+                    "Angle"=EGP:egpAngle(Elements:get(CardID))
+                ))
+                EGP:egpPos(Elements:get(CardMainID), vec2(XPos,60))
+                EGP:egpPos(Elements:get(CardID), vec2(XPos,60))
+                EGP:egpAngle(Elements:get(CardID), 75)
+                EGP:egpAngle(Elements:get(CardMainID), 75)
+            }
+            let DealAnimation = function() {}
+            DealAnimation = function() {
+                let Count = DealCards:count()
+                if (Count) {   
+                    let DealtCard = DealCards[1, table]
+                    let ID = DealtCard["ID", number]
+                    let Seat = DealtCard["Seat", number]
+                    let Pos = DealtCard["Pos", vector2]
+                    let Angle = DealtCard["Angle", number]
+                    DealCards:shift()
+                    EGP = Seat > 3 ? Table2 : Table1
+                    
+                    moveTo(Seat + "Card"+ID, 0.5, Pos)
+                    moveTo(Seat + "Card"+ID+"_Border", 0.5, Pos)
+                    rotateTo(Seat + "Card"+ID, 0.5, Angle)
+                    rotateTo(Seat + "Card"+ID+"_Border", 0.5, Angle)
+                    fadeIn(Seat + "Card"+ID, 0.5)
+                    fadeIn(Seat + "Card"+ID+"_Border", 0.5)
+                    
+                    if(Count > 1) {
+                        soundPlay(1,0.5,"pcasino/card/card_"+randint(1,4)+".wav")
+                    }
+                    timer(0.6, function() { 
+                        DealAnimation() 
+                        }) 
+                }
+                else {
+                    for (Seat = 1, 6) {
+                        EGP = Seat > 3 ? Table2 : Table1
+                        opacity(Seat + "Card_Text1", 255)
+                        opacity(Seat + "Card_Text2", 255)
+                    }
+                    timer(1, function() {
+                        updateGameState()
+                    })
+                }
+            }
+            timer(0.1, function() {
+                for(Card=1, 2) {
+                    foreach(_:number, Seat:number = SortDescending(SeatsInPlay)[array]) {
+                        DealCard(Seat, Card) # Deal from the left
+                    }
+                }
+                DealAnimation()
+            })
+        break
+        case "Pre-Flop",
+            foreach(_:string, Player:table = Players) {
+                Player["InPlay", number] = 1
+                Player["Cards", table] = table()
+                Notify_Player(Player)
+                Card_Draw(Player)
+                Card_Draw(Player)
+            }
+            SetAction()
+        break
+        case "Flop",
+            let Num = 1
+            let Deal3Cards = function() {}
+            Deal3Cards = function(Num:number) {
+                EGP = Table1
+                Draw_Flop(Num)
+                if (Num <= 2) {
+                    Num++
+                    timer(0.2, function() { Deal3Cards(Num) }) 
+                    # Pass the function reference explicitly
+                }
+                else {
+                    foreach(_:string, Player:table = Players) {
+                        Notify_Player(Player)
+                    }
+                    SetAction()
+                }
+            }
+            Deal3Cards(Num)
+        break
+        case "Turn",
+        case "River",
+            EGP = Table2
+            let Index = NewState == "Turn" ? 4 : 5
+            let Card = Deck["draw", function]()[table]
+            let Suit = Card["Suit", string]
+            let Rank = Card["Rank", string]
+            
+            if (Index == 4) {
+                # Flop 2 Section
+                box("Turn", table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+                box("Turn_Border", table("x"=3.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+            }
+            else {
+                box("River", table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+                box("River_Border", table("x"=60.0, "y"=221.0, "w"=54.0, "h"=82.0, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=2, "outline"=1))
+            }
+            CommunityCards:pushTable(Card)
+            suit(Suit, Index) 
+            rank(Rank, Index)
+            foreach(_:string, Player:table = Players) {
+                Notify_Player(Player)
+            }
+            SetAction()
+        break
+        case "Showdown",
+            GameState = 0
+            if(CommunityCards:count() != 5) {
+                timer(0.5, function() {
+                    updateGameState()
+                })
+                return ""
+            }
+            let OrderedRanks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+            let BestHand = table("Points"=0, "HighCards"=array())
+            let Winners = array()
+        
+            foreach(PlayerID:string, Player:table = Players) {
+                let EvaluatedHand = evaluateHand(Player)
+        
+                # Check if the current hand is better than the best hand so far
+                if (EvaluatedHand["Points", number] > BestHand["Points", number]) {
+                    BestHand = EvaluatedHand
+                    Winners = array(PlayerID) # Update the winner list to the current player
+                } 
+                # If hand ranks are the same, compare the top 5 cards
+                elseif (EvaluatedHand["Points", number] == BestHand["Points", number]) {
+                    let BestCards = BestHand["HighCards", array]
+                    let CurrentBestCards = EvaluatedHand["HighCards", array]
+                    let Tie = 1 # Assume a tie unless proven otherwise
+        
+                    foreach(Index:number, HighCard:string = BestCards) {
+                        let BestRank = indexOf(HighCard, OrderedRanks)
+                        let CurrentRank = indexOf(CurrentBestCards[Index, string], OrderedRanks)
+                    
+                        if (CurrentRank > BestRank) {
+                            BestHand = EvaluatedHand
+                            Winners = array(PlayerID) # Update winner list to the current player
+                            Tie = 0 # Break tie
+                            break
+                        } elseif (CurrentRank < BestRank) {
+                            Tie = 0 # Current player loses; no need to add them as a winner
+                            break
+                        }
+                    }
+        
+                    # If there is a tie, add the current player to the Winners list
+                    if (Tie) {
+                        Winners:pushString(PlayerID)
+                    }
+                }
+            }
+        
+            # Generate winner names
+            let GetNames = function() {
+                let Result = ""
+                foreach(Index:number, PlayerID:string = Winners) {
+                    let Entity = Players[PlayerID, table]["Entity", entity]
+                    let Name = Entity:isValid() ? Entity:name() : "Player " + PlayerID
+                    Result += Name
+                    if (Index < Winners:count()) {
+                        Result += ", "
+                    }
+                }
+                return Result
+            }
+        
+            # Message the result
+            Players:keys():msgAll((Winners:count() > 1 ? "Split Pot: " : "Winner: ") + GetNames()[string] + 
+            " with " + BestHand["Description", string])
+            
+            let PayOuts = table()
+            
+            # Reveal all winners hands
+            foreach(_:number, PlayerID:string = Winners) {
+                let Player = Players[PlayerID, table]
+                revealHand(PlayerID)
+                PayOuts:pushTable(
+                    table(
+                        "Seat" = Player["Seat", number], 
+                        "MaxPot" = Player["MaxPot", number]
+                    )
+                )
+            }
+            payWinners(PayOuts)
+            ResetBoard()
+        break
+        default,
+        break
+    }
+    return NewState
+}
+
+# =================== Interaction Helper Functions ======== #
+
+# Add a player to the table
+function void table:addPlayer(Entity:entity, Chips:number, Seat:number) {
+    let SteamID = Entity:isValid() ? Entity:steamID() : "Debug "+Seat
+    EGP = Seat > 3 ? Table2 : Table1
+    This[SteamID, table] = table(
+        "Entity" = Entity,
+        "Cards" = table(),
+        "Chips" = Chips,
+        "Seat" = Seat,
+        "InPlay" = 0,
+        "Action" = 0,
+        "TotalBet" = 0,
+        "CurrentBet" = 0,
+        "MaxPot" = 0
+    )
+    let Name = Entity:isValid() ? Entity:name() : "Debug "+Seat
+    foreach(_:string, Player:table = Players) {
+        Player["Entity", entity]:msg(Name + " has joined the table.")
+    }
+    drawPlayer(Seat, Name, Chips)
+}
+
+function table:removePlayer(Entity:entity) {
+    let Name = Entity:isValid() ? Entity:name() : "Player"
+    let Seat = 0
+    foreach(_:string, Player:table = Players) {
+        Player["Entity", entity]:msg(Name + " has left the table.")
+        if (Player["Entity", entity] == Entity) {
+            Seat = Player["Seat", number]
+        }
+    }
+    if (Seat) {
+        This:removeTable(Entity:steamID())
+        drawEmptySeat(Seat)
+        deletePlayer(Seat)
+    }
+    else {
+        owner():msg("Cannot find " + Entity:name())
+    }
+}
+
+function entity getSeatEntity(SeatNumber:number) {
+    foreach(_:string, Player:table = Players) {
+        if (Player["Seat", number] == SeatNumber) {
+            return Player["Entity", entity]
+        }
+    }
+    return noentity()
+}
+
+function number getSeatNumber(Entity:entity) {
+    foreach(_:string, Player:table = Players) {
+        if (Player["Entity", entity] == Entity) {
+            return Player["Seat", number]
+        }
+    }
+    return 0
+}
+
+function number joinTable(Player:entity, SeatNumber:number) {
+    if (Player == noentity() && getSeatEntity(SeatNumber) == noentity()) {
+        Players:addPlayer(Player, BuyIn, SeatNumber) # For Debug Players
+        return 1
+    }
+    if (getSeatEntity(SeatNumber) != noentity()) {
+        return 0
+    }
+    if(getSeatNumber(Player)) {
+        Player:msg("You are already seated.")
+        return 0
+    }
+    Players:addPlayer(Player, BuyIn, SeatNumber)
+    return 1
+}
+
+function void start() {
+    Players:keys():msgAll("Game starting...")
+    timer(3, function() {
+        InPlay = 1
+        updateGameState()
+    })
+}
+
+function void showdown() {
+    let Showdown = function() {}
+    Showdown = function() {
+        if(updateGameState() != "Showdown") {
+            timer(3, function() { 
+                Showdown() 
+            }) 
+        }
+    }
+    Showdown()
+}
+
+# =================== Interaction Functions =============== #
+
+
+if(moneyClk()) {
+    let Title = moneyClkTitle()
+    let Player = moneyClkPlayer()
+    let SeatNumber = Title:sub(5):toNumber()
+    if (joinTable(Player, SeatNumber)) {
+        let Count = Players:count()
+        if (Count == 1) {
+            InputUser:msg("Waiting 20 seconds for an opponent to join...")
+            timer(20, function() {
+                if(Players:count() == 1) {
+                    foreach(_:string, Player:table = Players) {
+                        let PlayerEntity = Player["Entity", entity]
+                        let SeatNum = Player["Seat", number]
+                        Players:removePlayer(PlayerEntity)
+                        deletePlayer(SeatNum)
+                        drawEmptySeat(SeatNum)
+                                    
+                        PlayerEntity:msg("No opponents but here's a cookie.")
+                    }
+                }
+            })
+        }
+        elseif(!InPlay && Players:count() == 2) {
+            start()
+        }
+    }
+}
+
+if (first() || duped()) {
+    Deck = deckCreate()
+    if (->Table1 || ->Table2) {
+        drawTable()
+    }
+}
+
+if (~Table1 || ~Table2) {
+    drawTable()
+}
+
+let UserNum = tableInput()
+    if (UserNum) {
+            EGP = UserNum == 2 ? Table2 : Table1
+            let Buttons = array()
+            for (I=1, 6) {
+                Buttons:pushString("Seat"+I) 
+                Buttons:pushString("CardCheck"+I)
+                Buttons:pushString("ActionCheck"+I)
+                Buttons:pushString("ActionFold"+I)
+                Buttons:pushString("ActionRaise"+I)
+            }
+            
+            let Cursor = EGP:cursorObj(Buttons)
+            if(Cursor:startsWith("CardCheck")) {
+                let SeatNumber = Cursor:sub(10):toNumber()
+                let RevealedPlayer = Players[InputUser:steamID(), table]
+                if (RevealedPlayer["InPlay", number]) {
+                    if (SeatNumber == RevealedPlayer["Seat", number]) {
+                        let HandtoString = function(Cards:table) {
+                            let CardsString = ""
+                            foreach (Index:number, Card:table = Cards) {
+                                CardsString += Card["toString", function]()[string]
+                                if (Index < Cards:count()) {
+                                    CardsString += ", "
+                                }
+                            }
+                            return CardsString
+                        }
+                        let Hand = HandtoString(RevealedPlayer["Cards", table])[string]
+                        let Entity = RevealedPlayer["Entity", entity]
+                        if (Hand != "") {
+                            if (CheckCards < 2) {
+                                Entity:msg(Hand)
+                                Players:keys():msgAll(Entity:name() + " checked their cards.")
+                                CheckCards++
+                                timer(2, function() {
+                                    CheckCards = 0
+                                })
+                            }
+                            else {
+                                Entity:msg("Please do not spam this button.")
+                                print(Entity:name() + " is spamming check cards.")
+                            }
+                        }
+                    }
+                    else {
+                        InputUser:msg("No peeking!")
+                    }
+                }
+            }
+            elseif(Cursor:startsWith("Action")) {
+                let LastChar = Cursor:length() - 1
+                let Action = Cursor:sub(7, LastChar)
+                let Seat = Cursor:sub(LastChar+1):toNumber()
+                let SeatEntity = getSeatEntity(Seat)
+                if (InputUser == SeatEntity) {
+                    switch (Action) {
+                        case "Fold",
+                            timerAdjust("action", 0.5, 1)
+                            stoptimer("fold")
+                            foldHand(Seat)
+                            timer(1.2, function() {
+                                newAction()
+                            })
+                        break
+                        case "Raise",
+                            SeatEntity:msg("Type the amount to raise in chat.")
+                        break
+                        case "Check",
+                            timerAdjust("action", 0.5, 1)
+                            stoptimer("fold")
+                            checkOrCall(Seat)
+                            newAction()
+                        break
+                        default,
+                        break
+                    }
+                }
+            }
+            elseif(Cursor:startsWith("Seat")) {
+                if (!Players:exists(InputUser:steamID())) {
+                    let Seat = Cursor:sub(5):toNumber()
+                    moneyRequest(InputUser, BuyIn, "Seat " + Seat)
+                }
+                else {
+                    InputUser:msg("You are already seated.")
+                }
+            }  
+        }
+
+event chat(Player:entity, Message:string, _:number) {
+    # To test for local games, type anything in chat
+    let InGame = Players:exists(Player:steamID())
+    if (Message[1] == "!") {
+        let Arguments = Message:sub(2):explode(" ")
+        let Command = Arguments:shiftString()
+        if(Player == owner()) {
+            switch (Command) {
+                case "next",
+                    updateGameState()
+                break
+                case "buyin",
+                    BuyIn = Arguments[1, string]:toNumber()
+                    Player:msg("Buy in changed to $" + BuyIn)
+                break
+                case "coin",
+                    assignCoin()
+                break
+                case "showdown",
+                    showdown()
+                break
+                case "bots",
+                    for (I=1, 6) {
+                        timer(I, function() {
+                            let Player = I
+                            joinTable(noentity(), Player)
+                        })
+                    }
+                    if(!InPlay) {
+                        timer(3, function() {
+                           start()
+                        })
+                    }
+                break
+                case "bot",
+                    let Seat = Arguments[1,string]:toNumber()
+                    joinTable(noentity(), Seat)
+                    if(!InPlay && Players:count() == 2) {
+                        start()
+                    }
+                break
+                case "botcall",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    checkOrCall(ActionSeat)
+                    newAction()
+                break
+                case "botfold",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    foldHand(ActionSeat)
+                    timer(1.2, function() {
+                        newAction()
+                    })
+                break
+                case "botraise",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    raise(ActionSeat, MinBet*5)
+                    newAction()
+                break
+                case "pkick",
+                    let Seat = Arguments[1,string]:toNumber()
+                    let Entity = Arguments[1, string]:findPlayer()
+                    let SeatExists = function() {
+                        foreach(_:string, Player:table = Players) {
+                            if(Seat == Player["Seat", number]) {
+                                return 1
+                            }
+                        }
+                        return 0
+                    }
+                    if (SeatExists()[number]) {
+                        Players:removePlayer(Seat)
+                    }
+                    elseif(Entity:isValid()) {
+                        Players:removePlayer(Seat)
+                    }
+                    else {
+                        Player:msg("Invalid player.")
+                    }
+                break
+                default,
+                break
+            }
+        }
+        if (InGame) {
+            switch (Command) {
+                case "leave",
+                    let SeatNum = getSeatNumber(Player)
+                    let Steam = Player:steamID()
+                    if (Players[Steam, table]["InPlay", number]) {
+                        Player:msg("Please play out the remaining hand")
+                    }
+                    else {
+                        # Pay player chips
+                        moneyGive(Player,Players[Steam, table]["Chips", number])
+                        deletePlayer(SeatNum)
+                        drawEmptySeat(SeatNum)
+                        Players:removePlayer(SeatNum)
+                    }
+                break
+                case "help",
+                    Player:msg("!leave - leaves table")
+                    Player:msg("!reveal - reveals hand (must be end of round).")
+                break
+                case "reveal",
+                    if(!InPlay) {
+                        revealHand(Player:steamID())
+                    }
+                    else {
+                        Player:msg("Please wait till the round is over.")
+                    }
+                break
+                case "fold",
+                    let Seat = getSeatNumber(Player)
+                    if (ActionSeat == Seat) {
+                        timerAdjust("action", 0.5, 1)
+                        stoptimer("fold")
+                        deleteSeatButton(Seat)
+                        foldHand(Seat)
+                    }
+                    else {
+                        Player:msg("Please wait till your turn")
+                    }
+                break
+                case "call",
+                case "check",
+                    let Seat = getSeatNumber(Player)
+                    if (ActionSeat == Seat) {
+                        timerAdjust("action", 0.5, 1)
+                        stoptimer("fold")
+                        deleteSeatButton(Seat)
+                        checkOrCall(Seat)
+                    }
+                    else {
+                        Player:msg("Please wait till your turn")
+                    }
+                break
+                default,
+                break
+            }
+        }
+    }
+    elseif(InGame) {
+        let RaiseAmount = Message:toNumber()
+        if (RaiseAmount) {
+            let Seat = getSeatNumber(Player) 
+            if (Seat == ActionSeat) {
+            if (RaiseAmount > MinBet*2) {
+                timerAdjust("action", 0.5, 1)
+                stoptimer("fold")
+                raise(Seat, RaiseAmount)
+                newAction()
+            }
+            else {
+                Player:msg("The raise must be at least "+abbreviateNum(MinBet*2))
+                }
+            }
+        }
+    }
+}

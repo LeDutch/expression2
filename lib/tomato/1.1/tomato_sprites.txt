@@ -1,0 +1,71 @@
+@name Tomato Sprites
+
+#include "lib/tomato/1.1/tomato_egp"
+
+#[
+    Example:
+    sprite("HeaderMask", table(
+        "x"=0, "y"=0, "w"=512, "h"=166,
+        "uv_start"=vec2(0, 0),
+        "uv_size"=vec2(3200, 166),
+        "sheet_size"=vec2(3200, 2560),
+        "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42923250f.png"
+    ))
+]#
+
+function egpobject sprite(Name:string, Args:table) {
+    let X = Args["x", number], Y = Args["y", number]
+    let W = Args["w", number], H = Args["h", number]
+    
+    let SheetSize = Args["sheet_size", vector2]
+    let RawStart = Args["uv_start", vector2]
+    let RawEnd = Args:exists("uv_end") ? Args["uv_end", vector2] : (RawStart + Args["uv_size", vector2])
+
+    let UVStart = RawStart / SheetSize
+    let UVEnd = RawEnd / SheetSize
+
+    let U0 = UVStart:x(), V0 = UVStart:y()
+    let U1 = UVEnd:x(),   V1 = UVEnd:y()
+
+    let Poly = array(
+        vec4(X,     Y,     U0, V0),
+        vec4(X + W, Y,     U1, V0),
+        vec4(X + W, Y + H, U1, V1),
+        vec4(X,     Y + H, U0, V1)
+    )
+
+    Args["vertices", array] = Poly
+
+    return poly(Name, Args)
+}
+
+function egpobject sprite(Args:table) {
+    return sprite("", Args)
+}
+
+function egpobject spriteByIndex(Name:string, Args:table) {
+    let Index = Args["index", number]                  # 1-based index
+    let SpriteSize = Args["uv_size", vector2]             # Pixel size of one sprite (e.g. vec2(64,64))
+    let SheetSize = Args["sheet_size", vector2]             # Pixel size of full spritesheet (e.g. vec2(1024,1024))
+
+    let UVSize = SpriteSize / SheetSize
+    let Cols = floor(1/UVSize:x())
+
+    let I = Index - 1
+    let XIndex = floor(I % Cols)
+    let YIndex = floor(I / Cols)
+
+    let UVStart = vec2(
+        XIndex * SpriteSize:x(),
+        YIndex * SpriteSize:y()
+    )
+
+    return sprite(Name, Args:add(table(
+        "uv_start" = UVStart,
+        "uv_size" = UVSize
+    )))
+}
+
+function egpobject spriteByIndex(Args:table) {
+    return spriteByIndex("", Args)
+}

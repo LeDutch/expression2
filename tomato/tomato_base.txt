@@ -1,0 +1,95 @@
+@name Tomato Base Alarm
+@inputs [Corner1 Corner2]:vector [PropColour]:entity
+@outputs BaseCheck
+@persist EntityNum Friends:table
+@trigger 
+
+###################################################
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+###################################################
+
+if (first()) {
+    #include "library/tomato_lib"
+    Friends = table()
+    Prefix = "BASECHECK"
+    
+    function number table:checkFriend(Name:string) {
+        if (This:exists(Name)) {
+            return This[Name, number]   
+        }
+        return 0
+    }
+    function table:addFriend(Name:string) {
+        This[Name, number] = 1
+    }
+    function table:removeFriend(Name:string) {
+        This:remove(Name)
+    }
+    
+    function notifyFriends(Text:string) {
+        for (I = 1, Friends:count()) {
+            local List = Friends:keys()
+            local Player = findPlayerByName(List[I, string])
+            Player:msg(Text)
+        }
+        Timer:addTime("Notify", 10)
+    }
+    
+    function number proximityCheck() {
+        findIncludeClass("player") 
+        findInBox(Corner1, Corner2)
+        Entities = findToArray()
+        print(Entities)
+        for (I = 1, Entities:count()) {
+            local Name = Entities[I, entity]:name()
+            if(!Friends:checkFriend(Name)) {
+                return 1
+            }
+        }
+        return 0
+    }
+    Friends:addFriend(owner():name())
+}
+
+interval(1000)
+
+local Status = proximityCheck()
+if (Status) {
+    BaseCheck = 1
+    if (!Timer:getTime("Notify")) {
+        notifyFriends("Intruder detected.")
+        Timer:addTime("Notify", 10)
+    }
+    Timer:reduceTime("Notify", 1)
+    PropColour:setColor(Red) 
+}
+else {
+    if (BaseCheck) {
+        Timer:setTime("Notify", 0)
+        notifyFriends("Intruder left.")
+    }
+    BaseCheck = 0
+    PropColour:setColor(Green) 
+}
+
+#Chat commands
+event chat(Owner:entity, Said:string, _) {
+    if(Said:index(1) == "!")  
+    {  
+        local Arguments = Said:sub(2):explode(" ")
+        local Command = Arguments:shiftString() 
+        if (Command == "add") {
+            local Name = Arguments[1,string]
+            local Player = findPlayerByName(Name)
+            Friends:addFriend(Player:name())
+            Owner:msg("Friend added " + Player:name())
+        }
+        elseif (Command == "remove") {
+            local Name = Arguments[1,string]
+            local Player = findPlayerByName(Name)
+            Friends:removeFriend(Player:name())
+            Owner:msg("Friend removed " + Player:name())
+        }
+    }  
+}
+

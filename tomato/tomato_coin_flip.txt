@@ -1,0 +1,105 @@
+@name Tomato Coin Flip
+@inputs
+@outputs 
+@persist Charge:entity
+@persist [Amount Time Min Max Interval]:number
+@trigger 
+
+if (first() || dupefinished() || ~EGP) {
+    #include "library/tomato_lib"
+    Owner = owner()
+    Amount = 10000
+    
+    #Start Screen
+    Owner = owner()
+    Charge = noentity()
+    Prefix = "CoinFlip"
+    Min = 10000
+    Max = 1000000
+    Interval = 10000
+    
+    EGP:egpClear()
+    
+    createBox("Background",size(vec2(ScreenXY, ScreenXY)),color(Dark),coords(vec2(0,0)))
+    createBox("Coinflip Box",size(vec2(ScreenXY / 3, 60)), color(Primary), coords(vec2(ScreenXY / 3,10)))
+    createText("Coinflip", size(30), color(Light),align(1), coords(vec2(ScreenXY / 2,25)))
+    #createText("A Tomato & Duggy Production", size(14), color(Winter),align(1), coords(vec2(ScreenXY / 2,80)))
+    createText("50/50", size(100), color(Light), align(1), coords(vec2(ScreenXY / 2, ScreenXY / 3)))
+    createBox("BetBox",size(vec2(ScreenXY / 3, 50)), color(Primary), coords(vec2(ScreenXY / 3,450)))
+    createText("Bet", size(20), color(Light),align(1), coords(vec2(ScreenXY / 2,465)))
+    createSlider("Slider", size(vec2(ScreenXY  - ScreenXY / 3, 20)), coords(vec2(ScreenXY / 6,400)))
+    EGP:egpSetText(Elements:get("Bet"),"Bet: $" + Min)
+}
+
+interval(100)
+
+if(~User && cursorPos(Elements:get("BetBox")) && !Charge:isValid()) { 
+    Charge = User
+    moneyRequest(User, Amount, "Bet money?")
+}
+
+#this is the code for the slide bar
+SliderValue = useSlider("Slider", Min, Max, Interval)
+if (SliderValue) {
+    Amount = SliderValue
+    EGP:egpSetText(Elements:get("Bet"),"Bet: $" + Amount)       
+}
+
+# Money click
+if(moneyClk()){
+    Flip = randint(0,1)
+    if (Flip){
+        Payout = Amount * 2
+        moneyGive(Charge,Payout - Payout * 0.05)
+        EGP:egpColor(Elements:get("Background"),Green)
+        EGP:egpSetText(Elements:get("50/50"),"You win!")
+        Charge:msg("You won $" + Payout + " minus 5 percent commission.")
+    } 
+    else{
+        EGP:egpColor(Elements:get("Background"),Red)
+        EGP:egpSetText(Elements:get("50/50"),"You lose!")
+    }
+    Time = 2
+    Charge = noentity()
+}
+
+if(Time > 0.1) {
+    Time -= 0.1
+} else {
+    EGP:egpColor(Elements:get("Background"),Dark)
+    EGP:egpSetText(Elements:get("50/50"),"50/50")
+}
+
+runOnChat(1)
+if(chatClk(Owner))  
+{  
+    Chat = Owner:lastSaid()
+    if(Chat:index(1) == "!")  
+    {  
+        Arguments = Chat:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        if(Command == "min")  
+        {                    
+            Min = Arguments[1,string]:toNumber()
+            owner():msg("Slider minimum changed to: " + Min + ".")
+        }
+        elseif (Command == "max") {
+            Max = Arguments[1,string]:toNumber()
+            owner():msg("Slider maximum changed to: " + Max + ".")
+        }
+        elseif (Command == "interval") {
+            Interval = Arguments[1,string]:toNumber()
+            owner():msg("Slider initerval changed to: " + Interval + ".")
+        }
+        elseif (Command == "help") {
+            Array = array(
+            "!min (number) to change slider min",
+            "!max (number) to change slider max",
+            "!interval (number) to change slider interval"
+            )
+            for (I = 1, Array:count()){
+                Owner:msg("COINFLIP: "+Array[I,string])
+            }
+        }
+    }
+}

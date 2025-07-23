@@ -1,0 +1,32 @@
+@name Tomato Printer Calc
+@inputs
+@outputs 
+@persist 
+@trigger
+
+###################################################
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+###################################################
+#include "library/tomato_lib"
+
+if(first() || ~EGP) {
+    #Colours
+    Dark = vec(34,40,49)
+    Primary = vec(57,62,70)
+    Secondary = vec(0,173,181)
+    Light = vec(238, 238, 238)
+    
+    #Drawing initial board
+    function draw() {
+        EGP:egpClear()
+        #Generic
+        createBox("Background",size(ScreenXY,ScreenXY), color(Dark), coords(0,0))
+        createText("Title",size(30),align(1),coords(ScreenXY/2,10))
+        EGP:egpSetText(Elements:get("Title"), "TAU Printer Calcuator")
+        
+        #Rewards
+        createBox("TableBackground",size(300,300), color(Primary), coords(ScreenXY/2-150,ScreenXY/2-150))
+        createMaterial("TableBackground", size(300,300), coords(ScreenXY/2-150,ScreenXY/2-150), "")
+    }
+    draw()
+}

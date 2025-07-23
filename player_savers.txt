@@ -1,0 +1,36 @@
+@name Player Savers
+@inputs Ranger:entity Button:number
+@outputs ListOfPlayers:string
+@persist Players:table
+
+if (first()) {
+    Ranger = noentity()
+    Button = 0
+    Players = table()
+}
+
+function string getTime() {
+    let Date = date(time())
+    let PostMeridiem = Date["day", number] != date(time()+86400)["day", number] ? "PM" : "AM"
+    let Time = Date["hour", number] + ":" + Date["min", number] + " " + PostMeridiem
+    return Time
+}
+
+event input(InputName:string) {
+    switch(InputName) {
+        case "Ranger",
+            if(Ranger:isPlayer()) {
+                Players[Ranger:steamID(), string] = getTime()
+                ListOfPlayers = Players:toString()
+            }
+        break
+        case "Button",
+            findByClass("player")
+            let Player = findClosest(entity():pos())
+            Players[Player:steamID(), string] = getTime()
+            ListOfPlayers = Players:toString()
+        break
+        default,
+        break
+    }
+}

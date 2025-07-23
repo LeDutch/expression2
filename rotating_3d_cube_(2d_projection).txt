@@ -1,0 +1,128 @@
+@name Rotating 3D Cube (2D Projection)
+@inputs EGP:wirelink
+@outputs 
+@persist [Vertices Edges]:table [AngleX AngleY AngleZ Speed]:number
+@trigger 
+
+# Function to rotate a point around the x-axis
+function array rotateX(X:number, Y:number, Z:number, Angle:number) {
+    let Radians = Angle * (_PI / 180)
+    return array(X, Y * cos(Radians) - Z * sin(Radians), Y * sin(Radians) + Z * cos(Radians))
+}
+
+# Function to rotate a point around the y-axis
+function array rotateY(X:number, Y:number, Z:number, Angle:number) {
+    let Radians = Angle * (_PI / 180)
+    return array(X * cos(Radians) + Z * sin(Radians), Y, -X * sin(Radians) + Z * cos(Radians))
+}
+
+# Function to rotate a point around the z-axis
+function array rotateZ(X:number, Y:number, Z:number, Angle:number) {
+    let Radians = Angle * (_PI / 180)
+    return array(X * cos(Radians) - Y * sin(Radians), X * sin(Radians) + Y * cos(Radians), Z)
+}
+
+function egpobject text(ID:number, ARGS:table) {
+    return EGP:egpTextLayout(ID, ARGS)
+}
+
+if (first()) {
+    # Define cube vertices
+    Vertices = table(
+        array(-100, -100, -100), # Vertex 1
+        array(100, -100, -100),  # Vertex 2
+        array(100, 100, -100),   # Vertex 3
+        array(-100, 100, -100),  # Vertex 4
+        array(-100, -100, 100),  # Vertex 5
+        array(100, -100, 100),   # Vertex 6
+        array(100, 100, 100),    # Vertex 7
+        array(-100, 100, 100)    # Vertex 8
+    )
+    
+    # Define cube edges
+    Edges = table(
+        array(1, 2), array(2, 3), array(3, 4), array(4, 1), # Front face
+        array(5, 6), array(6, 7), array(7, 8), array(8, 5), # Back face
+        array(1, 5), array(2, 6), array(3, 7), array(4, 8)  # Connecting edges
+    )
+    
+    # Rotation angles
+    AngleX = 0
+    AngleY = 0
+    AngleZ = 0
+    
+    # Rotation speed
+    Speed = 100
+    
+    text(100, table("text"="Coob", "x"=256.0, "y"=450.0, "w"=195.0, "h"=100.0, "r"=255, "g"=255, "b"=255, "size"=20, "halign"=1, "valign"=1))
+}
+
+interval(100)
+
+# Loop through each edge and draw it
+let Count = Edges:count()
+for (I = 1, Count) {
+    let Edge = Edges[I, array]
+    let StartVertex = Vertices[Edge[1,number], array]
+    let EndVertex = Vertices[Edge[2,number], array]
+    
+    let StartX = StartVertex[1, number]
+    let StartY = StartVertex[2, number]
+    let StartZ = StartVertex[3, number]
+    
+    let EndX = EndVertex[1, number]
+    let EndY = EndVertex[2, number]
+    let EndZ = EndVertex[3, number]
+    
+    
+    # Rotate vertices around the x-axis
+    Start = rotateX(StartX, StartY, StartZ, AngleX)
+    End = rotateX(EndX, EndY, EndZ, AngleX)
+    
+    StartX = Start[1, number]
+    StartY = Start[2, number]
+    StartZ = Start[3, number]
+    
+    EndX = End[1, number]
+    EndY = End[2, number]
+    EndZ = End[3, number]
+    
+    # Rotate vertices around the y-axis
+    Start = rotateY(StartX, StartY, StartZ, AngleY)
+    End = rotateY(EndX, EndY, EndZ, AngleY)
+    
+    StartX = Start[1, number]
+    StartY = Start[2, number]
+    StartZ = Start[3, number]
+    
+    EndX = End[1, number]
+    EndY = End[2, number]
+    EndZ = End[3, number]
+    
+    # Rotate vertices around the z-axis
+    Start = rotateZ(StartX, StartY, StartZ, AngleZ)
+    End = rotateZ(EndX, EndY, EndZ, AngleZ)
+    
+    StartX = Start[1, number]
+    StartY = Start[2, number]
+    StartZ = Start[3, number]
+    
+    EndX = End[1, number]
+    EndY = End[2, number]
+    EndZ = End[3, number]
+    
+    # Project vertices onto 2D plane (ignore Z-coordinate)
+    StartX2D = StartX + 250
+    StartY2D = StartY + 250
+    EndX2D = EndX + 250
+    EndY2D = EndY + 250
+    
+    # Draw line between projected vertices
+    let Line = EGP:egpLine(I, vec2(StartX2D, StartY2D), vec2(EndX2D, EndY2D))
+    Line["size", number] = 4
+}
+
+# Increment rotation angles
+AngleX += Speed
+AngleY += Speed
+AngleZ += Speed

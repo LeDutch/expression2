@@ -1,0 +1,29 @@
+@name Tomato Poker v2
+@inputs 
+@outputs 
+@persist [Players Deck Game]:table
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: dutch99
+ Graphics compiled on https://www.egpcompiler.com/
+]#
+
+#include "lib/tomato/1.0/tomato_core"
+#include "lib/tomato/1.0/tomato_ui"
+#include "tomato/poker/graphics"
+#include "tomato/poker/logic"
+
+# Initialize variables
+if (first() || dupefinished()) {
+    InputUser = noentity()
+    Players = table()
+    Deck = table()
+    CommunityCards = table()
+    DealCards = table()
+    
+    Prefix = "Tomato Poker"
+    PrefixColour = "#d4af37"
+}
+

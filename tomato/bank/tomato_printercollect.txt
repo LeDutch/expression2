@@ -1,0 +1,206 @@
+@name Tomato Printer Collect
+@inputs Button
+@outputs CollectorName:string
+@persist [SNAPSHOT PROFIT Time Interval]:number
+@persist [DB RACKS]:table
+@persist [Staff]:array
+@persist Collector:entity
+@persist [DSGroup Hash CurrentDate]:string
+
+if (~EGP) {reset()}
+if(first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #Global variables
+    Collector = owner()
+    
+    BankName = "BetterBank"
+    Prefix = BankName
+    
+    CollectorName = "Printer Collector\n---------------------\nOpen"
+    Interval = 900 # 5 minutes in seconds
+    
+    dsJoinGroup("tomatobankinggroup")
+    
+    Hash = "group"+toString(randint(1000000,9999999))
+    local Date = dateUTC()
+    CurrentDate = toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])
+    
+    
+    #Ease of use functions
+    function number checkRack(AimEntity:entity) {
+        if (AimEntity:type():startsWith("printer_rack") || AimEntity:type():startsWith("bitminer_tower")) {
+            return 1
+        }
+        return 0
+    }
+    function string checkSteam(RackId:string) {
+        for (I=1,10) {
+            local Steam = DB["Vaults", table][I, table]["Account", entity]:steamID64()
+            if (DB["Customers", table][Steam, table][RackId,entity]:isValid()) {
+                return Steam
+            }
+        }
+        return ""
+    }
+    function checkProfit(PLAYER:entity, RackId:string, STEAM:string) {
+        local AMOUNT = PLAYER:money() - SNAPSHOT
+        local CHARGE = findPlayerBySteamID(STEAM)
+        if (AMOUNT > 200) {
+            local CUSTOMER = DB["Customers", table][STEAM, table]
+            local Membership = CUSTOMER["Membership",string]
+            local Tax = AMOUNT*((DB["Taxes", table][Membership, number])/100)
+            local Profit = AMOUNT - Tax
+            local Name = CHARGE:name()
+                            
+            PLAYER:msg("You collected: {green $" + formatNumber(Tax) + "} in taxes.")
+            CHARGE:msg("Thanks for banking with us, {red " + formatName(Name, 15) + "}. You received: {green $" + formatNumber(Profit) + "}")
+            if(PLAYER!=owner()) {
+                moneyRequest(PLAYER, Profit+(Tax*0.25))
+            }
+            moneyGive(CHARGE, Profit)
+            CHARGE:soundPlay(100, 2, "zmlab2/cash.wav")
+                    
+            local TotalTax = CUSTOMER["Tax", table]["Total", number]
+            local TotalProfit = CUSTOMER["Profit", table]["Total", number]
+            local SessionTax = CUSTOMER["Tax", table][CurrentDate, number]
+            local SessionProfit = CUSTOMER["Profit", table][CurrentDate, number]
+                    
+            DB["Customers", table][STEAM,table]["Tax", table]["Total", number] = TotalTax + Tax
+            DB["Customers", table][STEAM,table]["Profit",table]["Total", number] = TotalProfit + Profit
+            DB["Customers", table][STEAM,table]["Tax", table][CurrentDate, number] = SessionTax + Tax
+            DB["Customers", table][STEAM,table]["Profit",table][CurrentDate, number] = SessionProfit + Profit
+                    
+            DB["Profit", table][CurrentDate, number] = DB["Profit", table][CurrentDate, number] + Profit
+            DB["Tax", table][CurrentDate, number] = DB["Tax", table][CurrentDate, number] + Tax
+            DB["Profit", table]["Total", number] = DB["Profit", table]["Total", number] + Profit
+            DB["Tax", table]["Total", number] = DB["Tax", table]["Total", number] + Tax
+                    
+            SNAPSHOT = 0
+            Time = 0
+        }
+    }
+    function checkCollection(PLAYER:entity) {
+        local AimEntity = PLAYER:aimEntity()
+        if (checkRack(AimEntity)) {
+            local RackId = AimEntity:id():toString()
+            local Steam = checkSteam(RackId)
+            function saveSnapshot(PLAYER:entity, RackId:string, Name:string) {
+                PLAYER:msg(Name + "'s rack ready for collection")
+                SNAPSHOT = PLAYER:money()
+            }
+            if (RACKS:exists(RackId)) {
+                local Customer = RACKS[RackId, entity]
+                if (!SNAPSHOT) {
+                    saveSnapshot(PLAYER, RackId, Customer:name())
+                }
+                else {
+                    checkProfit(PLAYER, RackId, Customer:steamID64())
+                }
+            }
+            elseif(Steam:length()) {
+                local DisableCollect = DB["Customers",table][Steam, table]["DisableCollect", number]
+                local Customer = findPlayerBySteamID(Steam):name()
+                if (DisableCollect) {
+                    PLAYER:msg(Customer + " has disabled auto-collect.")
+                }
+                else {
+                    if (!SNAPSHOT) {
+                        saveSnapshot(PLAYER, RackId, Customer)
+                    }
+                    else {
+                        checkProfit(PLAYER, RackId, Steam)
+                    }
+                }
+            }
+        }
+        else {
+            SNAPSHOT = 0
+        }
+    }
+    function handleChat(Player:entity, Message:string, _:number) {
+        local AimEntity = Player:aimEntity()
+        Arguments = Message:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        switch(Command) {
+            case "track",
+                if (!checkRack(AimEntity)) { 
+                    Player:msg("This isn't a printer rack!")
+                    return 
+                }
+                local Name = Arguments[1,string]
+                local User = Name:findPlayer()
+                if (User:isValid() & Name:length()) {
+                    local RackId = AimEntity:id():toString()
+                    if(!RACKS:exists(RackId)) {
+                        local Steam = User:steamID64()
+                        if (DB["Customers", table]:exists(Steam)) {
+                            RACKS[RackId, entity] = User
+                            timer("collect",  0)
+                            Player:msg("Rack successfully added to " + User:name() +".")
+                            BALANCE = Player:money()
+                        }
+                        else {
+                            Player:msg(User:name() + " isn't a customer!")
+                        }
+                    } else {
+                        Player:msg("This rack is already being tracked!")
+                    }
+                }
+                else {
+                    Player:msg("Please specify a valid playerID.")
+                }
+            break
+            case "untrack",
+                if (!checkRack(AimEntity)) { return }
+                local RackId = AimEntity:id():toString()
+                if(RACKS:exists(RackId)) {
+                    RACKS:remove(RackId)
+                    Player:msg("Rack successfully removed!")
+                } else {
+                    Player:msg("This rack is not being tracked!")
+                }
+            break
+            case "collect",
+                local Name = Arguments[1,string]
+                local User = Name:findPlayer()
+                if(DB["Staff", table]:exists(User:steamID64())) {
+                    Collector = User
+                    DB["Vaults", table]["Collector", entity] = User
+                    Player:msg("Collector changed to " + User:name() + "!")
+                }
+            break
+        }
+    }
+    dsSend("req", DSGroup, Hash)
+}
+
+interval(100)
+
+if(~Button) {
+    findByClass("player")
+    Collector = findClosest(entity():pos())
+    DB["Vaults", table]["Collector", entity] = Collector
+    timer("collect",  0)
+}
+
+if(dsClk(Hash)) {
+    DB = dsGetTable()
+}
+
+if(clk("collect")) {
+    Time++
+    CollectorName = "Printer Collector\n---------------------\n" + Collector:name() + "\n\n Timer: " + formatSecs(Interval - Time)
+    if (Time == Interval) {
+        Collector:msg("Collect printers!")
+        Time = 0
+    }
+    checkCollection(Collector)
+    timer("collect",  1000)
+}
+
+event chat(Player:entity, Message:string, Team:number) {
+    if(Player == owner() && Message:index(1) == "!") {
+        handleChat(Player, Message, Team)
+    }
+}
+

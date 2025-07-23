@@ -1,0 +1,34 @@
+@name Tomato Bank Stat Display
+@outputs [Revenue Customers]:number
+@persist [DB]:table
+@persist [DSGroup Hash]:string
+
+if (~EGP) {reset()}
+if(first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #Global variables
+    
+    BankName = "BetterBank"
+    Prefix = BankName
+    
+    dsJoinGroup("tomatobankinggroup")
+    
+    Hash = "group"+toString(randint(1000000,9999999))
+    
+    
+    dsSend("req", DSGroup, Hash)
+    timer("display", 0)
+}
+
+interval(100)
+
+if(dsClk(Hash)) {
+    DB = dsGetTable()
+}
+
+if(clk("display")) {
+    Revenue = DB["Profit",table]["Total", number] + DB["Tax",table]["Total", number]
+    Customers = DB["Customers",table]:count()
+    timer("display", 1000)
+}
+

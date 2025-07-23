@@ -1,0 +1,982 @@
+@name Knife Marketplace
+@persist [Screen ListScreen Animation Tax KnifeIndex]:number
+@persist [Knives DB Sorted CurrentKnife ToSell Listings]:table
+@persist [FileName LoadingText Category Sort]:string
+@persist [Keys]:array
+@persist [Seller Customer Profile]:entity
+
+if (~EGP || first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #include "library/tomato_animations"
+    
+    Primary = vec(217,217,217)
+    Screen = 1
+    ListScreen = 1
+    
+    Knives = table()
+    DB = table()
+    FileName = "tomato/knives/prices.txt"
+    
+    Tax = 15
+    
+    Prefix = "KnifeSkins"
+    PrefixColour = "#d4af37"
+    
+    Category = "any"
+    Sort = "any"
+    Sorted = table()
+    CurrentKnife = table()
+    Profile = noentity()
+    Seller = noentity()
+    Customer = noentity()
+    
+    function number checkInventory(Person:entity, Input:string) {
+        local Weapons = Person:weapons()
+        foreach (_:number, Entity:entity = Weapons) {
+            local Weapon = Entity:type()
+            if(Weapon:startsWith(Input)) {
+                return 1
+            }
+        }
+        return 0
+    }
+    
+    function string formatString(Input:string) {
+        local Parts = Input:explode("_")
+        Parts:removeString(1)
+        
+        if (Parts:count() < 2) {
+            Parts:pushString("Vanilla")
+        }
+        foreach (I:number, Part:string = Parts) {
+            if (Part:lower() == "case") {
+                Parts[I] = "Case Hardened"
+            }
+        }
+        local Formatted = ""
+        foreach (_:number, Part:string = Parts) {
+            Formatted = Formatted + Part:sub(1, 1):upper() + Part:sub(2) + " "
+        }
+        return Formatted
+    }
+    
+    function table:deleteknife(Name:string, Seller:string) {
+        for(I=1, This:count()) {
+            if (Name == This[I, table]["Name", string] && Seller == This[I, table]["Seller", string]) {
+                This:removeTable(I)
+                break
+            }
+        }
+    }
+    
+    function table entity:getKnives() {
+        local Weapons = This:weapons()
+        ToSell = table()
+        local Count = 1
+        foreach (_:number, Entity:entity = Weapons) {
+            local Weapon = Entity:type()
+            if(Weapon:startsWith("csgo")) {
+                ToSell[Count, table] = table()
+                ToSell[Count, table]["Name", string] = Weapon
+                Count++
+            }
+        }
+        return ToSell
+    }
+    
+    function table:getSellerKnives(SteamID:string) {
+        local Table = table()
+        foreach(_:number, Knife:table = This) {
+            if(Knife["Seller", string] == SteamID) {
+                Table:pushTable(Knife)
+            }
+        }
+        Listings = Table
+        return Table
+    }
+    
+    function table:listKnives(Entity:entity) {
+        local Count = This:count()
+        if (Count) {
+            local Keys = This:keys()
+            for (I=1, Count) {
+                Entity:msg(I + ": " + formatString(This[Keys[I, number], table]["Name", string]))
+            }
+            Entity:msg("Use '1,2,3,4...' or 'all' to select")
+            Entity:msg("Type !list (selection)")
+        }
+        else {
+            Entity:msg("No knives found!")
+        }
+    }
+    
+    function array table:pricesort() {
+        local Array = array()
+        local Keys = This:keys()
+        local Values = array()
+        for(I=1, This:count()) {
+            Values:pushNumber(This[I,  table]["Price", number])
+        }
+        for (I = 1, This:count()) {
+            for (J = 1, This:count() - I) {
+                if (Values[J,number] > Values[J+1,number]) {
+                    # Swap elements if they are out of order
+                    local TempKey = Keys[J, number]
+                    local Temp = Values[J, number]
+                    Values[J, number] = Values[J + 1, number]
+                    Values[J + 1, number] = Temp
+                    Keys[J, number] = Keys[J+1, number]
+                    Keys[J + 1, number] = TempKey
+                }
+            }
+        }
+        for (I=1, This:count()) {
+            Array:pushNumber(Keys[I,number])
+        }
+        return Array
+    }
+    
+    function table table:swap(Array:array) {
+        local Table = table()
+        for(I=1, This:count()) {
+            Table[I, table] = This[Array[I, number], table]
+        }
+        return Table
+    }
+    
+    function string:addKnife(Person:entity, Tax:number) {
+        local Category = This:explode("_")
+        local Index = Knives:count()+1
+        local TAUCheck = tauKnifePrice(This)
+        local Quicksell = TAUCheck ? TAUCheck : DB["Prices", table][This, number]
+        if (!Quicksell) {
+            Person:msg("Quicksell for " + formatString(This) + "not found.")
+            Person:msg("Type !qs (knife_number) (amount) to add and get a free 50k")
+        }
+        Knives[Index, table] = table()
+        Knives[Index, table]["Name", string] = This
+        Knives[Index, table]["Category", string] = Category[2, string]
+        Knives[Index, table]["Price", number] = Quicksell*(1+Tax/100)
+        Knives[Index, table]["Seller", string] = Person:steamID()
+    }
+    
+    function logo(XOffset:number) {
+        # KNIFE SKINS
+        local ID1 = Elements:get("KNIFESKINS")
+        EGP:egpTextLayout(ID1, "KNIFE SK NS", vec2(175.0 + XOffset, 25.0), vec2(160.0, 36.0))
+        EGP:egpColor(ID1, vec(255,255,255))
+        EGP:egpSize(ID1, 30)
+        EGP:egpAlign(ID1, 1, 0)
+
+        # Marketplace
+        local ID2 = Elements:get("Marketplace")
+        EGP:egpTextLayout(ID2, "M a r k e t p  a c e", vec2(207.0 + XOffset, 50.0), vec2(137.0, 30.0))
+        EGP:egpColor(ID2, vec(255,255,255))
+        EGP:egpSize(ID2, 16)
+        EGP:egpAlign(ID2, 1, 0)
+        
+        # Knife Logo
+        local ID3 = Elements:get("Knife")
+        EGP:egpBox(ID3, vec2(0, 0), vec2(35.0, 35.0))
+        EGP:egpColor(ID3, vec(255,255,255))
+        EGP:egpAngle(ID3, vec2(293 + XOffset, 70), vec2(0, 0), abs(-124.97))
+        EGP:egpMaterial(ID3, "materials/underground/knife.png")
+    }
+    
+    function drawLoading() {
+        for (I=1,12) {
+            createRoundedBox("Loading"+I, size(vec2(5,15)), color(Light), coords(vec2(ScreenXY/2,ScreenXY/2)))
+            local ID = Elements:get("Loading"+I)
+            EGP:egpAngle(ID,vec2(ScreenXY/2,ScreenXY/2+50),vec2(-2.5,15),(I-1)*30)
+            EGP:egpAlpha(ID,255-(I-1)*21.25)
+        }
+    }
+    
+    function bg() {
+        EGP:egpClear()
+        EGP:egpDrawTopLeft(1)
+    
+        local ID1 = Elements:get("BACKGROUND")
+        EGP:egpBox(ID1, vec2(0, 0), vec2(512.0, 512.0))
+        EGP:egpColor(ID1, vec(255,211,105))
+    
+        # Rectangle 121
+        local ID2 = Elements:get("Rectangle121")
+        EGP:egpRoundedBox(ID2, vec2(12.0, 13.0), vec2(487.0, 487.0))
+        EGP:egpColor(ID2, vec(34,40,49))
+        EGP:egpRadius(ID2, 30.0)
+    
+    
+        # Rectangle 122
+        local ID3 = Elements:get("Rectangle122")
+        EGP:egpRoundedBox(ID3, vec2(12.0, 13.0), vec2(487.0, 69.0))
+        EGP:egpColor(ID3, vec(57,62,70))
+        EGP:egpRadius(ID3, 27.0)
+    
+    
+        # Rectangle 123
+        local ID4 = Elements:get("Rectangle123")
+        EGP:egpBox(ID4, vec2(12.0, 66.0), vec2(487.0, 16.0))
+        EGP:egpColor(ID4, vec(57,62,70))
+    
+        # A Tomato Production
+        local ID5 = Elements:get("ATomatoProduct")
+        EGP:egpTextLayout(ID5, "A Tomato Production", vec2(171.0, 475.0), vec2(170.0, 25.0))
+        EGP:egpColor(ID5, vec(255,255,255))
+        EGP:egpSize(ID5, 15)
+        EGP:egpAlign(ID5, 1, 1)
+    }
+    
+    function void createlisting() {
+        logo(0)
+        createDropdown("QuickSell Profit", size(vec2(180.0, 25)), coords(vec2(256-90, 200)))
+        # Rectangle 209
+        local ID1 = Elements:get("KnivesBox")
+        EGP:egpBox(ID1, vec2(186.0, 338.0), vec2(140.0, 37.0))
+        EGP:egpColor(ID1, vec(217,217,217))
+    
+        # Load Knives
+        local ID2 = Elements:get("LoadKnives")
+        EGP:egpTextLayout(ID2, "Load Knives", vec2(186.0, 338.0), vec2(140.0, 37.0))
+        EGP:egpColor(ID2, vec(57,62,70))
+        EGP:egpSize(ID2, 17)
+        EGP:egpAlign(ID2, 1, 1)
+    
+        # Pressing this button will scan your inventory for knives.
+        local ID3 = Elements:get("CreateListingText")
+        EGP:egpTextLayout(ID3, "Pressing this button will scan your inventory for knives.", vec2(89.0, 125.0), vec2(334.0, 236.0))
+        EGP:egpColor(ID3, vec(255,255,255))
+        EGP:egpSize(ID3, 17)
+        EGP:egpAlign(ID3, 1, 0)
+    
+        # Consent Agreement
+        local ID4 = Elements:get("CreateListingTitle")
+        EGP:egpTextLayout(ID4, "Consent Agreement", vec2(108.0, 89.0), vec2(295.0, 36.0))
+        EGP:egpColor(ID4, vec(255,255,255))
+        EGP:egpSize(ID4, 27)
+        EGP:egpAlign(ID4, 1, 1)
+        
+        # BackBox
+        local ID5 = Elements:get("BackOffer")
+        EGP:egpBox(ID5, vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID5, vec(217,217,217))
+    
+        # Back
+        local ID6 = Elements:get("Back")
+        EGP:egpTextLayout(ID6, "Back", vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID6, vec(57,62,70))
+        EGP:egpSize(ID6, 17)
+        EGP:egpAlign(ID6, 1, 1)
+    }
+    
+    function void market() {
+        logo(150)
+        createDropdown("Sort By", size(vec2(133.0, 25)), coords(vec2(213.0, 94.0)))
+        createDropdown("Category", size(vec2(117.0, 25)), coords(vec2(366.0, 94.0)))
+        ToSell = table()
+        
+        # Rectangle 209
+        local ID = Elements:get("ListBox")
+        EGP:egpBox(ID, vec2(49.0, 29.0), vec2(150.0, 34.0))
+        EGP:egpColor(ID, vec(217,217,217))
+    
+        # Create Listing
+        local ID2 = Elements:get("CreateListing")
+        EGP:egpTextLayout(ID2, "Create Listing", vec2(49.0, 29.0), vec2(150.0, 34.0))
+        EGP:egpColor(ID2, vec(0,0,0))
+        EGP:egpSize(ID2, 19)
+        EGP:egpAlign(ID2, 1, 1)
+        
+        # Rectangle 209
+        local ID3 = Elements:get("Profile")
+        EGP:egpBox(ID3, vec2(210.0, 26.0), vec2(40, 40.0))
+        EGP:egpColor(ID3, vec(217,217,217))
+        EGP:egpMaterial(ID3, "materials/underground/usericon.png")
+
+        # Featured Skins
+        local ID4 = Elements:get("0" + "FeaturedSkins")
+        EGP:egpTextLayout(ID4, "Featured Skins", vec2(29.0, 95.0), vec2(167.0, 24.0))
+        EGP:egpColor(ID4, vec(255,255,255))
+        EGP:egpSize(ID4, 17)
+        EGP:egpAlign(ID4, 0, 1)
+
+        # BackBox
+        local ID5 = Elements:get("BackBox")
+        EGP:egpBox(ID5, vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID5, Primary)
+        
+        # Back
+        local ID6 = Elements:get("Back1")
+        EGP:egpTextLayout(ID6, "Back", vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID6, vec(57,62,70))
+        EGP:egpSize(ID6, 17)
+        EGP:egpAlign(ID6, 1, 1)
+
+        # NextBox
+        local ID7 = Elements:get("NextBox")
+        EGP:egpBox(ID7, vec2(400.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID7, Primary)
+
+        # Next
+        local ID8 = Elements:get("Next1")
+        EGP:egpTextLayout(ID8, "Next", vec2(400.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID8, vec(57,62,70))
+        EGP:egpSize(ID8, 17)
+        EGP:egpAlign(ID8, 1, 1)
+
+        # Name
+        local ID9 = Elements:get("Name")
+        EGP:egpTextLayout(ID9, "Name", vec2(40.0, 129.0), vec2(68.0, 21.0))
+        EGP:egpColor(ID9, vec(255,255,255))
+        EGP:egpSize(ID9, 17)
+        EGP:egpAlign(ID9, 0, 1)
+        
+        # Seller
+        local ID10 = Elements:get("Seller")
+        EGP:egpTextLayout(ID10, "Seller", vec2(218.0, 129.0), vec2(68.0, 21.0))
+        EGP:egpColor(ID10, vec(255,255,255))
+        EGP:egpSize(ID10, 17)
+        EGP:egpAlign(ID10, 0, 1)
+
+        # Price
+        local ID11 = Elements:get("Price")
+        EGP:egpTextLayout(ID11, "Price", vec2(376.0, 129.0), vec2(68.0, 21.0))
+        EGP:egpColor(ID11, vec(255,255,255))
+        EGP:egpSize(ID11, 17)
+        EGP:egpAlign(ID11, 0, 1)
+    } 
+    
+    function buy(Knife:string, Price:number, Seller:string) {
+        bg()
+        logo(0)
+        
+        # KnifeMaterial
+        local ID = Elements:get("KnifeMaterial")
+        EGP:egpBox(ID, vec2(164.0, 105.0), vec2(183.0, 183.0))
+        EGP:egpColor(ID, vec(217,217,217))
+        local BID = Elements:get("KnifeMaterial_BORDER")
+        EGP:egpBoxOutline(BID, vec2(164.0, 105.0), vec2(183.0, 183.0))
+        EGP:egpSize(BID, 3)
+        EGP:egpColor(BID, vec(255,211,105))
+        EGP:egpMaterial(ID, "vgui/entities/" + Knife + ".vmt")
+    
+        # Rectangle 204
+        local ID2 = Elements:get("Rectangle204")
+        EGP:egpBox(ID2, vec2(164.0, 335.0), vec2(183.0, 33.0))
+        EGP:egpColor(ID2, vec(217,217,217))
+    
+        # Rectangle 205
+        local ID3 = Elements:get("Rectangle205")
+        EGP:egpBox(ID3, vec2(164.0, 377.0), vec2(183.0, 33.0))
+        EGP:egpColor(ID3, vec(217,217,217))
+    
+        # KnifeName
+        local ID4 = Elements:get("KnifeName")
+        EGP:egpTextLayout(ID4, formatString(Knife), vec2(164.0, 288.0), vec2(183.0, 47.0))
+        EGP:egpColor(ID4, vec(255,255,255))
+        EGP:egpSize(ID4, 15)
+        EGP:egpAlign(ID4, 1, 1)
+    
+        # KnifePrice
+        local ID5 = Elements:get("KnifePrice")
+        EGP:egpTextLayout(ID5, "$" + formatNumberWithSpaces(Price), vec2(164.0, 335.0), vec2(183.0, 33.0))
+        EGP:egpColor(ID5, vec(57,62,70))
+        EGP:egpSize(ID5, 15)
+        EGP:egpAlign(ID5, 1, 1)
+    
+        # Seller
+        local ID6 = Elements:get("KnifeSeller")
+        EGP:egpTextLayout(ID6, Seller, vec2(164.0, 377.0), vec2(183.0, 33.0))
+        EGP:egpColor(ID6, vec(57,62,70))
+        EGP:egpSize(ID6, 15)
+        EGP:egpAlign(ID6, 1, 1)
+        
+        # There is a 2.5% tax applied to each purchase.
+        local ID7 = Elements:get("TaxStatement")
+        EGP:egpTextLayout(ID7, "There is a 2.5% tax applied to each purchase.", vec2(164.0, 416.0), vec2(183.0, 56.0))
+        EGP:egpColor(ID7, vec(255,255,255))
+        EGP:egpSize(ID7, 14)
+        EGP:egpAlign(ID7, 1, 0)
+    
+        # Rectangle 202
+        local ID11 = Elements:get("BackOffer")
+        EGP:egpBox(ID11, vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID11, vec(217,217,217))
+    
+        # Back
+        local ID8 = Elements:get("0" + "Back")
+        EGP:egpTextLayout(ID8, "Back", vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID8, vec(57,62,70))
+        EGP:egpSize(ID8, 17)
+        EGP:egpAlign(ID8, 1, 1)
+    
+        # Rectangle 203
+        local ID9 = Elements:get("OfferBox")
+        EGP:egpBox(ID9, vec2(400.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID9, vec(217,217,217))
+    
+        # Send Offer
+        local ID10 = Elements:get("SendOffer")
+        EGP:egpTextLayout(ID10, "Send Offer", vec2(400.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID10, vec(57,62,70))
+        EGP:egpSize(ID10, 17)
+        EGP:egpAlign(ID10, 1, 1)          
+    }
+    
+    function list() {
+        local Table = Sorted:clone()
+        Keys = Table:keys()
+        for (I=1, 5) {
+            local Key = Keys[I+(Screen-1)*5, number]
+            if (Key) {
+                    local Name = Table[Key, table]["Name", string]
+                    local Price = Table[Key, table]["Price", number]
+                    # Knife Box
+                    local ID = Elements:get("KnifeBox"+I)
+                    EGP:egpBox(ID, vec2(29.0, 150.0 +(I-1)*56), vec2(454.0, 50.0))
+                    EGP:egpColor(ID, vec(217,217,217))
+                    
+                    # Knife Name
+                    local ID2 = Elements:get("KnifeName"+I)
+                    EGP:egpTextLayout(ID2, "KnifeName", vec2(41.0, 150.0+(I-1)*56), vec2(173.0, 50.0))
+                    EGP:egpColor(ID2, vec(0,0,0))
+                    EGP:egpSize(ID2, 15)
+                    EGP:egpAlign(ID2, 0, 1)
+                    EGP:egpSetText(ID2, formatString(Name))
+                    
+                    # Seller Name
+                    local ID3 = Elements:get("Player"+I)
+                    EGP:egpTextLayout(ID3, "Player", vec2(218.0, 150.0+(I-1)*56), vec2(127.0, 50.0))
+                    EGP:egpColor(ID3, vec(0,0,0))
+                    EGP:egpSize(ID3, 15)
+                    EGP:egpAlign(ID3, 0, 1)
+                    EGP:egpSetText(ID3, findPlayerBySteamID(Table[Key, table]["Seller", string]):name())
+                    
+                    # Sell Price
+                    local ID4 = Elements:get("SellPrice"+I)
+                    EGP:egpTextLayout(ID4, "SellPrice", vec2(376.0, 150.0+(I-1)*56), vec2(107.0, 50.0))
+                    EGP:egpColor(ID4, vec(0,0,0))
+                    EGP:egpSize(ID4, 15)
+                    EGP:egpAlign(ID4, 0, 1) 
+                    EGP:egpSetText(ID4, "$" + formatNumber(Price))
+            }
+            else {
+                EGP:egpRemove(Elements:get("KnifeBox"+I))
+                EGP:egpRemove(Elements:get("KnifeName"+I))
+                EGP:egpRemove(Elements:get("Player"+I))
+                EGP:egpRemove(Elements:get("SellPrice"+I))
+            }
+        }
+    }
+    
+    function sellerlist(Person:entity) {
+        local Table = Knives:getSellerKnives(Person:steamID())
+        Keys = Table:keys()
+        EGP:egpSetText(Elements:get("CreateListingText"), "You have " + Table:count() + " listings")
+        for (I=1, 5) {
+            local Key = Keys[I+(ListScreen-1)*5, number]
+            if (Key) {
+                    local Name = Table[Key, table]["Name", string]
+                    local Price = Table[Key, table]["Price", number]
+                    # Knife Box
+                    local ID = Elements:get("KnifeListBox"+I)
+                    EGP:egpBox(ID, vec2(54.0, 150.0 +(I-1)*43), vec2(400.0, 40.0))
+                    EGP:egpColor(ID, vec(217,217,217))
+                    
+                    # Knife Name
+                    local ID2 = Elements:get("KnifeName"+I)
+                    EGP:egpTextLayout(ID2, "KnifeName", vec2(66.0, 150.0+(I-1)*43), vec2(173.0, 40.0))
+                    EGP:egpColor(ID2, vec(0,0,0))
+                    EGP:egpSize(ID2, 15)
+                    EGP:egpAlign(ID2, 0, 1)
+                    EGP:egpSetText(ID2, formatString(Name))
+                    
+                    # Sell Price
+                    local ID3 = Elements:get("SellPrice"+I)
+                    EGP:egpTextLayout(ID3, "SellPrice", vec2(250.0, 150.0+(I-1)*43), vec2(107.0, 40.0))
+                    EGP:egpColor(ID3, vec(0,0,0))
+                    EGP:egpSize(ID3, 15)
+                    EGP:egpAlign(ID3, 0, 1) 
+                    EGP:egpSetText(ID3, "$" + formatNumber(Price))
+                    
+                    local ID4 = Elements:get("KnifeBoxEdit"+I)
+                    EGP:egpBox(ID4, vec2(354.0, 155.0 +(I-1)*43), vec2(30.0, 30.0))
+                    EGP:egpColor(ID4, Green)
+                    EGP:egpMaterial(ID4, "materials/zerochain/zerolib/ui/money.png")
+                    
+                    local ID5 = Elements:get("KnifeBoxDelete"+I)
+                    EGP:egpBox(ID5, vec2(404.0, 155.0 +(I-1)*43), vec2(30.0, 30.0))
+                    EGP:egpColor(ID5, Red)
+                    EGP:egpMaterial(ID5, "materials/zerochain/zerolib/ui/delete.png")
+            }
+            else {
+                EGP:egpRemove(Elements:get("KnifeListBox"+I))
+                EGP:egpRemove(Elements:get("KnifeName"+I))
+                EGP:egpRemove(Elements:get("Player"+I))
+                EGP:egpRemove(Elements:get("SellPrice"+I))
+                EGP:egpRemove(Elements:get("KnifeBoxDelete"+I))
+                EGP:egpRemove(Elements:get("KnifeBoxEdit"+I))
+            }
+        }
+        # BackBox
+        local ID6 = Elements:get("ListBackBox")
+        EGP:egpBox(ID6, vec2(129.0, 370.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID6, Primary)
+        
+        # Back
+        local ID7 = Elements:get("Back1")
+        EGP:egpTextLayout(ID7, "Prev", vec2(129.0, 370.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID7, vec(57,62,70))
+        EGP:egpSize(ID7, 17)
+        EGP:egpAlign(ID7, 1, 1)
+
+        # NextBox
+        local ID8 = Elements:get("ListNextBox")
+        EGP:egpBox(ID8, vec2(300.0, 370.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID8, Primary)
+
+        # Next
+        local ID9 = Elements:get("Next1")
+        EGP:egpTextLayout(ID9, "Next", vec2(300.0, 370.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID9, vec(57,62,70))
+        EGP:egpSize(ID9, 17)
+        EGP:egpAlign(ID9, 1, 1)
+    }
+    
+    function offer() {
+        bg()
+        logo(0)
+        drawLoading()
+        Animation = 1
+        LoadingText = "Notifying Seller"
+        
+        # Notifying Seller
+        local ID = Elements:get("LoadingText")
+        EGP:egpTextLayout(ID, LoadingText, vec2(164.0, 233.0), vec2(183.0, 47.0))
+        EGP:egpColor(ID, vec(255,255,255))
+        EGP:egpSize(ID, 15)
+        EGP:egpAlign(ID, 1, 1)
+        
+        local Price = CurrentKnife["Price", number]
+        local Name = CurrentKnife["Name", string]
+        Seller:msg("You recieved an offer: " + formatString(Name) + " - " + formatNumber(Price))
+        Seller:msg("Type !yes to accept, or !no to decline")
+    }
+    
+    function purchased() {
+        bg()
+        logo(0)
+        Knives:deleteknife(CurrentKnife["Name", string], Seller:steamID())
+        Sorted = Knives:clone()
+        Animation = 0
+        # Purchase Complete
+        local ID = Elements:get("0" + "PurchaseComple")
+        EGP:egpTextLayout(ID, "Purchase Complete", vec2(164.0, 296.0), vec2(183.0, 47.0))
+        EGP:egpColor(ID, vec(255,255,255))
+        EGP:egpSize(ID, 23)
+        EGP:egpAlign(ID, 1, 1)
+    
+        # Enjoy your knife!
+        local ID2 = Elements:get("0" + "Enjoyyourknife")
+        EGP:egpTextLayout(ID2, "Enjoy your knife!", vec2(164.0, 328.0), vec2(183.0, 30.0))
+        EGP:egpColor(ID2, vec(255,255,255))
+        EGP:egpSize(ID2, 18)
+        EGP:egpAlign(ID2, 1, 1)
+    
+        # BackBox
+        local ID3 = Elements:get("BackOffer")
+        EGP:egpBox(ID3, vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID3, vec(217,217,217))
+    
+        # Back
+        local ID4 = Elements:get("Back")
+        EGP:egpTextLayout(ID4, "Back", vec2(29.0, 451.0), vec2(83.0, 32.0))
+        EGP:egpColor(ID4, vec(57,62,70))
+        EGP:egpSize(ID4, 17)
+        EGP:egpAlign(ID4, 1, 1)
+    
+        # Trade id
+        local ID5 = Elements:get("TradeID")
+        EGP:egpTextLayout(ID5, "Trade id: " + randint(10000000, 99999999), vec2(170.0, 251.0), vec2(177.0, 34.0))
+        EGP:egpColor(ID5, vec(255,255,255))
+        EGP:egpSize(ID5, 18)
+        EGP:egpAlign(ID5, 1, 1)
+    
+        # Ellipse 13
+        local ID6 = Elements:get("Ellipse13")
+        EGP:egpCircle(ID6, vec2(256.0, 185.0), vec2(55.0, 55.0))
+        EGP:egpColor(ID6, vec(33,129,0))
+    
+    
+        # Ellipse 14
+        local ID7 = Elements:get("Ellipse14")
+        EGP:egpCircle(ID7, vec2(256.0, 185.0), vec2(49.0, 49.0))
+        EGP:egpColor(ID7, vec(34,40,49))
+    
+        # Rectangle 207
+        local ID8 = Elements:get("Rectangle207")
+        EGP:egpBox(ID8, vec2(228.96, 199.43), vec2(8.89, 23.67))
+        EGP:egpColor(ID8, vec(33,129,0))
+        # Rectangle 207
+        local ID9 = Elements:get("Rectangle207")
+        EGP:egpBox(ID9, vec2(228.96, 199.43), vec2(8.89, 23.67))
+        EGP:egpColor(ID9, vec(33,129,0))
+        EGP:egpAngle(ID9, vec2(228.96, 199.43), vec2(0, 0), abs(-52.95))
+    
+        # Rectangle 208
+        local ID10 = Elements:get("Rectangle208")
+        EGP:egpBox(ID10, vec2(274.15, 164.16), vec2(8.89, 54.8))
+        EGP:egpColor(ID10, vec(33,129,0))
+        # Rectangle 208
+        local ID11 = Elements:get("Rectangle208")
+        EGP:egpBox(ID11, vec2(274.15, 164.16), vec2(8.89, 54.8))
+        EGP:egpColor(ID11, vec(33,129,0))
+        EGP:egpAngle(ID11, vec2(274.15, 164.16), vec2(0, 0), -36.42)
+    }
+    
+    Animation = 0
+    bg()
+    market()
+    #timer("loadfile", 0)
+    timer("proxim", 0)
+}
+
+interval(100)
+
+if(clk("proxim")) {
+    if (Profile:isValid()) {
+        if (!proximityCheck(Profile, 100)) {
+            Sorted = Knives:clone()
+            Screen = 1
+            bg()
+            market()
+            list()
+            Profile = noentity()
+        }
+    }
+    timer("proxim", 1000)
+}
+
+if(clk("loadfile")) {
+    fileLoad(FileName)
+    timer("loadfile", 2000)
+}
+if(clk("savefile")) {
+    fileWrite(FileName, jsonEncode(DB, 1))
+    timer("savefile", 10000)
+}
+if(clk("inventory")) {
+    local Name = CurrentKnife["Name", string]
+    if (checkInventory(Customer, Name)) {
+        purchased()
+    }
+    else {
+        LoadingText = "Completing purchase"
+        timer("inventory", 1000)
+    }
+}
+if(clk("accepted")) {
+    LoadingText = "Sending trade offer"
+}
+if(clk("reset")) {
+    bg()
+    market()
+    list()
+}
+
+if (Animation) {
+    loadingSpinner("Loading")
+    local ID = Elements:get("LoadingText")
+
+    # Update the animation state
+    # Set the duration for each animation state
+    local AnimationDuration = 1 # in seconds
+
+    # Set the text based on the animation state
+    if (curtime() % (AnimationDuration * 4) < AnimationDuration) {
+        EGP:egpSetText(ID, LoadingText)
+    } elseif (curtime() % (AnimationDuration * 4) < AnimationDuration * 2) {
+        EGP:egpSetText(ID, LoadingText + ".")
+    } elseif (curtime() % (AnimationDuration * 4) < AnimationDuration * 3) {
+        EGP:egpSetText(ID, LoadingText + "..")
+    } else {
+        EGP:egpSetText(ID, LoadingText + "...")
+    }
+}
+
+if (~User) {
+    if (User:isValid()) {
+        Profile = User
+    }
+    local Categories = array("Any", "Karambit", "M9", "Bowie", "Butterfly", "Talon", "Ursus", "Stiletto", "Bayonet", "Daggers", "Flip", "Fal", "Pajero")
+    local Sorts = array("Any", "Price Low", "Price High")
+    local Taxes = array("30%", "25%", "20%", "15%", "10%", "5%")
+    
+    local Dropdown1 = useDropDown("Category", Categories)
+    local Dropdown2 = useDropDown("Sort By", Sorts)
+    local Dropdown3 = useDropDown("QuickSell Profit", Taxes)
+    
+    function getCategory(Table:table, Option:string) {
+        local NewSorted = table()
+        foreach(_:number, KnifeID:number=Table:keys()) {
+            local Knife = Table[KnifeID, table]
+            if (Knife["Category", string] == Option) {
+                NewSorted[KnifeID, table] = Knife
+            }
+        }
+        Sorted = NewSorted
+    }
+    
+    function getPrices(Table:table, Option:string) {
+        local SortedKeys = Table:pricesort()
+        if (Option == "price high") {
+            SortedKeys = SortedKeys:reverse()
+        }
+        Sorted = Table:swap(SortedKeys)
+    }
+    
+    if (Dropdown1) {
+        Category = Categories[Dropdown1, string]:lower()
+        Sorted = Knives
+        if (Category != "any") {
+            getCategory(Sorted, Category)
+        }
+        if (Sort != "any") {
+            getPrices(Sorted, Sort)
+        }
+        Screen = 1
+        list()
+    }
+    elseif(Dropdown2) {
+        Sort = Sorts[Dropdown2, string]:lower()
+        Sorted = Knives
+        if (Sort != "any") {
+            getPrices(Sorted, Sort)
+        }
+        if (Category != "any") {
+            getCategory(Sorted, Category)
+        }
+        Screen = 1
+        list()
+    }
+    elseif(Dropdown3) {
+        local Text = Taxes[Dropdown3, string]
+        Tax = Text:sub(1,Text:length()-1):toNumber()
+    }
+    
+    if (!Dropdown1 && !Dropdown2 && !Dropdown3) {
+        if(cursorPos(Elements:get("ListBox"))) {
+            bg()
+            createlisting()
+        }
+        elseif(cursorPos(Elements:get("Profile"))) {
+            bg()
+            logo(0)
+            # Pressing this button will scan your inventory for knives.
+            local ID = Elements:get("CreateListingText")
+            EGP:egpTextLayout(ID, "", vec2(89.0, 125.0), vec2(334.0, 236.0))
+            EGP:egpColor(ID, vec(255,255,255))
+            EGP:egpSize(ID, 17)
+            EGP:egpAlign(ID, 1, 0)
+        
+            # Consent Agreement
+            local ID2 = Elements:get("CreateListingTitle")
+            EGP:egpTextLayout(ID, "Your listings", vec2(108.0, 89.0), vec2(295.0, 36.0))
+            EGP:egpColor(ID2, vec(255,255,255))
+            EGP:egpSize(ID2, 27)
+            EGP:egpAlign(ID2, 1, 1)
+            
+            # BackBox
+            local ID3 = Elements:get("BackOffer")
+            EGP:egpBox(ID3, vec2(29.0, 451.0), vec2(83.0, 32.0))
+            EGP:egpColor(ID3, vec(217,217,217))
+        
+            # Back
+            local ID4 = Elements:get("Back")
+            EGP:egpTextLayout(ID4, "Back", vec2(29.0, 451.0), vec2(83.0, 32.0))
+            EGP:egpColor(ID4, vec(57,62,70))
+            EGP:egpSize(ID4, 17)
+            EGP:egpAlign(ID4, 1, 1)
+            EGP:egpSetText(Elements:get("CreateListingTitle"), "Your listings")
+            sellerlist(User)
+        }
+        elseif(cursorPos(Elements:get("BackBox"))) {
+            if (Screen > 1) {
+                Screen--
+            }
+            list()
+        }
+        elseif(cursorPos(Elements:get("NextBox"))) {
+            if (Screen*5 < Sorted:count()) {
+                Screen++
+            }
+            list()
+        }
+        elseif(cursorPos(Elements:get("BackOffer"))) {
+            Sorted = Knives:clone()
+            Screen = 1
+            bg()
+            market()
+            list()
+        }
+        elseif(cursorPos(Elements:get("OfferBox"))) {
+            local Price = CurrentKnife["Price", number]
+            moneyRequest(User,Price+Price*0.025, "Buy " + CurrentKnife["Name", string] + "?")
+        }
+        elseif(cursorPos(Elements:get("KnivesBox"))) {
+            local PlayerKnives = User:getKnives()
+            PlayerKnives:listKnives(User)
+            EGP:egpRemove(Elements:get("KnivesBox"))
+            EGP:egpRemove(Elements:get("LoadKnives"))
+            EGP:egpRemove(Elements:get("QuickSell Profit"))
+            EGP:egpRemove(Elements:get("QuickSell Profit_text"))
+            EGP:egpRemove(Elements:get("QuickSell Profit_icon"))
+            EGP:egpSetText(Elements:get("CreateListingTitle"), "Your listings")
+            EGP:egpSetText(Elements:get("CreateListingText"), "Please select knives to sell")
+        }
+        elseif(cursorPos(Elements:get("ListBackBox"))) {
+            if (ListScreen > 1) {
+                ListScreen--
+            }
+            sellerlist(User)
+        }
+        elseif(cursorPos(Elements:get("ListNextBox"))) {
+            if (ListScreen*5 < Listings:count()) {
+                ListScreen++
+            }
+            sellerlist(User)
+        }
+        else {
+            for (I=1,5) {
+                if(cursorPos(Elements:get("KnifeBox"+I))) {
+                    CurrentKnife = Sorted[Keys[I+(Screen-1)*5, number], table]
+                    Customer = User
+                    Seller = findPlayerBySteamID(CurrentKnife["Seller", string])
+                    local Price = CurrentKnife["Price", number]
+                    local Knifename = CurrentKnife["Name", string]
+                    buy(Knifename, Price, Seller:name())
+                }
+                elseif(cursorPos(Elements:get("KnifeBoxEdit"+I))) {
+                    Seller = User
+                    CurrentKnife = Listings[Keys[I+(ListScreen-1)*5, number], table]
+                    KnifeIndex = Keys[I+(ListScreen-1)*5, number]
+                    User:msg("Knife selected. Type in !price (amount) to change.")
+                }
+                elseif(cursorPos(Elements:get("KnifeBoxDelete"+I))) {
+                    CurrentKnife = Listings[Keys[I+(ListScreen-1)*5, number], table]
+                    Knives:deleteknife(CurrentKnife["Name", string], User:steamID())
+                    Listings:deleteknife(CurrentKnife["Name", string], User:steamID())
+                    sellerlist(User)
+                }
+                
+            }
+        }
+    }
+}
+
+if (moneyClk()) {
+    offer()
+}
+
+
+event fileLoaded(Name:string, Content:string) {
+    if (Name == FileName) {
+        stoptimer("loadfile")
+        owner():msg("Database loaded.")
+        DB = jsonDecode(Content) 
+        timer("savefile", 10000)
+    }
+}
+
+#Chat commands
+event chat(Person:entity, Said:string, _:number) {
+    if(Said[1] == "!")  
+    {  
+        Arguments = Said:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        if(Command == "list")  
+        {                 
+            local Selection = Arguments[1, string]
+            if (Selection) {
+                if (Selection:lower() == "all") {
+                    for (I=1, ToSell:count()) {
+                        ToSell[I, table]["Name", string]:addKnife(Person, Tax)
+                    }
+                } 
+                else {
+                    local Indexes = Arguments:concat():explode(",")
+                    for(I = 1,Indexes:count()){
+                         ToSell[Indexes[I, string]:toNumber(), table]["Name", string]:addKnife(Person, Tax)
+                    }  
+                }
+                Sorted = Knives:clone()
+                ListScreen = 1
+                sellerlist(Person)
+            }
+        }
+        elseif(Command == "listall") {
+            local Weapons = Person:weapons()
+            local A = Arguments[1, string]:toNumber() ? Arguments[1, string]:toNumber() : Tax
+            foreach (_:number, Entity:entity = Weapons) {
+                local Weapon = Entity:type()
+                if(Weapon:startsWith("csgo")) {
+                    Weapon:addKnife(Person, A)
+                }
+            }
+            Sorted = Knives:clone()
+            bg()
+            market()
+            list()
+        }
+        elseif(Person == Seller && Command == "yes") {
+            LoadingText = "Seller accepted the deal"
+            Seller:msg("Send a trade to " + Customer:name() + " for $0")
+            Seller:msg("The E2 will pay you once they accept the !trade.")
+            timer("accepted", 4000)
+        }
+        elseif(Person == Seller && Command == "no") {
+            LoadingText = "Seller rejected the deal"
+            Customer:msg("Seller rejected the deal")
+            moneyGive(Customer, CurrentKnife["Price", number])
+            timer("reset", 1000)
+        }
+        elseif(Person == Customer && Command == "trade") {
+            LoadingText = "Checking inventories"
+            timer("inventory", 0)
+        }
+        elseif(Person == Seller && Command == "price") {
+            local Price = Arguments[1, string]:toNumber()
+            if(Price) {
+                Knives[KnifeIndex, table]["Price", number] = Price
+                Listings[KnifeIndex, table]["Price", number] = Price
+                sellerlist(Person)
+                Person:msg("Price of " + formatString(CurrentKnife["Name", string]) + "changed to $" + formatNumber(CurrentKnife["Price", number]))
+            }
+            else {
+                Person:msg("Please enter a valid price")
+            }
+        }
+        elseif(Command == "qs") {
+            local Selection = Arguments[1, string]:toNumber()
+            local Price = Arguments[2, string]:toNumber()
+            if (ToSell:count()) {
+                if (Selection > 0 && Price > 0) {
+                    local Name = ToSell[Selection, table]["Name", string]
+                    print(Name)
+                    if (!DB["Prices", table]:exists(Name)) {
+                        DB["Prices", table][Name, number] = Price
+                        owner():msg("QuickSell price of " + Name + " set to $" + Price)
+                        Person:msg("Thank you for contributing to the database")
+                        moneyGive(Person, 50000)
+                    }
+                    else {
+                        Person:msg("The quicksell price for that knife already exists")
+                    }
+                }
+                else {
+                    Person:msg("Syntax: !qs (knife_number) (amount)")
+                }
+            }
+        }
+    }
+}

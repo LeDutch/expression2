@@ -1,0 +1,1456 @@
+@name Kit Blackjack
+#Version 1.0.4
+@inputs EGP:wirelink User:entity
+@persist Player:entity PlayerData:table PlayerBet:number CardDeck:array Cards:array Swapped Swaps Dealer:table CardSymbols:array CardNames:array GameStatus:string
+@persist PlayerHandValue DealerHandValue:number LastAction:number QuitTimer:number
+@persist LastInput:number Locked:number StateUpdated:number
+@persist BetMin:number BetMax:number BetDefault:number AFKTimeout:number QuitTimeout:number LastSound:number MaxDistance:number
+@persist CurrentBet:number SoundIdx:number
+@persist WinSound:string LoseSound:string DrawSound:string ShuffleSound:string DealSound:string
+
+if (first()) {
+    ##### Blackjack
+    # Go to https://pastebin.com/raw/4dYTM1v8
+    # for the latest version
+    #
+    ### Changelog:
+    #
+    ## v1.0.3
+    # * Added custom sounds
+    # * Fixed small race condition where the user could pay after the quit timer expired.
+    #
+    ## v1.0.2
+    # * Removed test code
+    #
+    ## v1.0.1
+    # * Added tie condition.
+    #
+    ## v1.0.0
+    # * Initial release
+
+    # Options
+    BetMin = 0     # Minimum bet amount
+    BetDefault = 0 # Default bet amount
+    BetMax = 30000000   # Maximum bet amount
+    AFKTimeout = 30   # Seconds until the anti-afk popup activates.
+    QuitTimeout = 10  # Seconds until the quit button gets pressed automatically.
+    MaxDistance = 160 # Maximum distance from E2 before getting kicked out
+    
+    WinSound     = "doubleornothing/cashout.mp3"
+    LoseSound    = "doubleornothing/nothing.mp3"
+    DrawSound    = "doubleornothing/nothing.mp3"
+    DealSound    = "gmodtower/inventory/move_paper.wav"
+    ShuffleSound = "gmodtower/inventory/move_paper.wav"
+    
+    ###
+    ### Please do not edit anything below,
+    ###
+    ### unless you know what you're doing.
+    ###
+    
+    Player = noentity()
+    PlayerData = table()
+    Dealer = table()
+    Cards = array()
+    CardDeck = array()
+    LastInput = 0
+    CardSymbols = array(
+        toUnicodeChar(9829), # Hearts
+        toUnicodeChar(9830), # Diamonds
+        toUnicodeChar(9824), # Spades
+        toUnicodeChar(9827)  # Clubs
+    )
+    CardNames = array(
+        "A",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "J",
+        "Q",
+        "K"
+    )
+    GameStatus = ""
+    
+    function string formatMoney(Money:number) {
+        E = Money:toString():reverse():replaceRE("...", "%1,"):reverse()
+        if (E[1] == ",") { E = E:sub(2) }
+        return "$"+E
+    }
+    
+    function number playSound(Sound:string) {
+        local SndID = SoundIdx + 1
+        EGP:entity():soundPlay(SndID, soundDuration(Sound), Sound)
+        SoundIdx = (SoundIdx + 1) % 8
+        LastSound = curtime()
+        return SndID
+    }
+    
+    function array wirelink:drawCard(Idx:number, Card:number, Position:vector2, Size:vector2) {
+        local CardType = floor(Card / 13)
+        local CardNumber = Card % 13
+        local CardColor = floor(CardType / 2) == 0 ? vec(255, 0, 0) : vec()
+        local VMin = min(Size:x(), Size:y())
+        
+        local CardRoot = This:egpRoundedBox(Idx, Position, Size)
+        This:egpRadius(Idx, VMin * 0.05)
+        CardRoot:setColor(vec4(255))
+        Idx++
+        
+        local CardShadow1 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.05, 1.08))
+        CardShadow1:parentTo(CardRoot)
+        CardShadow1:setColor(vec4(0, 0, 0, 24))
+        CardShadow1:setOrder(Idx - 1)
+        Idx++
+        local CardShadow2 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.1, 1.1))
+        CardShadow2:parentTo(CardRoot)
+        CardShadow2:setColor(vec4(0, 0, 0, 18))
+        CardShadow2:setOrder(Idx - 1)
+        Idx++
+        local CardShadow3 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.13, 1.15))
+        CardShadow3:parentTo(CardRoot)
+        CardShadow3:setColor(vec4(0, 0, 0, 12))
+        CardShadow3:setOrder(Idx - 1)
+        Idx++
+        local CardShadow4 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.15, 1.2))
+        CardShadow4:parentTo(CardRoot)
+        CardShadow4:setColor(vec4(0, 0, 0, 8))
+        CardShadow4:setOrder(Idx - 1)
+        Idx++
+        
+        CardRoot:setOrder(Idx - 1)
+        local Number = This:egpText(Idx, CardNames[CardNumber + 1, string], vec2(0.15, 0.2) * VMin - (Size / 2))
+        Number:parentTo(CardRoot)
+        Number:setColor(CardColor)
+        Number:setAlign(1, 1)
+        Number:setFont("Roboto", VMin * 0.3)
+        Number:setOrder(Idx)
+        Idx++
+        
+        local SymbolSmall = This:egpText(Idx, CardSymbols[CardType + 1, string], vec2(0.15, 0.4) * VMin - (Size / 2))
+        SymbolSmall:parentTo(CardRoot)
+        SymbolSmall:setColor(CardColor)
+        SymbolSmall:setAlign(1, 1)
+        SymbolSmall:setFont("Roboto", VMin * 0.3)
+        SymbolSmall:setOrder(Idx)
+        Idx++
+        
+        local SymbolLarge = This:egpText(Idx, CardSymbols[CardType + 1, string], vec2(0.5, 0.65) * Size - (Size / 2))
+        SymbolLarge:parentTo(CardRoot)
+        SymbolLarge:setColor(CardColor)
+        SymbolLarge:setAlign(1, 1)
+        SymbolLarge:setFont("Roboto", VMin * 0.5)
+        SymbolLarge:setOrder(Idx)
+        Idx++
+        
+        return array(Idx, CardRoot)
+    }
+    
+    function array wirelink:drawCardBack(Idx:number, Position:vector2, Size:vector2) {
+        local VMin = min(Size:x(), Size:y())
+        
+        local CardRoot = This:egpRoundedBox(Idx, Position, Size)
+        This:egpRadius(Idx, VMin * 0.05)
+        CardRoot:setColor(vec4(255))
+        Idx++
+        
+        local CardShadow1 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.05, 1.08))
+        CardShadow1:parentTo(CardRoot)
+        CardShadow1:setColor(vec4(0, 0, 0, 24))
+        CardShadow1:setOrder(Idx - 1)
+        Idx++
+        
+        local CardShadow2 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.1, 1.1))
+        CardShadow2:parentTo(CardRoot)
+        CardShadow2:setColor(vec4(0, 0, 0, 18))
+        CardShadow2:setOrder(Idx - 1)
+        Idx++
+        
+        local CardShadow3 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.13, 1.15))
+        CardShadow3:parentTo(CardRoot)
+        CardShadow3:setColor(vec4(0, 0, 0, 12))
+        CardShadow3:setOrder(Idx - 1)
+        Idx++
+        
+        local CardShadow4 = This:egpRoundedBox(Idx, vec2(), Size * vec2(1.15, 1.2))
+        CardShadow4:parentTo(CardRoot)
+        CardShadow4:setColor(vec4(0, 0, 0, 8))
+        CardShadow4:setOrder(Idx - 1)
+        Idx++
+        
+        CardRoot:setOrder(Idx - 1)
+        
+        local CardBorder = This:egpRoundedBoxOutline(Idx, vec2(), Size - vec2(0.1) * VMin)
+        CardBorder:parentTo(CardRoot)
+        This:egpRadius(Idx, VMin * 0.05)
+        CardBorder:setColor(vec4(0,0,0,64))
+        CardBorder:setOrder(Idx)
+        CardBorder:setSize(2)
+        Idx++
+        
+        local Symbol1 = This:egpText(Idx, CardSymbols[1, string], vec2(VMin) * vec2(0.15, 0.15))
+        Symbol1:parentTo(CardRoot)
+        Symbol1:setColor(vec(255, 0, 0))
+        Symbol1:setAlign(1, 1)
+        Symbol1:setFont("Roboto", VMin * 0.5)
+        Symbol1:setOrder(Idx)
+        Idx++
+        
+        local Symbol2 = This:egpText(Idx, CardSymbols[2, string], vec2(VMin) * vec2(-0.15, -0.2))
+        Symbol2:parentTo(CardRoot)
+        Symbol2:setColor(vec(255, 0, 0))
+        Symbol2:setAlign(1, 1)
+        Symbol2:setFont("Roboto", VMin * 0.5)
+        Symbol2:setOrder(Idx)
+        Idx++
+        
+        local Symbol3 = This:egpText(Idx, CardSymbols[3, string], vec2(VMin) * vec2(0.15, -0.2))
+        Symbol3:parentTo(CardRoot)
+        Symbol3:setColor(vec(0, 0, 0))
+        Symbol3:setAlign(1, 1)
+        Symbol3:setFont("Roboto", VMin * 0.5)
+        Symbol3:setOrder(Idx)
+        Idx++
+        
+        local Symbol4 = This:egpText(Idx, CardSymbols[4, string], vec2(VMin) * vec2(-0.15, 0.15))
+        Symbol4:parentTo(CardRoot)
+        Symbol4:setColor(vec(0, 0, 0))
+        Symbol4:setAlign(1, 1)
+        Symbol4:setFont("Roboto", VMin * 0.5)
+        Symbol4:setOrder(Idx)
+        Idx++
+        
+        return array(Idx, CardRoot)
+    }
+    
+    function number wirelink:drawMainScreen(SubText:string, DrawCards:number) {
+        This:egpClear()
+        This:egpDrawTopLeft(0)
+        
+        local Idx = 1
+        local Root = This:egpBox(Idx, vec2(256, 256), vec2(512, 512))
+        Root:setColor(vec(48, 48, 48))
+        Root:setOrder(Idx)
+        Idx++
+        
+        local Symbol1 = This:egpText(Idx, CardSymbols[1, string], vec2(64, 96))
+        Symbol1:setAlign(1, 1)
+        Symbol1:setFont("Coolvetica", 64)
+        Symbol1:setColor(vec(255, 0, 0))
+        Idx++
+        
+        local Symbol2 = This:egpText(Idx, CardSymbols[4, string], vec2(512 - 64, 96))
+        Symbol2:setAlign(1, 1)
+        Symbol2:setFont("Coolvetica", 64)
+        Symbol2:setColor(vec(255, 255, 255))
+        Idx++
+        
+        local Title = This:egpText(Idx, "Blackjack", vec2(256, 96))
+        Title:setAlign(1, 1)
+        Title:setFont("Coolvetica", 64)
+        Idx++
+        
+        local Subtitle = This:egpText(Idx, SubText, vec2(256, 164))
+        Subtitle:setAlign(1, 1)
+        Subtitle:setFont("Roboto", 24)
+        Idx++
+        
+        if (DrawCards) {
+            local AngOffset = 10
+            local TotalCards = randint(4, 8)
+            for (I = 0, TotalCards - 1) {
+                let Hidden = round(random())
+                local Ang = (I * AngOffset) - 90 - (AngOffset * ((TotalCards - 1) / 2))
+                local Res = array()
+                if (Hidden) {
+                    Res = This:drawCardBack(Idx, vec2(256 + cos(Ang) * 256, 600 + sin(Ang) * 256), vec2(64, 96) * 2)
+                } else {
+                    local Card = CardDeck:removeNumber(randint(1, CardDeck:count()))
+                    Res = This:drawCard(Idx, Card, vec2(256 + cos(Ang) * 256, 600 + sin(Ang) * 256), vec2(64, 96) * 2)
+                    CardDeck:pushNumber(Card)
+                }
+                Idx = Res[1, number]
+                Res[2, egpobject]:setAngle(-Ang - 90)
+            }
+        }
+        
+        return Idx
+    }
+    
+    function number wirelink:drawDecks(Idx:number, ShowCards:number) {
+        local Root = This:egpBox(Idx, vec2(256, 256), vec2(512, 512))
+        Root:setColor(vec(0, 64, 0))
+        Root:setOrder(Idx)
+        Idx++
+        
+        local Mask1Shadow1 = This:egpRoundedBoxOutline(Idx, vec2(256, 128), vec2(416, 160) + vec2(10))
+        Mask1Shadow1:setColor(vec4(0, 0, 0, 24))
+        Mask1Shadow1:setSize(14)
+        Idx++
+        
+        local Mask1Shadow2 = This:egpRoundedBoxOutline(Idx, vec2(256, 128), vec2(416, 160) + vec2(6))
+        Mask1Shadow2:setColor(vec4(0, 0, 0, 24))
+        Mask1Shadow2:setSize(14)
+        Idx++
+        
+        local Mask1Shadow3 = This:egpRoundedBoxOutline(Idx, vec2(256, 128), vec2(416, 160) + vec2(2))
+        Mask1Shadow3:setColor(vec4(0, 0, 0, 24))
+        Mask1Shadow3:setSize(14)
+        Idx++
+        
+        local Mask1Shadow4 = This:egpRoundedBoxOutline(Idx, vec2(256, 128), vec2(416, 160) - vec2(2))
+        Mask1Shadow4:setColor(vec4(0, 0, 0, 24))
+        Mask1Shadow4:setSize(14)
+        Idx++
+        
+        local RectMask1 = This:egpRoundedBoxOutline(Idx, vec2(256, 128), vec2(416, 160) + vec2(14))
+        RectMask1:setColor(vec(32))
+        RectMask1:setSize(14)
+        Idx++
+        
+        local Mask2Shadow1 = This:egpRoundedBoxOutline(Idx, vec2(256, 336), vec2(416, 160) + vec2(10))
+        Mask2Shadow1:setColor(vec4(0, 0, 0, 24))
+        Mask2Shadow1:setSize(14)
+        Idx++
+        
+        local Mask2Shadow2 = This:egpRoundedBoxOutline(Idx, vec2(256, 336), vec2(416, 160) + vec2(6))
+        Mask2Shadow2:setColor(vec4(0, 0, 0, 24))
+        Mask2Shadow2:setSize(14)
+        Idx++
+        
+        local Mask2Shadow3 = This:egpRoundedBoxOutline(Idx, vec2(256, 336), vec2(416, 160) + vec2(2))
+        Mask2Shadow3:setColor(vec4(0, 0, 0, 24))
+        Mask2Shadow3:setSize(14)
+        Idx++
+        
+        local Mask2Shadow4 = This:egpRoundedBoxOutline(Idx, vec2(256, 336), vec2(416, 160) - vec2(2))
+        Mask2Shadow4:setColor(vec4(0, 0, 0, 24))
+        Mask2Shadow4:setSize(14)
+        Idx++
+        
+        local RectMask2 = This:egpRoundedBoxOutline(Idx, vec2(256, 336), vec2(416, 160) + vec2(14))
+        RectMask2:setColor(vec(32))
+        RectMask2:setSize(14)
+        Idx++
+        
+        local RectMask3 = This:egpBox(Idx, vec2(256, 24), vec2(512, 48))
+        RectMask3:setColor(vec(32))
+        Idx++
+        
+        local RectMask4 = This:egpBox(Idx, vec2(256, 232), vec2(512, 48))
+        RectMask4:setColor(vec(32))
+        Idx++
+        
+        local RectMask5 = This:egpBox(Idx, vec2(256, 464), vec2(512, 96))
+        RectMask5:setColor(vec(32))
+        Idx++
+        
+        local RectMask6 = This:egpBox(Idx, vec2(24, 256), vec2(48, 512))
+        RectMask6:setColor(vec(32))
+        Idx++
+        
+        local RectMask7 = This:egpBox(Idx, vec2(512 - 24, 256), vec2(48, 512))
+        RectMask7:setColor(vec(32))
+        Idx++
+        
+        DealerHandValue = 0
+        PlayerHandValue = 0
+        
+        foreach (I:number, Card:number=Dealer["cards", array]) {
+            DealerHandValue += min(Card % 13, 9) + 1
+            local Res = (ShowCards == 2 | I == 1) ?
+                This:drawCard(Idx, Card, vec2(72 + 36 + ((I - 1) * 32), 128), vec2(88, 128))
+                :
+                This:drawCardBack(Idx, vec2(72 + 36 + ((I - 1) * 32), 128), vec2(88, 128))
+            Idx = Res[1, number]
+        }
+        
+        foreach (I:number, Card:number=PlayerData["cards", array]) {
+            PlayerHandValue += (ShowCards == 1 & I == PlayerData["cards", array]:count()) ? 0 : min(Card % 13, 9) + 1
+            local Res = (ShowCards == 1 & I == PlayerData["cards", array]:count()) ?
+                This:drawCardBack(Idx, vec2(72 + 36 + ((I - 1) * 32), 336), vec2(88, 128)) :
+                This:drawCard(Idx, Card, vec2(72 + 36 + ((I - 1) * 32), 336), vec2(88, 128))
+            Idx = Res[1, number]
+        }
+        
+        if (Dealer["hasAce", number] & DealerHandValue + 10 < 21) {
+            DealerHandValue += 10
+        }
+        
+        local DealerTitle = This:egpText(Idx, "Dealer's Hand: " + (ShowCards == 2 ? DealerHandValue:toString() : max(0, DealerHandValue - (min(Dealer["cards", array][Dealer["cards", array]:count(), number] % 13, 9) + 1)):toString() + "?"), vec2(32, 24))
+        DealerTitle:setAlign(0, 1)
+        DealerTitle:setFont("Roboto", 32)
+        Idx++
+        
+        local PlayerTitle = This:egpText(Idx, Player:name() + "'s Hand: " + ((PlayerData["hasAce", number] & PlayerHandValue + 10 <= 21) ? PlayerHandValue + " or " + (PlayerHandValue + 10) : PlayerHandValue:toString()), vec2(32, 232))
+        PlayerTitle:setAlign(0, 1)
+        PlayerTitle:setFont("Roboto", 32)
+        Idx++
+        
+        if (PlayerData["hasAce", number] & PlayerHandValue + 10 <= 21) {
+            PlayerHandValue += 10
+        }
+        
+        return Idx
+    }
+    
+    function number wirelink:drawBetScreen(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 344), vec2(192, 304) + vec2(16))
+        This:egpRadius(Idx, 8)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 344), vec2(192, 304) + vec2(12))
+        This:egpRadius(Idx, 7)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 344), vec2(192, 304) + vec2(8))
+        This:egpRadius(Idx, 6)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 344), vec2(192, 304) + vec2(4))
+        This:egpRadius(Idx, 5)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 344), vec2(192, 304))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        for (I = 0, 8) {
+            local X = I % 3
+            local Y = floor(I / 3)
+            
+            local Button = This:egpRoundedBox(Idx, vec2((X - 1) * 56, (Y - 1) * 56), vec2(48, 48))
+            Button:setColor(vec(0x55, 0x55, 0x55))
+            This:egpRadius(Idx, 4)
+            Button:parentTo(PopupRoot)
+            Idx++
+            
+            local Label = This:egpText(Idx, (I + 1):toString(), vec2(0, 0))
+            Label:setFont("Roboto", 24)
+            Label:setAlign(1, 1)
+            This:egpRadius(Idx, 4)
+            Label:parentTo(Button)
+            Idx++
+        }
+        
+        local TextBackground = This:egpRoundedBox(Idx, vec2(0, -112), vec2(160, 48))
+        TextBackground:setColor(vec(232))
+        This:egpRadius(Idx, 4)
+        TextBackground:parentTo(PopupRoot)
+        Idx++
+        
+        local BetText = This:egpText(Idx, formatMoney(CurrentBet), vec2(-64, 0))
+        BetText:setFont("Roboto", 16)
+        BetText:setColor(vec(16))
+        BetText:setAlign(0, 1)
+        BetText:parentTo(TextBackground)
+        Idx++
+        
+        local BackspaceButton = This:egpRoundedBox(Idx, vec2(56, -112), vec2(48, 48))
+        BackspaceButton:setColor(vec(0x5E, 0x81, 0xAC))
+        This:egpRadius(Idx, 4)
+        BackspaceButton:parentTo(PopupRoot)
+        Idx++
+        
+        local BackspaceLabel = This:egpText(Idx, "<", vec2(0, 0))
+        BackspaceLabel:setFont("HalfLife2", 32)
+        BackspaceLabel:setAlign(1, 1)
+        This:egpRadius(Idx, 4)
+        BackspaceLabel:parentTo(BackspaceButton)
+        Idx++ 
+        
+        local ExitButton = This:egpRoundedBox(Idx, vec2(-1 * 56, 2 * 56), vec2(48, 48))
+        ExitButton:setColor(vec(0xE0, 0x38, 0x3D))
+        This:egpRadius(Idx, 4)
+        ExitButton:parentTo(PopupRoot)
+        Idx++
+        
+        local ExitLabel = This:egpText(Idx, toUnicodeChar(0x2A2F), vec2(0, -8))
+        ExitLabel:setFont("Roboto", 48)
+        ExitLabel:setAlign(1, 1)
+        This:egpRadius(Idx, 4)
+        ExitLabel:parentTo(ExitButton)
+        Idx++
+        
+        local ZeroButton = This:egpRoundedBox(Idx, vec2(0, 2 * 56), vec2(48, 48))
+        ZeroButton:setColor(vec(0x55, 0x55, 0x55))
+        This:egpRadius(Idx, 4)
+        ZeroButton:parentTo(PopupRoot)
+        Idx++
+        
+        local ZeroLabel = This:egpText(Idx, "0", vec2(0, 0))
+        ZeroLabel:setFont("Roboto", 24)
+        ZeroLabel:setAlign(1, 1)
+        This:egpRadius(Idx, 4)
+        ZeroLabel:parentTo(ZeroButton)
+        Idx++
+        
+        local ConfirmButton = This:egpRoundedBox(Idx, vec2(1 * 56, 2 * 56), vec2(48, 48))
+        ConfirmButton:setColor(vec(0x6C, 0xE0, 0x72))
+        This:egpRadius(Idx, 4)
+        ConfirmButton:parentTo(PopupRoot)
+        Idx++
+        
+        local ConfirmLabel = This:egpText(Idx, toUnicodeChar(0x2713), vec2(0, -2))
+        ConfirmLabel:setFont("Roboto", 32)
+        ConfirmLabel:setAlign(1, 1)
+        This:egpRadius(Idx, 4)
+        ConfirmLabel:parentTo(ConfirmButton)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawGameControls(Idx:number, ButtonsDisabled:number) {
+        local LabelColor = ButtonsDisabled ? vec(232) : vec(255)
+        
+        HitBtn = This:egpRoundedBox(Idx, vec2(112, 464), vec2(192, 64))
+        HitBtn:setColor(ButtonsDisabled ? vec(0x3A, 0x99, 0x3E) : vec(0x6C, 0xE0, 0x72))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local HitText = This:egpText(Idx, "Hit", vec2(112, 464))
+        HitText:setFont("Coolvetica", 32)
+        HitText:setAlign(1, 1)
+        HitText:setColor(LabelColor)
+        Idx++
+        
+        StandBtn = This:egpRoundedBox(Idx, vec2(320, 464), vec2(192, 64))
+        StandBtn:setColor(ButtonsDisabled ? vec(0xB5, 0x65, 0x30) : vec(0xF8, 0xBC, 0x5B))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local StandText = This:egpText(Idx, "Stand", vec2(320, 464))
+        StandText:setFont("Coolvetica", 32)
+        StandText:setAlign(1, 1)
+        StandText:setColor(LabelColor)
+        Idx++
+        
+        LeaveBtn = This:egpRoundedBox(Idx, vec2(464, 464), vec2(64, 64))
+        LeaveBtn:setColor(ButtonsDisabled ? vec(0x9E, 0x1E, 0x22) : vec(0xE0, 0x38, 0x3D))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local IconSize = 48
+        
+        local LeaveIcon3 = This:egpRoundedBoxOutline(Idx, vec2(), (vec2(16, 22) / vec2(24)) * vec2(IconSize))
+        LeaveIcon3:setColor(LabelColor)
+        LeaveIcon3:parentTo(LeaveBtn)
+        LeaveIcon3:setSize((2 / 24) * IconSize)
+        This:egpRadius(Idx, (1 / 24) * IconSize)
+        Idx++
+        
+        local LeaveIcon0 = This:egpPolyOutline(Idx, array(
+            (vec2(1, 12) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(6, 16) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(6, 8) / vec2(24) - vec2(0.5)) * vec2(IconSize)
+        ))
+        LeaveIcon0:setColor(ButtonsDisabled ? vec(0x9E, 0x1E, 0x22) : vec(0xE0, 0x38, 0x3D))
+        LeaveIcon0:parentTo(LeaveBtn)
+        LeaveIcon0:setSize((4 / 24) * IconSize)
+        Idx++
+        
+        local LeaveIcon1 = This:egpPoly(Idx, array(
+            (vec2(1, 12) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(6, 16) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(6, 8) / vec2(24) - vec2(0.5)) * vec2(IconSize)
+        ))
+        LeaveIcon1:setColor(LabelColor)
+        LeaveIcon1:parentTo(LeaveBtn)
+        Idx++
+        
+        local LeaveIcon2 = This:egpPoly(Idx, array(
+            (vec2(5, 11) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(5, 13) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(13, 13) / vec2(24) - vec2(0.5)) * vec2(IconSize),
+            (vec2(13, 11) / vec2(24) - vec2(0.5)) * vec2(IconSize)
+        ))
+        LeaveIcon2:setColor(LabelColor)
+        LeaveIcon2:parentTo(LeaveBtn)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawShufflingPopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupText = This:egpText(Idx, "Shuffling...", vec2(512 - 96, 48))
+        PopupText:setFont("Coolvetica", 24)
+        PopupText:setAlign(1, 1)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawDealingOverlay(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(512 - 96, 48), vec2(200, 48))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupText = This:egpText(Idx, "Dealing...", vec2(512 - 96, 48))
+        PopupText:setFont("Coolvetica", 24)
+        PopupText:setAlign(1, 1)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawForfeitPopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupTitle = This:egpText(Idx, "Do you wanna forfeit?", vec2(0, -44))
+        PopupTitle:setFont("Coolvetica", 18)
+        PopupTitle:setAlign(1, 1)
+        PopupTitle:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayBox = This:egpRoundedBox(Idx, vec2(0, 24), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        ReplayBox:setColor(vec(0x6C, 0xE0, 0x72))
+        ReplayBox:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayTitle = This:egpText(Idx, "Continue Playing", vec2(0, 0))
+        ReplayTitle:setFont("Coolvetica", 16)
+        ReplayTitle:setAlign(1, 1)
+        ReplayTitle:parentTo(ReplayBox)
+        Idx++
+        
+        local QuitBox = This:egpRoundedBox(Idx, vec2(0, 64), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        QuitBox:setColor(vec(0xE0, 0x38, 0x3D))
+        QuitBox:parentTo(PopupRoot)
+        Idx++
+        
+        local QuitTitle = This:egpText(Idx, "Quit Playing", vec2(0, -6))
+        QuitTitle:setFont("Coolvetica", 16)
+        QuitTitle:setAlign(1, 1)
+        QuitTitle:parentTo(QuitBox)
+        Idx++
+        
+        local QuitTitle2 = This:egpText(Idx, "(Selected in " + QuitTimer + "s)", vec2(0, 8))
+        QuitTitle2:setFont("Coolvetica", 12)
+        QuitTitle2:setAlign(1, 1)
+        QuitTitle2:parentTo(QuitBox)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawAFKPopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupTitle = This:egpText(Idx, "Would you like to", vec2(0, -56))
+        PopupTitle:setFont("Coolvetica", 18)
+        PopupTitle:setAlign(1, 1)
+        PopupTitle:parentTo(PopupRoot)
+        Idx++
+        
+        local PopupTitle2 = This:egpText(Idx, "continue playing?", vec2(0, -32))
+        PopupTitle2:setFont("Coolvetica", 18)
+        PopupTitle2:setAlign(1, 1)
+        PopupTitle2:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayBox = This:egpRoundedBox(Idx, vec2(0, 24), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        ReplayBox:setColor(vec(0x6C, 0xE0, 0x72))
+        ReplayBox:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayTitle = This:egpText(Idx, "Continue Playing", vec2(0, 0))
+        ReplayTitle:setFont("Coolvetica", 16)
+        ReplayTitle:setAlign(1, 1)
+        ReplayTitle:parentTo(ReplayBox)
+        Idx++
+        
+        local QuitBox = This:egpRoundedBox(Idx, vec2(0, 64), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        QuitBox:setColor(vec(0xE0, 0x38, 0x3D))
+        QuitBox:parentTo(PopupRoot)
+        Idx++
+        
+        local QuitTitle = This:egpText(Idx, "Quit Playing", vec2(0, -6))
+        QuitTitle:setFont("Coolvetica", 16)
+        QuitTitle:setAlign(1, 1)
+        QuitTitle:parentTo(QuitBox)
+        Idx++
+        
+        local QuitTitle2 = This:egpText(Idx, "(Selected in " + QuitTimer + "s)", vec2(0, 8))
+        QuitTitle2:setFont("Coolvetica", 12)
+        QuitTitle2:setAlign(1, 1)
+        QuitTitle2:parentTo(QuitBox)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawGameWinPopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupTitle = This:egpText(Idx, "You Won!", vec2(0, -44))
+        PopupTitle:setFont("Coolvetica", 24)
+        PopupTitle:setAlign(1, 1)
+        PopupTitle:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayBox = This:egpRoundedBox(Idx, vec2(0, 24), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        ReplayBox:setColor(vec(0x6C, 0xE0, 0x72))
+        ReplayBox:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayTitle = This:egpText(Idx, "Play Again for " + formatMoney(PlayerBet), vec2(0, 0))
+        ReplayTitle:setFont("Coolvetica", 16)
+        ReplayTitle:setAlign(1, 1)
+        ReplayTitle:parentTo(ReplayBox)
+        Idx++
+        
+        local QuitBox = This:egpRoundedBox(Idx, vec2(0, 64), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        QuitBox:setColor(vec(0xE0, 0x38, 0x3D))
+        QuitBox:parentTo(PopupRoot)
+        Idx++
+        
+        local QuitTitle = This:egpText(Idx, "Quit Playing", vec2(0, -6))
+        QuitTitle:setFont("Coolvetica", 16)
+        QuitTitle:setAlign(1, 1)
+        QuitTitle:parentTo(QuitBox)
+        Idx++
+        
+        local QuitTitle2 = This:egpText(Idx, "(Selected in " + QuitTimer + "s)", vec2(0, 8))
+        QuitTitle2:setFont("Coolvetica", 12)
+        QuitTitle2:setAlign(1, 1)
+        QuitTitle2:parentTo(QuitBox)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawGameTiePopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupTitle = This:egpText(Idx, "Draw...", vec2(0, -44))
+        PopupTitle:setFont("Coolvetica", 24)
+        PopupTitle:setAlign(1, 1)
+        PopupTitle:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayBox = This:egpRoundedBox(Idx, vec2(0, 24), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        ReplayBox:setColor(vec(0x6C, 0xE0, 0x72))
+        ReplayBox:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayTitle = This:egpText(Idx, "Play Again for " + formatMoney(PlayerBet), vec2(0, 0))
+        ReplayTitle:setFont("Coolvetica", 16)
+        ReplayTitle:setAlign(1, 1)
+        ReplayTitle:parentTo(ReplayBox)
+        Idx++
+        
+        local QuitBox = This:egpRoundedBox(Idx, vec2(0, 64), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        QuitBox:setColor(vec(0xE0, 0x38, 0x3D))
+        QuitBox:parentTo(PopupRoot)
+        Idx++
+        
+        local QuitTitle = This:egpText(Idx, "Quit Playing", vec2(0, -6))
+        QuitTitle:setFont("Coolvetica", 16)
+        QuitTitle:setAlign(1, 1)
+        QuitTitle:parentTo(QuitBox)
+        Idx++
+        
+        local QuitTitle2 = This:egpText(Idx, "(Selected in " + QuitTimer + "s)", vec2(0, 8))
+        QuitTitle2:setFont("Coolvetica", 12)
+        QuitTitle2:setAlign(1, 1)
+        QuitTitle2:parentTo(QuitBox)
+        Idx++
+        
+        return Idx
+    }
+    
+    function number wirelink:drawGameLosePopup(Idx:number) {
+        local Shadow1 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(8))
+        This:egpRadius(Idx, 4)
+        Shadow1:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow2 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(6))
+        This:egpRadius(Idx, 4)
+        Shadow2:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow3 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(4))
+        This:egpRadius(Idx, 4)
+        Shadow3:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local Shadow4 = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188) + vec2(2))
+        This:egpRadius(Idx, 4)
+        Shadow4:setColor(vec4(0, 0, 0, 24))
+        Idx++
+        
+        local PopupRoot = This:egpRoundedBox(Idx, vec2(256, 192), vec2(256, 188))
+        PopupRoot:setColor(vec(0x33, 0x33, 0x33))
+        This:egpRadius(Idx, 4)
+        Idx++
+        
+        local PopupTitle = This:egpText(Idx, "You Lost!", vec2(0, -44))
+        PopupTitle:setFont("Coolvetica", 24)
+        PopupTitle:setAlign(1, 1)
+        PopupTitle:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayBox = This:egpRoundedBox(Idx, vec2(0, 24), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        ReplayBox:setColor(vec(0x6C, 0xE0, 0x72))
+        ReplayBox:parentTo(PopupRoot)
+        Idx++
+        
+        local ReplayTitle = This:egpText(Idx, "Play Again for " + formatMoney(PlayerBet), vec2(0, 0))
+        ReplayTitle:setFont("Coolvetica", 16)
+        ReplayTitle:setAlign(1, 1)
+        ReplayTitle:parentTo(ReplayBox)
+        Idx++
+        
+        local QuitBox = This:egpRoundedBox(Idx, vec2(0, 64), vec2(232, 32))
+        This:egpRadius(Idx, 4)
+        QuitBox:setColor(vec(0xE0, 0x38, 0x3D))
+        QuitBox:parentTo(PopupRoot)
+        Idx++
+        
+        local QuitTitle = This:egpText(Idx, "Quit Playing", vec2(0, -6))
+        QuitTitle:setFont("Coolvetica", 16)
+        QuitTitle:setAlign(1, 1)
+        QuitTitle:parentTo(QuitBox)
+        Idx++
+        
+        local QuitTitle2 = This:egpText(Idx, "(Selected in " + QuitTimer + "s)", vec2(0, 8))
+        QuitTitle2:setFont("Coolvetica", 12)
+        QuitTitle2:setAlign(1, 1)
+        QuitTitle2:parentTo(QuitBox)
+        Idx++
+        
+        return Idx
+    }
+    
+    function wirelink:drawGame(Status:string) {
+        This:egpClear()
+        This:egpDrawTopLeft(0)
+        local ShowCards = 0
+        
+        if (Status == "stand" | Status == "bust" | Status == "win" | Status == "loss") {
+            ShowCards = 2
+        } elseif (Status == "player_deal") {
+            ShowCards = 1
+        }
+        
+        local Idx = 1
+        Idx = This:drawDecks(Idx, ShowCards)
+        Idx = This:drawGameControls(Idx, Status != "idle")
+        
+        if (Status == "shuffle") {
+            Idx = This:drawShufflingPopup(Idx)
+        } elseif (Status == "deal" | Status == "player_deal") {
+            Idx = This:drawDealingOverlay(Idx)
+        } elseif (Status == "forfeit") {
+            Idx = This:drawForfeitPopup(Idx)
+        } elseif (Status == "afk") {
+            Idx = This:drawAFKPopup(Idx)
+        } elseif (Status == "stand") {
+            Idx = This:drawDealingOverlay(Idx)
+        } elseif (Status == "bust") {
+            Idx = This:drawDealingOverlay(Idx)
+        } elseif (Status == "win") {
+            Idx = This:drawGameWinPopup(Idx)
+        } elseif (Status == "loss") {
+            Idx = This:drawGameLosePopup(Idx)
+        } elseif (Status == "tie") {
+            Idx = This:drawGameTiePopup(Idx)
+        }
+    }
+    
+    local Deck = array()
+    for (I = 0, 51) {
+        Deck:pushNumber(I)
+    }
+    while (Deck:count() > 0) {
+        CardDeck:pushNumber(Deck:removeNumber(randint(1, Deck:count())))
+    }
+    
+    if (->EGP) {
+        GameStatus = "menu"
+        timer("gameloop", 10)
+    }
+} elseif (~EGP & ->EGP) {
+    GameStatus = "menu"
+    stoptimer("gameloop")
+    timer("gameloop", 10)
+} elseif (clk("gameloop")) {
+    local Wait = 250
+    local Updated = StateUpdated
+    StateUpdated = 0
+    
+    if (GameStatus == "menu") {
+        EGP:drawMainScreen("Press 'Use' to start.", 1)
+        
+        Wait = 1000
+    } elseif (GameStatus == "bet") {
+        if (Player:shootPos():distance(EGP:entity():boxCenterW()) > MaxDistance | curtime() - LastAction > AFKTimeout) {
+            GameStatus = "menu"
+            StateUpdated = 1
+            timer("unlock", 1000)
+        }
+    } elseif (GameStatus == "start") {
+        stoptimer("unlock")
+    
+        Cards = array()
+        
+        local Deck = CardDeck:clone()
+        while (Deck:count() > 0) {
+            Cards:pushNumber(Deck:removeNumber(randint(1, Deck:count())))
+        }
+        
+        PlayerData = table(
+            "hasAce" = 0,
+            "cards" = array()
+        )
+        
+        Dealer = table(
+            "hasAce" = 0,
+            "cards" = array()
+        )
+        
+        Swapped = curtime()
+        
+        Swaps = 0
+        GameStatus = "shuffle"
+            
+        EGP:drawGame("shuffle")
+    } elseif (GameStatus == ("shuffle")) {
+        while (cpuUsage() * 10 ^ 6 < 1000 & opcounter() < softQuota() & curtime() - Swapped < 5 & Swaps < 52 * 5) {
+            local Idx1 = randint(1, 52)
+            local Idx2 = randint(1, 52)
+            
+            local T = Cards[Idx1, number]
+            Cards[Idx1, number] = Cards[Idx2, number]
+            Cards[Idx2, number] = T
+            
+            Swaps++
+        }
+        
+        if (curtime() - LastSound > soundDuration(ShuffleSound)) {
+            playSound(ShuffleSound)
+        }
+        
+        if (curtime() - Swapped >= 5 | Swaps > 52 * 12) {
+            GameStatus = "deal"
+            StateUpdated = 1
+            
+            EGP:drawGame("deal")
+        }
+        
+        Wait = 10
+    } elseif (GameStatus == ("deal")) {
+        if (Dealer["cards", array]:count() < 2 | PlayerData["cards", array]:count() < 2) {
+            local Card = Cards:shiftNumber()
+            local CardNumber = Card % 13
+            
+            if (PlayerData["cards", array]:count() < Dealer["cards", array]:count()) {
+                if (CardNumber == 0) { PlayerData["hasAce", number] = 1 }
+                PlayerData["cards", array]:pushNumber(Card)
+                EGP:drawGame("player_deal")
+                playSound(DealSound)
+            } else {
+                if (CardNumber == 0) { Dealer["hasAce", number] = 1 }
+                Dealer["cards", array]:pushNumber(Card)
+                EGP:drawGame("deal")
+                playSound(DealSound)
+            }
+        }
+        
+        if (Dealer["cards", array]:count() >= 2 & PlayerData["cards", array]:count() >= 2) {
+            GameStatus = "idle"
+            StateUpdated = 1
+            LastAction = curtime()
+        } else {
+            Wait = 1000
+        }
+    } elseif (GameStatus == ("idle")) {
+        # Check for player distance or death here.
+        if (Updated) {
+            EGP:drawGame("idle")
+        }
+        
+        if (Player:shootPos():distance(EGP:entity():boxCenterW()) > MaxDistance | curtime() - LastAction > AFKTimeout) {
+            GameStatus = "afk"
+            QuitTimer = 10
+            Wait = 500
+        }
+    } elseif (GameStatus == ("afk")) {
+        EGP:drawGame("afk")
+        
+        Wait = 1000
+        QuitTimer--
+        
+        if (QuitTimer <= 0) {
+            LastAction = curtime()
+            GameStatus = "menu"
+            timer("unlock", 1000)
+        }
+    } elseif (GameStatus == ("forfeit")) {
+        EGP:drawGame("forfeit")
+        
+        Wait = 1000
+        QuitTimer--
+        
+        if (QuitTimer <= 0) {
+            LastAction = curtime()
+            GameStatus = "menu"
+            timer("unlock", 1000)
+        }
+    } elseif (GameStatus == ("hit")) {
+        local Card = Cards:shiftNumber()
+        PlayerData["cards", array]:pushNumber(Card)
+        
+        EGP:drawGame("player_deal")
+        
+        PlayerHandValue = 0
+        foreach (I:number, Card:number=PlayerData["cards", array]) {
+            PlayerHandValue += min(Card % 13, 9) + 1
+        }
+        
+        Wait = 500
+        if ((PlayerData["hasAce", number] & PlayerHandValue + 10 <= 21 ? PlayerHandValue + 10 : PlayerHandValue) == 21) {
+            GameStatus = "stand"
+            StateUpdated = 1
+        } elseif (PlayerHandValue > 21) {
+            GameStatus = "bust"
+            StateUpdated = 1
+        } else {
+            GameStatus = "idle"
+            StateUpdated = 1
+        }
+    } elseif (GameStatus == ("stand")) {
+        EGP:drawGame("stand")
+        
+        DealerHandValue = 0
+        foreach (I:number, Card:number=Dealer["cards", array]) {
+            DealerHandValue += min(Card % 13, 9) + 1
+        }
+        if (Dealer["hasAce", number] & DealerHandValue + 10 < 21) {
+            DealerHandValue += 10
+        }
+        
+        if (DealerHandValue < 17) {
+            local Card = Cards:shiftNumber()
+            Dealer["cards", array]:pushNumber(Card)
+            
+            Wait = 1000
+        } else {
+            PlayerHandValue = 0
+            foreach (I:number, Card:number=PlayerData["cards", array]) {
+                PlayerHandValue += min(Card % 13, 9) + 1
+            }
+            if (PlayerData["hasAce", number] & PlayerHandValue + 10 <= 21) {
+                PlayerHandValue += 10
+            }
+            
+            if ((PlayerHandValue == DealerHandValue & PlayerHandValue <= 21)) {
+                moneyGive(Player, PlayerBet)
+                GameStatus = "tie"
+                QuitTimer = QuitTimeout
+                StateUpdated = 1
+                Wait = 2000
+            } elseif ((PlayerHandValue > DealerHandValue & PlayerHandValue <= 21) | (DealerHandValue > 21 & PlayerHandValue <= 21)) {
+                moneyGive(Player, PlayerBet + (PlayerBet * (PlayerHandValue == 21 ? (3 / 2) : 1)))
+                GameStatus = "win"
+                QuitTimer = QuitTimeout
+                StateUpdated = 1
+                Wait = 2000
+            } else {
+                GameStatus = "loss"
+                QuitTimer = QuitTimeout
+                StateUpdated = 1
+                Wait = 2000
+            }
+        }
+    } elseif (GameStatus == ("bust")) {
+        EGP:drawGame("bust")
+        
+        DealerHandValue = 0
+        foreach (I:number, Card:number=Dealer["cards", array]) {
+            DealerHandValue += min(Card % 13, 9) + 1
+        }
+        if (Dealer["hasAce", number] & DealerHandValue + 10 < 21) {
+            DealerHandValue += 10
+        }
+        
+        if (DealerHandValue < 17) {
+            local Card = Cards:shiftNumber()
+            Dealer["cards", array]:pushNumber(Card)
+            
+            Wait = 1000
+        } else {
+            GameStatus = "loss"
+            QuitTimer = QuitTimeout
+            StateUpdated = 1
+            Wait = 2000
+        }
+    } elseif (GameStatus == ("win")) {
+        if (Player:shootPos():distance(EGP:entity():boxCenterW()) > MaxDistance | QuitTimer <= 0) {
+            Player = noentity()
+            GameStatus = "menu"
+            StateUpdated = 1
+            timer("unlock", 1000)
+        } else {
+            if (Updated) {
+                playSound(WinSound)
+                Wait = 100
+            } else {
+                EGP:drawGame("win")
+                Wait = 1000
+            }
+        }
+        
+        QuitTimer--
+    } elseif (GameStatus == ("loss")) {
+        if (Player:shootPos():distance(EGP:entity():boxCenterW()) > MaxDistance | QuitTimer <= 0) {
+            Player = noentity()
+            GameStatus = "menu"
+            StateUpdated = 1
+            timer("unlock", 1000)
+        } else {
+            if (Updated) {
+                playSound(LoseSound)
+                Wait = 100
+            } else {
+                EGP:drawGame("loss")
+                Wait = 1000
+            }
+        }
+        
+        QuitTimer--
+    } elseif (GameStatus == ("tie")) {
+        if (Player:shootPos():distance(EGP:entity():boxCenterW()) > MaxDistance | QuitTimer <= 0) {
+            Player = noentity()
+            GameStatus = "menu"
+            StateUpdated = 1
+            timer("unlock", 1000)
+        } else {
+            if (Updated) {
+                playSound(DrawSound)
+                Wait = 100
+            } else {
+                EGP:drawGame("tie")
+                Wait = 1000
+            }
+        }
+        
+        QuitTimer--
+    }
+    
+    timer("gameloop", Wait)
+} elseif (~User & User:isPlayer()) {
+    if (GameStatus == "menu" & !Locked) {
+        Player = User
+        Locked = 1
+        LastAction = curtime()
+        GameStatus = "bet"
+        CurrentBet = BetDefault
+        local Idx = EGP:drawMainScreen("Enter your bet:", 0)
+        Idx = EGP:drawBetScreen(Idx)
+    }
+} elseif (moneyClk()) {
+    PlayerBet = moneyClkAmount()
+    Player = moneyClkPlayer()
+    GameStatus = "start"
+    StateUpdated = 1
+    Locked = 1
+} elseif (moneyNoClk()) {
+    GameStatus = "menu"
+    StateUpdated = 1
+    timer("unlock", 1000)
+} elseif (clk("unlock")) {
+    Locked = 0
+}
+
+event keyPressed(Ply:entity, Key:string, Down:number, KeyBind:string) {
+    if (KeyBind == "use" & Down & Player == Ply & LastInput - systime() < 0.5 & Player:shootPos():distance(EGP:entity():boxCenterW()) < 192) {
+        LastInput = systime()
+        local Cursor = EGP:egpCursor(Ply)
+        
+        if (Cursor:x() > -1) {
+            if (GameStatus == "bet") {
+                local Root = vec2(256, 344)
+                local Updated = 0
+                local MaxBet = min(BetMax, floor(owner():money() / 2))
+                
+                if (inrange(Cursor, Root + vec2(1 * 56, -2 * 56) - vec2(24, 24), Root + vec2(1 * 56, -2 * 56) + vec2(24, 24))) {
+                    CurrentBet = floor(CurrentBet / 10)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(-1 * 56, -1 * 56) - vec2(24, 24), Root + vec2(-1 * 56, -1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 1, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                }  elseif (inrange(Cursor, Root + vec2(0 * 56, -1 * 56) - vec2(24, 24), Root + vec2(0 * 56, -1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 2, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                }  elseif (inrange(Cursor, Root + vec2(1 * 56, -1 * 56) - vec2(24, 24), Root + vec2(1 * 56, -1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 3, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(-1 * 56, 0 * 56) - vec2(24, 24), Root + vec2(-1 * 56, 0 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 4, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                }  elseif (inrange(Cursor, Root + vec2(0 * 56, 0 * 56) - vec2(24, 24), Root + vec2(0 * 56, 0 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 5, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                }  elseif (inrange(Cursor, Root + vec2(1 * 56, 0 * 56) - vec2(24, 24), Root + vec2(1 * 56, 0 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 6, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(-1 * 56, 1 * 56) - vec2(24, 24), Root + vec2(-1 * 56, 1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 7, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                }  elseif (inrange(Cursor, Root + vec2(0 * 56, 1 * 56) - vec2(24, 24), Root + vec2(0 * 56, 1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 8, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(1 * 56, 1 * 56) - vec2(24, 24), Root + vec2(1 * 56, 1 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10 + 9, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(0 * 56, 2 * 56) - vec2(24, 24), Root + vec2(0 * 56, 2 * 56) + vec2(24, 24))) {
+                    CurrentBet = min(CurrentBet * 10, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, Root + vec2(1 * 56, 2 * 56) - vec2(24, 24), Root + vec2(1 * 56, 2 * 56) + vec2(24, 24))) {
+                    CurrentBet = clamp(CurrentBet, BetMin, MaxBet)
+                    Updated = 1
+                    playSound("button/button17.wav")
+                    moneyRequest(Player, CurrentBet, "Blackjack", 10)
+                } elseif (inrange(Cursor, Root + vec2(-1 * 56, 2 * 56) - vec2(24, 24), Root + vec2(-1 * 56, 2 * 56) + vec2(24, 24))) {
+                    LastAction = curtime()
+                    GameStatus = "menu"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                    timer("unlock", 1000)
+                }
+                
+                if (Updated) {
+                    local Idx = EGP:drawMainScreen("Enter your bet:", 0)
+                    Idx = EGP:drawBetScreen(Idx)
+                }
+            } elseif (GameStatus == "idle") {
+                if (inrange(Cursor, vec2(112, 464) - vec2(96, 32), vec2(112, 464) + vec2(96, 32))) { # Hit Button
+                    LastAction = curtime()
+                    GameStatus = "hit"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, vec2(320, 464) - vec2(96, 32), vec2(320, 464) + vec2(96, 32))) { # Stand
+                    LastAction = curtime()
+                    GameStatus = "stand"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, vec2(464, 464) - vec2(32, 32), vec2(464, 464) + vec2(32, 32))) { # Forfeit
+                    LastAction = curtime()
+                    GameStatus = "forfeit"
+                    StateUpdated = 1
+                    QuitTimer = 10
+                    playSound("button/button17.wav")
+                }
+            } elseif (GameStatus == "forfeit") {
+                if (inrange(Cursor, vec2(256, 216) - vec2(116, 16), vec2(256, 216) + vec2(116, 16))) { # Play again
+                    LastAction = curtime()
+                    GameStatus = "idle"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, vec2(256, 256) - vec2(116, 16), vec2(256, 256) + vec2(116, 16))) { # Quit
+                    LastAction = curtime()
+                    GameStatus = "menu"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                    timer("unlock", 1000)
+                }
+            } elseif (GameStatus == "afk") {
+                if (inrange(Cursor, vec2(256, 216) - vec2(116, 16), vec2(256, 216) + vec2(116, 16))) { # Play again
+                    LastAction = curtime()
+                    GameStatus = "idle"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                } elseif (inrange(Cursor, vec2(256, 256) - vec2(116, 16), vec2(256, 256) + vec2(116, 16))) { # Quit
+                    LastAction = curtime()
+                    GameStatus = "menu"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                    timer("unlock", 1000)
+                }
+            } elseif (GameStatus == "win" | GameStatus == "loss" | GameStatus == "tie") {
+                if (inrange(Cursor, vec2(256, 216) - vec2(116, 16), vec2(256, 216) + vec2(116, 16))) { # Play again
+                    LastAction = curtime()
+                    playSound("button/button17.wav")
+                    moneyRequest(Ply, PlayerBet, "Blackjack", 10)
+                } elseif (inrange(Cursor, vec2(256, 256) - vec2(116, 16), vec2(256, 256) + vec2(116, 16))) { # Quit
+                    LastAction = curtime()
+                    GameStatus = "menu"
+                    StateUpdated = 1
+                    playSound("button/button17.wav")
+                    timer("unlock", 1000)
+                }
+            }
+        }
+    }
+}

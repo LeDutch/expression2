@@ -1,0 +1,130 @@
+@name Main Menu
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+
+# Games
+#include "tomato/arcade/spaceinvaders"
+
+function bg() {
+    EGP:clear()
+    EGP:egpDrawTopLeft(1)
+    box("Background", table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42923250f.png"))
+}
+
+function header() {
+    box("TopLine", table("x"=34.0, "y"=166.0, "w"=444.0, "h"=4.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+    sprite("HeaderMask", table(
+        "x"=0, "y"=0, "w"=512, "h"=166,
+        "uv_start"=vec2(0, 0),
+        "uv_size"=vec2(3200, 166),
+        "sheet_size"=vec2(3200, 2560),
+        "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42923250f.png"
+    ))
+    
+    box("Header", table("x"=-1.0, "y"=1.0, "w"=513.0, "h"=160.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, 
+    "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4552cdfea.png"))
+
+}
+
+function mainMenu() {
+    bg()
+    let MenuFrame = box("MenuFrame", table("x"=0.0, "y"=180.0, "w"=512.0, "h"=400.0, "r" = 255, "g" = 255, "b" = 255, "a"=0))
+    
+    text("Frame_1_text", table("parent"="MenuFrame", "text"="Game 1", "x"=34.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    text("Frame_2_text", table("parent"="MenuFrame", "text"="Game 2", "x"=168.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    text("Frame_3_text", table("parent"="MenuFrame", "text"="Game 3", "x"=302.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    
+    scrollBar("Scrollbar", table(
+      "x"=470,
+      "y"=196,
+      "yoffset"=10,
+      "menu"="MenuFrame",
+      "h"=295,
+    		"w"=7, 
+    		"scale"=1.2, 
+      "radius"=0
+    ))
+    
+    box("Settings", table("x"=445.0, "y"=21.0, "w"=40.0, "h"=40.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/edit.png"))
+    
+    let Frame1 = box("Frame_1", table("outline"=1, "size"=2, "x"=171.0, "y"=199.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    let Frame2 = box("Frame_2", table("outline"=1, "size"=2, "x"=36.0, "y"=199.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    let Frame3 = box("Frame_3", table("outline"=1, "size"=2, "x"=305.0, "y"=199.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    let Frame4 = box("Frame_4", table("outline"=1, "size"=2, "x"=305.0, "y"=417.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    let Frame5 = box("Frame_5", table("outline"=1, "size"=2, "x"=171.0, "y"=417.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    let Frame6 = box("Frame_6", table("outline"=1, "size"=2, "x"=36.0, "y"=417.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
+    
+    MenuFrame:giveChild(Frame1)
+    MenuFrame:giveChild(Frame2)
+    MenuFrame:giveChild(Frame3)
+    MenuFrame:giveChild(Frame4)
+    MenuFrame:giveChild(Frame5)
+    MenuFrame:giveChild(Frame6)
+    
+    header()
+    
+    EGP:egpRemove(Elements:get("MainMenu"))
+}
+
+function gameMenu(Cursor:string) {
+    EGP:egpRemove(Elements:get("TopLine"))
+    EGP:egpRemove(Elements:get("HeaderMask"))
+    EGP:egpRemove(Elements:get("Scrollbar"))
+    EGP:egpRemove(Elements:get("Scrollbar_bar"))
+    EGP:egpRemove(Elements:get("Scrollbar_bg"))
+    for (I=1, 6) {
+        if(I == Cursor[7]:toNumber()) {
+            EGP:egpRemove(Elements:get("Frame_"+I+"_text"))
+            continue
+        }
+        else {
+            EGP:egpRemove(Elements:get("Frame_"+I))
+            EGP:egpRemove(Elements:get("Frame_"+I+"_text"))
+        }
+    }
+    
+    
+    let Frame = EGP:egpobject(Elements:get(Cursor))
+    let MenuFrame = EGP:egpobject(Elements:get("MenuFrame"))
+    Frame["radius", number] = 0
+    Frame["fidelity", number] = 1
+    MenuFrame["y", number] = 180
+    transform(Cursor, 0.5, vec2(445, 435))
+    transform("Header", 0.5, vec2(155, 48))
+    moveTo(Cursor, 0.5, vec2(34, -115))
+    moveTo("Header", 0.5, vec2(178, 17))
+    box("MainMenu", table("x"=34.0, "y"=21.0, "w"=40.0, "h"=40.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/icon_back.png"))
+    fadeIn("MainMenu", 2)
+    
+    loadingSpinner("TheSpinner", table("primary"=vec(255,255,255), "coords"=vec2(256,266), "scale"=0.5, "size"=8))
+    
+    switch (Cursor[7]:toNumber()) {
+        case 1,
+            stopSpinner("TheSpinner")
+            timer(1, function() {
+                spaceInvaders("Frame_1")
+            })
+        break
+        case 2,
+        break
+        case 3,
+        break
+        case 4,
+        break
+        case 5,
+        break
+        case 6,
+        break
+    }
+}
+
+function settings() {
+    EGP:egpRemove(Elements:get("MainMenu"))
+    bg()
+    header()
+    checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
+    
+    box("MainMenu", table("x"=228.0, "y"=445.0, "w"=55.0, "h"=55.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/icon_back.png"))
+    
+}

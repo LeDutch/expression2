@@ -1,0 +1,185 @@
+@name Window Presser 2000
+@inputs [Prop1 Prop2 Prop3 Prop4 Prop5 Prop6 Prop7 Prop8 Prop9 Prop10]:entity Friendslist
+@outputs [Fading1 Fading2 Fading3 Fading4 Fading5 Fading6 Fading7 Fading8 Fading9 Fading10]:number
+@persist [Timer]:table Friend:entity
+@trigger 
+@strict
+
+if (first()) {
+    function number table:getTime(Name:string) {
+        return This[Name, number]
+    }
+    function table:setTime(Name:string, Time:number) {
+        This[Name, number] = Time
+    }
+    function table:addTime(Name:string, Time:number) {
+        local A = Timer:getTime(Name)
+        A += Time
+        This[Name, number] = A
+    }
+    function table:reduceTime(Name:string, Time:number) {
+        local A = Timer:getTime(Name)
+        A -= Time
+        This[Name, number] = A
+    }
+    function number key(Key:string, Entity:entity){
+    if( owner():keyPressed(Key) & owner():aimEntity() == Entity){
+        return 1
+    }
+    return 0
+    }
+}
+
+interval(100)
+
+#-------------------------------#
+# Wrote it like this because easier to code - this is messy code 
+
+if(key("e",Prop1)){
+    Fading1 = 1
+    Timer:setTime("Prop1", 2)
+}
+
+Timer1 = Timer:getTime("Prop1")
+if (Timer1 > 0.1) {
+    Timer:reduceTime("Prop1", 0.1)
+}
+elseif (Timer1 == 0.1){
+    Fading1 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop2)){
+    Fading2 = 1
+    Timer:setTime("Prop2", 2)
+}
+
+Timer2 = Timer:getTime("Prop2")
+if (Timer2 > 0.1) {
+    Timer:reduceTime("Prop2", 0.1)
+}
+elseif (Timer2 == 0.1){
+    Fading2 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop3)){
+    Fading3 = 1
+    Timer:setTime("Prop3", 2)
+}
+
+Timer3 = Timer:getTime("Prop3")
+if (Timer3 > 0.1) {
+    Timer:reduceTime("Prop3", 0.1)
+}
+elseif (Timer3 == 0.1){
+    Fading3 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop4)){
+    Fading4 = 1
+    Timer:setTime("Prop4", 2)
+}
+
+Timer4 = Timer:getTime("Prop4")
+if (Timer4 > 0.1) {
+    Timer:reduceTime("Prop4", 0.1)
+}
+elseif (Timer4 == 0.1){
+    Fading4 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop5)){
+    Fading5 = 1
+    Timer:setTime("Prop5", 2)
+}
+
+Timer5 = Timer:getTime("Prop5")
+if (Timer5 > 0.1) {
+    Timer:reduceTime("Prop5", 0.1)
+}
+elseif (Timer5 == 0.1){
+    Fading5 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop6)){
+    Fading6 = 1
+    Timer:setTime("Prop6", 2)
+}
+
+Timer6 = Timer:getTime("Prop6")
+if (Timer6 > 0.1) {
+    Timer:reduceTime("Prop6", 0.1)
+}
+elseif (Timer6 == 0.1){
+    Fading6 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop7)){
+    Fading7 = 1
+    Timer:setTime("Prop7", 2)
+}
+
+Timer7 = Timer:getTime("Prop7")
+if (Timer7 > 0.1) {
+    Timer:reduceTime("Prop7", 0.1)
+}
+elseif (Timer7 == 0.1){
+    Fading7 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop1)){
+    Fading8 = 1
+    Timer:setTime("Prop8", 2)
+}
+
+Timer8 = Timer:getTime("Prop8")
+if (Timer8 > 0.1) {
+    Timer:reduceTime("Prop8", 0.1)
+}
+elseif (Timer8 == 0.1){
+    Fading8 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop9)){
+    Fading9 = 1
+    Timer:setTime("Prop9", 2)
+}
+
+Timer9 = Timer:getTime("Prop9")
+if (Timer9 > 0.1) {
+    Timer:reduceTime("Prop9", 0.1)
+}
+elseif (Timer9 == 0.1){
+    Fading9 = 0
+}
+
+#------------New Timer-----------#
+
+if(key("e",Prop10)){
+    Fading10 = 1
+    Timer:setTime("Prop10", 2)
+}
+
+Timer10 = Timer:getTime("Prop10")
+if (Timer10 > 0.1) {
+    Timer:reduceTime("Prop10", 0.1)
+}
+elseif (Timer10 == 0.1){
+    Fading10 = 0
+}
+

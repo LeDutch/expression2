@@ -1,0 +1,545 @@
+@name Woodlands Bank
+@persist Profile:entity Profits:table Racks:table Snapshot:number
+@inputs FadingDoor:wirelink
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
+
+#include "lib/tomato/1.0/tomato_ui"
+#include "lib/tomato/1.0/tomato_db"
+
+if (first()) {
+    Profits = table()
+    Racks = table()
+    Snapshot = 0
+}
+
+function background() {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    Elements = table()
+    # Background
+    box(table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=96, "g"=63, "b"=38, "radius"=0))
+    box(table("x"=15.0, "y"=13.0, "w"=483.0, "h"=486.0, "r"=108, "g"=78, "b"=49, "radius"=20.0))
+    
+    # Nails effect
+    circle(table("x"=10.0, "y"=499.0, "w"=5.0, "h"=5.0, "r"=217, "g"=217, "b"=217))
+    circle(table("x"=10.0, "y"=13.0, "w"=5.0, "h"=5.0, "r"=217, "g"=217, "b"=217))
+    circle(table("x"=503.0, "y"=13.0, "w"=5.0, "h"=5.0, "r"=217, "g"=217, "b"=217))
+    circle(table("x"=503.0, "y"=501.0, "w"=5.0, "h"=5.0, "r"=217, "g"=217, "b"=217))
+    box(table("x"=15.0, "y"=503.0, "w"=9.9, "h"=1.0, "r"=0, "g"=0, "b"=0, "angle"=135.0))
+    box(table("x"=8.0, "y"=18.0, "w"=10.0, "h"=1.0, "r"=0, "g"=0, "b"=0, "angle"=53.13))
+    box(table("x"=505.0, "y"=19.0, "w"=10.05, "h"=1.0, "r"=0, "g"=0, "b"=0, "angle"=95.71))
+    box(table("x"=507.0, "y"=498.0, "w"=9.9, "h"=1.0, "r"=0, "g"=0, "b"=0, "angle"=-135))
+    text(table("text"="A Tomato Production", "a"=150, "x"=0.0, "y"=497.0, "w"=512.0, "h"=15.0, "r"=255, "g"=219, "b"=181, "size"=12, "halign"=1, "valign"=1))
+}
+
+function logo_large() {
+    # Logo Section
+    circle("Logo_Large", table("x"=256.345, "y"=212.925, "w"=111.195, "h"=111.195, "r"=255, "g"=234, "b"=197, "size"=4, "fidelity"=50, "outline"=1))
+    circle("Ellipse2_Border", table("x"=218.14000000000001, "y"=213.36, "w"=33.49, "h"=33.49, "r"=255, "g"=234, "b"=197, "size"=4, "fidelity"=50, "outline"=1))
+    circle("Ellipse3_Border", table("x"=218.565, "y"=212.925, "w"=46.795, "h"=46.795, "r"=255, "g"=234, "b"=197, "size"=4, "fidelity"=50, "outline"=1))
+    circle("Ellipse4_Border", table("x"=312.58500000000004, "y"=160.975, "w"=27.475, "h"=27.475, "r"=255, "g"=234, "b"=197, "size"=4, "fidelity"=50, "outline"=1))
+    circle("Ellipse5_Border", table("x"=313.02, "y"=160.55, "w"=38.21, "h"=38.21, "r"=255, "g"=234, "b"=197, "size"=4, "fidelity"=50, "outline"=1))
+    text("RightEye", table("text"="$", "x"=191.0, "y"=186.0, "w"= 55.81, "h"=66.98, "r"=255, "g"=234, "b"=197, "size"=51, "halign"=1, "valign"=0))
+    text("LeftEye", table("text"="$", "x"=285.0, "y"=137.0, "w"= 55.81, "h"=66.98, "r"=255, "g"=234, "b"=197, "size"=43, "halign"=1, "valign"=0))
+    
+    # Logo Gears
+    box("Rectangle1", table("x"=176.92, "y"=288.06, "w"=157.14, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle2", table("x"=206.12, "y"=136.08, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle3", table("x"=230.04, "y"=136.08, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-75.0))
+    box("Rectangle23", table("x"=233.11, "y"=154.99, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-19.83))
+    box("Rectangle24", table("x"=188.09, "y"=159.76, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=15.0))
+    box("Rectangle25", table("x"=159.75, "y"=197.27, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=66.65))
+    box("Rectangle26", table("x"=164.67, "y"=243.51, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=111.49))
+    box("Rectangle27", table("x"=201.92, "y"=272.32, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=165.0))
+    box("Rectangle28", table("x"=249.22, "y"=268.37, "w"=15.21, "h"=3.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-164.24))
+    box("Rectangle29", table("x"=277.19, "y"=229.14, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-109.03))
+    box("Rectangle30", table("x"=266.76, "y"=195.33, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-43.35))
+    box("Rectangle32", table("x"=264.51, "y"=196.27, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=64.77))
+    box("Rectangle33", table("x"=254.59, "y"=166.99, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-22.31))
+    box("Rectangle34", table("x"=255.76, "y"=153.25, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.0))
+    box("Rectangle35", table("x"=269.5, "y"=148.24, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-156.75))
+    box("Rectangle36", table("x"=273.62, "y"=136.55, "w"=13.06, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-105.0))
+    box("Rectangle37", table("x"=267.79, "y"=122.6, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-67.53))
+    box("Rectangle38", table("x"=277.75, "y"=115.38, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-139.42))
+    box("Rectangle39", table("x"=288.7, "y"=121.11, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=159.1))
+    box("Rectangle40", table("x"=302.81, "y"=114.85, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-149.31))
+    box("Rectangle41", table("x"=307.01, "y"=99.95, "w"=16.44, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-104.53))
+    box("Rectangle42", table("x"=321.18, "y"=102.59, "w"=16.31, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=180.0))
+    box("Rectangle43", table("x"=324.53, "y"=116.6, "w"=17.55, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=110.28))
+    box("Rectangle44", table("x"=350.77, "y"=116.07, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.96))
+    box("Rectangle46", table("x"=359.0, "y"=125.56, "w"=14.64, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=135.0))
+    box("Rectangle47", table("x"=360.76, "y"=124.05, "w"=17.62, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-105.0))
+    box("Rectangle48", table("x"=355.54, "y"=139.14, "w"=10.49, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.0))
+    box("Rectangle49", table("x"=359.26, "y"=146.38, "w"=13.37, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-20.79))
+    box("Rectangle50", table("x"=372.7, "y"=151.53, "w"=18.03, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.0))
+    box("Rectangle51", table("x"=372.11, "y"=171.17, "w"=16.73, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.0))
+    box("Rectangle52", table("x"=357.88, "y"=172.82, "w"=13.1, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-101.31))
+    box("Rectangle53", table("x"=355.3, "y"=183.3, "w"=14.81, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-69.29))
+    box("Rectangle54", table("x"=360.7, "y"=197.75, "w"=14.81, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-135.0))
+    box("Rectangle55", table("x"=349.57, "y"=209.06, "w"=14.81, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=158.68))
+    box("Rectangle56", table("x"=338.46, "y"=204.22, "w"=11.7, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=178.28))
+    box("Rectangle57", table("x"=329.24, "y"=202.36, "w"=18.61, "h"=3.19, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-111.47))
+    box("Rectangle59", table("x"=296.48, "y"=202.2, "w"=18.61, "h"=3.19, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.41))
+    box("Rectangle60", table("x"=269.86, "y"=173.0, "w"=10.55, "h"=3.19, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.41))
+    box("Rectangle58", table("x"=321.18, "y"=220.23, "w"=17.17, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-180.0))
+    box("Rectangle45", table("x"=336.09, "y"=120.39, "w"=11.78, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=165.0))
+    box("Rectangle31", table("x"=276.53, "y"=205.26, "w"=16.23, "h"=3.28, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=17.13))
+    box("Rectangle22", table("x"=253.96, "y"=158.29, "w"=8.48, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-150.0))
+    box("Rectangle4", table("x"=205.66, "y"=136.08, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle5", table("x"=155.56, "y"=167.21, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=45.0))
+    box("Rectangle6", table("x"=172.47, "y"=150.29, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-30.0))
+    box("Rectangle7", table("x"=155.24, "y"=167.53, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle8", table("x"=140.01, "y"=224.25, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=88.49))
+    box("Rectangle9", table("x"=140.64, "y"=200.33, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=13.49))
+    box("Rectangle10", table("x"=140.0, "y"=224.7, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle11", table("x"=170.29, "y"=277.35, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=133.49))
+    box("Rectangle12", table("x"=153.82, "y"=260.0, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=58.49))
+    box("Rectangle13", table("x"=170.6, "y"=277.68, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle14", table("x"=229.03, "y"=291.48, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=178.49))
+    box("Rectangle15", table("x"=205.11, "y"=290.85, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=103.49))
+    box("Rectangle16", table("x"=229.48, "y"=291.49, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle17", table("x"=282.64, "y"=260.29, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-133.3))
+    box("Rectangle18", table("x"=266.23, "y"=277.7, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=151.7))
+    box("Rectangle19", table("x"=282.95, "y"=259.96, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle20", table("x"=295.66, "y"=201.4, "w"=24.04, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.17))
+    box("Rectangle21", table("x"=295.58, "y"=225.32, "w"=21.47, "h"=3.43, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.17))
+    EGP:egpAngle(Elements:get("Rectangle19"), vec2(282.95, 259.96), vec2(0, -3.43), 122)
+    EGP:egpAngle(Elements:get("Rectangle16"), vec2(229.48, 291.49), vec2(0, -3.43), 74)
+    EGP:egpAngle(Elements:get("Rectangle13"), vec2(170.6, 277.68), vec2(0, -3.43), 29)
+    EGP:egpAngle(Elements:get("Rectangle10"), vec2(140.0, 224.7), vec2(0, -3.43), -16)
+    EGP:egpAngle(Elements:get("Rectangle7"), vec2(155.24, 167.53), vec2(0, -3.43), -60)
+    EGP:egpAngle(Elements:get("Rectangle4"), vec2(205.66, 136.08), vec2(0, -3.43), -105)
+}
+
+function header(Title:string) {
+    background()
+    box("HeaderBG", table("x"=15.0, "y"=155.0, "w"=483.0, "h"=344.0, "r"=255, "g"=234, "b"=197, "radius"=20.0))
+    box("HeaderBGS", table("x"=15.0, "y"=155.0, "w"=483.0, "h"=37.0, "r"=255, "g"=234, "b"=197, "radius"=0))
+
+    # Logo Section
+    circle("Ellipse1_Border", table("x"=89.075, "y"=87.86500000000001, "w"=55.505, "h"=55.505, "r"=255, "g"=234, "b"=197, "size"=2, "fidelity"=50, "outline"=1))
+    circle("Ellipse2_Border", table("x"=70.005, "y"=88.08500000000001, "w"=16.715, "h"=16.715, "r"=255, "g"=234, "b"=197, "size"=2, "fidelity"=50, "outline"=1))
+    circle("Ellipse3_Border", table("x"=70.22, "y"=87.87, "w"=23.36, "h"=23.36, "r"=255, "g"=234, "b"=197, "size"=2, "fidelity"=50, "outline"=1))
+    circle("Ellipse4_Border", table("x"=117.155, "y"=61.935, "w"=13.715, "h"=13.715, "r"=255, "g"=234, "b"=197, "size"=2, "fidelity"=50, "outline"=1))
+    circle("Ellipse5_Border", table("x"=117.36500000000001, "y"=61.724999999999994, "w"=19.075, "h"=19.075, "r"=255, "g"=234, "b"=197, "size"=2, "fidelity"=50, "outline"=1))
+    
+    text("RightEye", table("text"="$", "x"=56.0, "y"=79.0, "w"= 27.86, "h"=33.43, "r"=255, "g"=234, "b"=197, "size"=17, "halign"=1, "valign"=0))
+    text("LeftEye", table("text"="$", "x"=103.0, "y"=53.0, "w"= 27.86, "h"=33.43, "r"=255, "g"=234, "b"=197, "size"=17, "halign"=1, "valign"=0))
+    box("Rectangle1", table("x"=49.43, "y"=125.37, "w"=78.44, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle2", table("x"=64.0, "y"=49.51, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box("Rectangle3", table("x"=75.95, "y"=49.51, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-75.0))
+    box("Rectangle23", table("x"=77.48, "y"=58.95, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-19.83))
+    box("Rectangle24", table("x"=55.0, "y"=61.33, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=15.0))
+    box("Rectangle25", table("x"=40.86, "y"=80.05, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=66.65))
+    box("Rectangle26", table("x"=43.31, "y"=103.13, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=111.49))
+    box("Rectangle27", table("x"=61.91, "y"=117.51, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=165.0))
+    box("Rectangle28", table("x"=85.52, "y"=115.54, "w"=7.59, "h"=1.81, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-164.24))
+    box("Rectangle29", table("x"=99.48, "y"=95.96, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-109.03))
+    box("Rectangle30", table("x"=94.27, "y"=79.08, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-43.35))
+    box("Rectangle32", table("x"=93.15, "y"=79.55, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=64.77))
+    box("Rectangle33", table("x"=88.2, "y"=64.94, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-22.31))
+    box("Rectangle34", table("x"=88.78, "y"=58.08, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.0))
+    box("Rectangle35", table("x"=95.64, "y"=55.58, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-156.75))
+    box("Rectangle36", table("x"=97.7, "y"=49.74, "w"=6.52, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-105.0))
+    box("Rectangle37", table("x"=94.79, "y"=42.78, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-67.53))
+    box("Rectangle38", table("x"=99.76, "y"=39.18, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-139.42))
+    box("Rectangle39", table("x"=105.22, "y"=42.04, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=159.1))
+    box("Rectangle40", table("x"=112.27, "y"=38.91, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-149.31))
+    box("Rectangle41", table("x"=114.36, "y"=31.47, "w"=8.21, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-104.53))
+    box("Rectangle42", table("x"=121.44, "y"=32.79, "w"=8.14, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=180.0))
+    box("Rectangle43", table("x"=123.11, "y"=39.78, "w"=8.76, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=110.28))
+    box("Rectangle44", table("x"=136.21, "y"=39.52, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.96))
+    box("Rectangle46", table("x"=140.32, "y"=44.26, "w"=7.31, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=135.0))
+    box("Rectangle47", table("x"=141.2, "y"=43.5, "w"=8.8, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-105.0))
+    box("Rectangle48", table("x"=138.59, "y"=51.04, "w"=5.23, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.0))
+    box("Rectangle49", table("x"=140.45, "y"=54.65, "w"=6.68, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-20.79))
+    box("Rectangle50", table("x"=147.15, "y"=57.22, "w"=9.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.0))
+    box("Rectangle51", table("x"=146.86, "y"=67.02, "w"=8.35, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.0))
+    box("Rectangle52", table("x"=139.76, "y"=67.85, "w"=6.54, "h"=1.64, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-101.31))
+    box("Rectangle53", table("x"=138.47, "y"=73.08, "w"=7.39, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-69.29))
+    box("Rectangle54", table("x"=141.17, "y"=80.29, "w"=7.39, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-135.0))
+    box("Rectangle55", table("x"=135.61, "y"=85.94, "w"=7.39, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=158.68))
+    box("Rectangle56", table("x"=130.06, "y"=83.52, "w"=5.84, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=178.28))
+    box("Rectangle57", table("x"=125.46, "y"=82.6, "w"=9.29, "h"=1.59, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-111.47))
+    box("Rectangle59", table("x"=109.11, "y"=82.51, "w"=9.29, "h"=1.59, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.41))
+    box("Rectangle60", table("x"=95.82, "y"=67.94, "w"=5.26, "h"=1.59, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-60.41))
+    box("Rectangle58", table("x"=121.44, "y"=91.51, "w"=8.57, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-180.0))
+    box("Rectangle45", table("x"=128.88, "y"=41.68, "w"=5.88, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=165.0))
+    box("Rectangle31", table("x"=99.15, "y"=84.04, "w"=8.1, "h"=1.63, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=17.13))
+    box("Rectangle22", table("x"=87.88, "y"=60.6, "w"=4.23, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-150.0))
+    box("Rectangle4", table("x"=63.78, "y"=49.51, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle4"), vec2(63.78, 49.51), vec2(0, -1.71), -105)
+    box("Rectangle5", table("x"=38.77, "y"=65.05, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=45.0))
+    box("Rectangle6", table("x"=47.21, "y"=56.6, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-30.0))
+    box("Rectangle7", table("x"=38.61, "y"=65.21, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle7"), vec2(38.61, 65.21), vec2(0, -1.71), -60)
+    box("Rectangle8", table("x"=31.01, "y"=93.52, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=88.49))
+    box("Rectangle9", table("x"=31.32, "y"=81.58, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=13.49))
+    box("Rectangle10", table("x"=31.0, "y"=93.75, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle10"), vec2(31.0, 93.75), vec2(0, -1.71), -16)
+    box("Rectangle11", table("x"=46.12, "y"=120.03, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=133.49))
+    box("Rectangle12", table("x"=37.9, "y"=111.36, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=58.49))
+    box("Rectangle13", table("x"=46.27, "y"=120.19, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle13"), vec2(46.27, 120.19), vec2(0, -1.71), 29)
+    box("Rectangle14", table("x"=75.44, "y"=127.08, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=178.49))
+    box("Rectangle15", table("x"=63.5, "y"=126.76, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=103.49))
+    box("Rectangle16", table("x"=75.67, "y"=127.08, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle16"), vec2(75.67, 127.08), vec2(0, -1.71), 74)
+    box("Rectangle17", table("x"=102.2, "y"=111.51, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-133.3))
+    box("Rectangle18", table("x"=94.01, "y"=120.2, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=151.7))
+    box("Rectangle19", table("x"=102.36, "y"=111.35, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0))
+    EGP:egpAngle(Elements:get("Rectangle19"), vec2(102.36, 111.35), vec2(0, -1.71), 122)
+    box("Rectangle20", table("x"=108.7, "y"=82.11, "w"=12.0, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-90.17))
+    box("Rectangle21", table("x"=108.66, "y"=94.06, "w"=10.72, "h"=1.71, "r"=255, "g"=234, "b"=197, "radius"=0, "angle"=-165.17))
+    text("Header", table("text"=Title, "x"=186.0, "y"=13.0, "w"= 312.0, "h"=149.0, "r"=255, "g"=234, "b"=197, "size"=43, "halign"=1, "valign"=1))
+}
+
+function startScreen() {
+    background()
+    # Title and text
+    logo_large()
+    text("WoodlandsBank", table("text"="Woodlands Bank", "x"=80.0, "y"=342.0, "w"= 352.0, "h"=61.0, "r"=255, "g"=234, "b"=197, "size"=43, "halign"=1, "valign"=1))
+    text("StartText", table("text"="Press e to start", "x"=15.0, "y"=324.0, "w"= 483.0, "h"=175.0, "r"=255, "g"=219, "b"=181, "size"=23, "halign"=1, "valign"=1))
+    box("Start", table("a"=0, "x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=96, "g"=63, "b"=38, "radius"=0))
+    
+    text("StartText", table("text"="Press e to start", "x"=15.0, "y"=324.0, "w"= 483.0, "h"=175.0, "r"=255, "g"=219, "b"=181, "size"=23, "halign"=1, "valign"=1))
+}
+
+function menuScreen() {
+    background()
+    logo_large()
+    circle("Ellipse6", table("x"=258.5, "y"=377.5, "w"=66.5, "h"=66.5, "r"=108, "g"=78, "b"=49))
+    circle("Ellipse6_Border", table("x"=258.5, "y"=377.5, "w"=66.5, "h"=66.5, "r"=255, "g"=234, "b"=197, "size"=3, "fidelity"=50, "outline"=1))
+    circle("Ellipse7", table("x"=258.0, "y"=377.0, "w"=55.0, "h"=55.0, "r"=108, "g"=78, "b"=49))
+    circle("Ellipse7_Border", table("x"=258.0, "y"=377.0, "w"=55.0, "h"=55.0, "r"=255, "g"=234, "b"=197, "size"=3, "fidelity"=50, "outline"=1))
+    
+    text("UserMessage", table("text"="Welcome, " + CurrentUser:name(), "x"=209.0, "y"=334.0, "w"= 100.0, "h"=86.0, "r"=255, "g"=255, "b"=255, "size"=17, "halign"=1, "valign"=1))
+    
+    box("Account", table("x"=70.0, "y"=311.0, "w"=155.0, "h"=45.0, "r"=255, "g"=234, "b"=197, "radius"=10.0))
+    text("AccountText", table("text"="Account", "x"=70.0, "y"=311.0, "w"= 156.0, "h"=45.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+    box("Withdraw", table("x"=70.0, "y"=403.0, "w"=155.0, "h"=45.0, "r"=255, "g"=234, "b"=197, "radius"=10.0))
+    text("WithdrawText", table("text"="Withdraw", "x"=70.0, "y"=403.0, "w"= 156.0, "h"=45.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+    box("Membership", table("x"=291.0, "y"=399.0, "w"=155.0, "h"=45.0, "r"=255, "g"=234, "b"=197, "radius"=10.0))
+    text("MembershipText", table("text"="Membership", "x"=291.0, "y"=399.0, "w"= 156.0, "h"=45.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+    box("Deposit", table("x"=286.0, "y"=294.0, "w"=155.0, "h"=45.0, "r"=255, "g"=234, "b"=197, "radius"=10.0))
+    text("DepositText", table("text"="Deposit", "x"=286.0, "y"=294.0, "w"= 156.0, "h"=45.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+    
+}
+
+function deposit() {
+    header("Deposit")
+    loadingSpinner("changeSpinner", table("coords"=vec2(256,300), "size"=9, "primary"=vec(108,78,49)))
+    box("Back", table("x"=135.0, "y"=422.0, "w"=250.0, "h"=47.0, "r"=108, "g"=78, "b"=49, "radius"=5.0))
+    text("BackText", table("text"="Done", "x"=135.0, "y"=422.0, "w"= 250.0, "h"=47.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+}
+
+function withdraw() {
+    header("Withdraw")
+    loadingSpinner("changeSpinner", table("coords"=vec2(256,300), "size"=9, "primary"=vec(108,78,49)))
+    box("Back", table("x"=135.0, "y"=422.0, "w"=250.0, "h"=47.0, "r"=108, "g"=78, "b"=49, "radius"=5.0))
+    text("WithdrawText", table("text"="A member of our staff has been notified.", "x"=131.0, "y"=378.0, "w"= 250.0, "h"=44.0, "r"=108, "g"=78, "b"=49, "size"=15, "halign"=1, "valign"=1))
+    
+    text("BackText", table("text"="Cancel", "x"=135.0, "y"=422.0, "w"= 250.0, "h"=47.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+}
+
+function account(Player:entity, SessionProfit:number) {
+    const Account = DB["Players", table][Player:steamID64(), table]
+    const Name = Account["Name", string] 
+    const Tenure = Account["Tenure", string]
+    const TotalProfit = Account["Profit", number]
+    const Rank = Account["Rank", string]
+    
+    header("Account")
+    
+    text("DateJoined", table("text"="Date joined: " + Tenure, "x"=31.0, "y"=216.0, "w"=400.0, "h"=24.0, "r"=108, "g"=78, "b"=49, "size"=23, "halign"=0, "valign"=0))
+    text("Name", table("text"="Name: " + Name, "x"=32.0, "y"=174.0, "w"=400.0, "h"=24.0, "r"=108, "g"=78, "b"=49, "size"=23, "halign"=0, "valign"=0))
+    text("MembershipTier", table("text"="Membership Tier: " + Rank, "x"=31.0, "y"=258.0, "w"=400.0, "h"=24.0, "r"=108, "g"=78, "b"=49, "size"=23, "halign"=0, "valign"=0))
+    box(table("x"=31.0, "y"=422.0-60, "w"=451.0, "h"=47.0, "r"=108, "g"=78, "b"=49, "radius"=5.0))
+    box(table("x"=31.0, "y"=367.0-60, "w"=451.0, "h"=47.0, "r"=108, "g"=78, "b"=49, "radius"=5.0))
+    text("TotalProfit", table("text"="Total profit: $" + abbreviateNum(TotalProfit), "x"=38.0, "y"=422.0-60, "w"= 444.0, "h"=47.0, "r"=255, "g"=234, "b"=197, "size"=19, "halign"=0, "valign"=1))
+    text("SessionProfit", table("text"="Session profit: $" + abbreviateNum(SessionProfit), "x"=38.0, "y"=367.0-60, "w"= 444.0, "h"=47.0, "r"=255, "g"=234, "b"=197, "size"=19, "halign"=0, "valign"=1))
+    
+    box("Back", table("x"=31.0, "y"=422.0, "w"=168.0, "h"=51.0, "r"=108, "g"=78, "b"=49, "radius"=10.0))
+    text("BackText", table("text"="< Back", "x"=31.0, "y"=422.0, "w"= 168.0, "h"=51.0, "r"=255, "g"=234, "b"=197, "size"=15, "halign"=1, "valign"=1))
+}
+
+function membership(Account:table) {
+    const Rank = Account["Rank", string]
+    header("Membership")
+
+    text("Title", table("text"="Why become a member?", "x"=33.0, "y"=160.0, "w"= 456.0, "h"=33.0, "r"=108, "g"=78, "b"=49, "size"=23, "halign"=1, "valign"=0))
+    text("Description", table("text"="As a member you’ll get exclusive perks. 
+    \nReduced tax on printer earnings (10% tax). 
+    \nDon’t limit yourself to storing printers, as a member we offer storage of bitcoin miners or anything else. 
+    \nGet more for less with increased rates on our dirty money exchange. 
+    \nPay anyone, anywhere with our state of the art command system. Syntax: !pay (name) (amount) 
+    \nRoleplay stress free with printer insurance (5% deposit fee). 
+    \nPriority Support", 
+    "x"=36.0, "y"=190.0, "w"= 266.0, "h"=334.0, "r"=108, "g"=78, "b"=49, "size"=15, "halign"=0, "valign"=0))
+
+    # Tick Section
+    box(table("x"=316.0, "y"=162.0+50, "w"=33.0, "h"=34.0, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box(table("x"=316.0, "y"=162.0+50, "w"=33.0, "h"=34.0, "r"=96, "g"=63, "b"=38, "radius"=0, "size"=3, "outline"=1))
+    box(table("x"=329.15, "y"=184.23+50, "w"=34.74, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=54.36))
+    box(table("x"=325.65, "y"=172.0+50, "w"=17.81, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=-35.57))
+    text(table("text"="10% Tax", "x"=349.0, "y"=162.0+50, "w"= 140.0, "h"=33.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+
+    # Tick Section
+    box(table("x"=316.0, "y"=211.0+50, "w"=33.0, "h"=34.0, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box(table("x"=316.0, "y"=211.0+50, "w"=33.0, "h"=34.0, "r"=96, "g"=63, "b"=38, "radius"=0, "size"=3, "outline"=1))
+    box(table("x"=329.15, "y"=233.23+50, "w"=34.74, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=54.36))
+    box(table("x"=325.65, "y"=221.0+50, "w"=17.81, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=-35.57))
+    text(table("text"="Storage", "x"=349.0, "y"=211.0+50, "w"= 140.0, "h"=33.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+
+    # Tick Section
+    box(table("x"=316.0, "y"=255.0+50, "w"=33.0, "h"=34.0, "r"=255, "g"=234, "b"=197, "radius"=0))
+    box(table("x"=316.0, "y"=255.0+50, "w"=33.0, "h"=34.0, "r"=96, "g"=63, "b"=38, "radius"=0, "size"=3, "outline"=1))
+    box(table("x"=329.15, "y"=277.23+50, "w"=34.74, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=54.36))
+    box(table("x"=325.65, "y"=265.0+50, "w"=17.81, "h"=8.0, "r"=0, "g"=132, "b"=40, "radius"=0, "angle"=-35.57))
+    text(table("text"="Pay Anywhere", "x"=349.0, "y"=255.0+50, "w"= 140.0, "h"=33.0, "r"=96, "g"=63, "b"=38, "size"=19, "halign"=1, "valign"=1))
+
+    # BuyButton Section
+    box("BuyMembership", table("x"=316.0, "y"=322.0+30, "w"=168.0, "h"=51.0, "r"=108, "g"=78, "b"=49, "radius"=10.0))
+    text(table("text"=Rank == "Default" ? "Purchase Membership" : "Purchased", "x"=316.0, "y"=322.0+30, "w"= 168.0, "h"=51.0, "r"=255, "g"=234, "b"=197, "size"=15, "halign"=1, "valign"=1))
+
+    # Back
+    box("Back", table("x"=316.0, "y"=422.0, "w"=168.0, "h"=51.0, "r"=108, "g"=78, "b"=49, "radius"=10.0))
+    text("BackText", table("text"="< Back", "x"=316.0, "y"=422.0, "w"= 168.0, "h"=51.0, "r"=255, "g"=234, "b"=197, "size"=15, "halign"=1, "valign"=1))
+
+}
+
+function string getNextRank(Entity:entity) {
+    let Ranks = DB["Settings", table]["Ranks", array]
+    let Player = DB["Players", table][Entity:steamID64(), table]
+    let Rank = Player["Rank", string]
+    let Index = Ranks:indexOf(Rank)
+    return Ranks[Index + 1, string]
+}
+
+function number checkRack(Entity:entity) {
+    if (Entity:isValid()) {
+        let Class = Entity:keyvalues()["classname", string]
+        return Class:startsWith("printer_rack") || Class:startsWith("bitminer_tower")
+    }
+    return 0
+}
+
+function checkProfit(Player:entity, Customer:entity) {
+    let Amount = Player:money() - Snapshot
+    if (Amount > 200) {
+        let Steam = Customer:steamID64()
+        let Name = Customer:name()
+        let CustomerData = DB["Players", table][Steam, table]
+        let Rank = CustomerData["Rank",string]
+        let Tax = (Rank == "Default" ? 0.15 : 0.1)*Amount
+        let Profit = Amount - Tax
+                            
+        Player:msg("You collected: {green $" + abbreviateNum(Tax) + "} in taxes.")
+        Customer:msg("Thanks for banking with us, {red " + truncate(Name, 15) + "}. You received: {green $" + abbreviateNum(Profit) + "}")
+        moneyGive(Customer, Profit)
+        #Customer:soundPlay(100, 2, "zmlab2/cash.wav")
+                    
+        DB["Players", table][Steam,table]["Profit",number] = DB["Players", table][Steam,table]["Profit",number] + Profit
+        Profits[Steam, number] = Profits[Steam, number] + Profit
+        
+        saveDB(10)
+        Snapshot = 0
+    }
+}
+
+function checkCollection(Player:entity) {
+    let AimEntity = Player:aimEntity()
+    if (checkRack(AimEntity)) {
+        let RackId = AimEntity:id():toString()
+        let Customer = Racks[RackId, entity]
+        let SaveSnapshot = function() {
+            Player:msg(Customer:name() + "'s rack ready for collection")
+            Snapshot = Player:money()
+        }
+        
+        if (Racks:exists(RackId)) {
+            local Customer = Racks[RackId, entity]
+            if (!Snapshot) {
+                SaveSnapshot()
+            }
+            else {
+                checkProfit(Player, Customer)
+            }
+        }
+    }
+    else {
+        Snapshot = 0
+    }
+}
+
+if(moneyClk()) {
+    let Player = moneyClkPlayer()
+    let NextRank = getNextRank(Player)
+    let PlayerData = DB["Players", table][Player:steamID64(), table]
+    PlayerData["Rank", string] = NextRank
+    Player:msg("Thank you for your purchase.")
+    Player:msg("You are now a member of " + Prefix)
+    saveDB()
+    menuScreen()
+}
+
+if (initial()) {
+    Profile = noentity()
+    Prefix = "WoodlandsBank"
+    loadDB("WoodlandsBank")
+    
+    if (!DB["Settings", table]["UpgradePrice", number]) {# Initial settings
+        DB["Settings", table]["UpgradePrice", number] = 100000
+    }
+    if (!DB["Settings", table]["Ranks", array]:count()) {
+        DB["Settings", table]["Ranks", array] = array("Default", "Member")
+    }
+    DB["Structure", function] = function(PlayerToSave:entity) {
+        const Player = table(
+            "Steam" = PlayerToSave:steamID64(),
+            "Name" = PlayerToSave:name(),
+            "Rank" = "Default",
+            "Tenure"=getDate(),
+            "Profit"=0
+        )
+        return Player
+    }
+    DB["OnResponse", function] = function() {
+        stopSpinner("loading")
+        if (isPlayerNearby(Profile, 100)) {
+            timer(1, function() {
+                menuScreen()
+            })
+        }
+    }
+    
+    chat("pay", "!pay (name) (amount)", function(Args:array) {
+            const Player = Args[1, string]:findPlayer()
+            const Amount = Args[2, string]:toNumber()
+            if (Player:isValid() && Amount) {
+                loadPlayer(Player)
+                timer(1, function() {
+                    print(DB["Players",table][Player:steamID64(), table]:toString())
+                })
+            }
+    })
+    chat("memberprice", "!memberprice (amount) - changes upgrade to member price", 
+        function(Args:array) {
+            let Price = Args[1, string]:toNumber()
+            if (Price) {
+                DB["Settings", table]["UpgradePrice", number] = Price
+                owner():msg("Changed upgrade price to: $" + abbreviateNum(Price)) 
+            }
+        },
+    owner())
+    chat("track", "!track (name) - look at a printer rack and track the player", 
+        function(Args:array) {
+            let Player = owner()
+            let AimEntity = Player:aimEntity()
+            if (!checkRack(AimEntity)) { 
+                    Player:msg("This isn't a printer rack!")
+                    return 
+                }
+                let Name = Args[1,string]
+                let User = Name:findPlayer()
+                if (User:isValid() & Name:length()) {
+                    let RackId = AimEntity:id():toString()
+                    if(!Racks:exists(RackId)) {
+                        let Steam = User:steamID64()
+                        if (DB["Players", table]:exists(Steam)) {
+                            Racks[RackId, entity] = User
+                            Player:msg("Rack successfully added to " + User:name() +".")
+                        }
+                        else {
+                            Player:msg(User:name() + " isn't a customer!")
+                        }
+                    } else {
+                        Player:msg("This rack is already being tracked!")
+                    }
+                }
+                else {
+                    Player:msg("Please specify a valid playerID.")
+            }
+        },
+    owner())
+    chat("untrack", "!untrack - type this to untrack a printer rack when looking at them",
+        function(_:array) {
+            let Player = owner()
+            let AimEntity = Player:aimEntity()
+            if (!checkRack(AimEntity)) { return }
+            local RackId = AimEntity:id():toString()
+            if(Racks:exists(RackId)) {
+                Racks:remove(RackId)
+                Player:msg("Rack successfully removed!")
+            } else {
+                Player:msg("This rack is not being tracked!")
+            }
+        },
+    owner())
+    
+    startScreen()
+    timer(1, 0, function() {
+        checkCollection(owner())
+    })
+}
+
+if (userInput()) {
+    if (Profile == noentity()) {
+        Profile = CurrentUser
+        loadingSpinner("loading", table("coords"=vec2(256,370), "size"=12, "primary"=vec(255,255,255)))
+        loadPlayer(CurrentUser)
+        EGP:egpRemove(Elements:get("WoodlandsBank"))
+        EGP:egpRemove(Elements:get("StartText"))
+        timer("proximity", 1, 0, function() {
+            if(!isPlayerNearby(Profile, 150)) {
+                startScreen()
+                stopSpinner("loading")
+                stopSpinner("changeSpinner")
+                stoptimer("proximity")
+                Profile = noentity()
+                FadingDoor["Fade", number] = 0
+            }
+        })
+    }
+    else {
+        let Cursor = cursorObj()
+        switch (Cursor) {
+            case "Account",
+                account(Profile, Profits[Profile:steamID64(), number])
+            break
+            case "Withdraw",
+                withdraw()
+                owner():msg(CurrentUser:name() + " has requested a withdrawal.")
+                FadingDoor["Fade", number] = 1
+            break
+            case "Membership",
+                membership(DB["Players",table][Profile:steamID64(), table])
+            break
+            case "Deposit",
+                deposit()
+                FadingDoor["Fade", number] = 1
+            break
+            case "Back",
+                if(UI:exists("changeSpinner")) {
+                    EGP:egpRemove(Elements:get("Back"))
+                    EGP:egpRemove(Elements:get("BackText"))
+                    stopSpinner("changeSpinner")
+                    timer(1, function() {
+                        menuScreen()
+                    })
+                    FadingDoor["Fade", number] = 0
+                }
+                else {
+                    menuScreen()
+                }
+            break
+            case "BuyMembership",
+                const Rank = DB["Players", table][CurrentUser:steamID64(), table]["Rank", string]
+                if (Rank == "Default") {
+                    const UpradePrice = DB["Settings", table]["UpgradePrice", number]
+                    moneyRequest(CurrentUser, UpradePrice, "Buy Membership?")
+                }
+            break
+        }
+    }
+}

@@ -1,0 +1,182 @@
+@name Krypta Gunstore
+@inputs 
+@outputs 
+@persist Screen:string
+@strict
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_ui"
+
+function void logo() {
+    box(table("x"=33.0, "y"=35.0, "w"=123.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=33.0, "y"=51.0, "w"=123.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=211.0, "y"=51.0, "w"=83.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=67.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=83.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=99.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=115.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=131.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=72.0, "y"=147.0, "w"=45.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=177.0, "y"=131.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=170.0, "y"=147.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=294.0, "y"=147.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=286.0, "y"=131.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=267.0, "y"=83.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=196.0, "y"=83.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=189.0, "y"=99.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=275.0, "y"=99.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=184.0, "y"=115.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=281.0, "y"=115.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=262.0, "y"=67.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=202.0, "y"=67.0, "w"=38.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=222.0, "y"=35.0, "w"=59.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=35.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=67.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=83.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=99.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=115.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=372.0, "y"=147.0, "w"=83.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=361.0, "y"=131.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=115.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=430.0, "y"=131.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=352.0, "y"=51.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=35.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=67.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=83.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=99.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box(table("x"=439.0, "y"=51.0, "w"=39.0, "h"=8.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+}
+
+if (first() || dupefinished()) {
+    Screen = ""
+}
+
+function void screenStart() {
+    Screen = "Start"
+    EGP:egpClear()
+    box("Background", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Background_Border", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+    box("Rectangle0", table("x"=12.0, "y"=13.0, "w"=486.0, "h"=486.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle0_Border", table("x"=12.0, "y"=13.0, "w"=486.0, "h"=486.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    text("ARMSREQUISITIO", table("text"="ARMS REQUISITION TERMINAL 7.0", "x"=93.0, "y"=255.0, "w"= 325.0, "h"=90.0, "r"=0, "g"=170, "b"=0, "size"=27, "halign"=1, "valign"=1))
+    box("Rectangle6", table("x"=190.0, "y"=392.0, "w"=130.0, "h"=42.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle6_Border", table("x"=190.0, "y"=392.0, "w"=130.0, "h"=42.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+
+    # Button Section
+    box("Rectangle1", table("x"=200.0, "y"=399.0, "w"=109.92, "h"=28.0, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box("Rectangle3", table("x"=201.22, "y"=399.55, "w"=108.7, "h"=27.45, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box("Rectangle2", table("x"=200.41, "y"=399.55, "w"=109.11, "h"=26.9, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("Login", table("text"="LOGIN!", "x"=200.0, "y"=399.0, "w"= 110.0, "h"=28.0, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    
+    logo()
+    
+    box("TopLine", table("angle"=180, "x"=486.0, "y"=229.0, "w"=464.0, "h"=64.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/hud_infopointer.png"))
+    
+    text(table("text"="THE AUSTRALIAN UNDERGROUND", "x"=28.0, "y"=139.0, "w"= 281.0, "h"=76.0, "r"=0, "g"=170, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    text(table("text"="* SERIAL NUMBER 1142071169", "x"=16.0, "y"=181.0, "w"= 270.0, "h"=34.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    text(table("text"="(C) Copyright Krypta, Tomato & TAU-Corp Systems 1983", "x"=-5.0, "y"=479.0, "w"= 508.0, "h"=16.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    
+    #box("ScreenMask", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+}
+
+function screenLoading() {
+    Screen = "Loading"
+    EGP:egpClear()
+    box("Background", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Background_Border", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+    box("Rectangle7", table("x"=12.0, "y"=13.0, "w"=486.0, "h"=486.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle7_Border", table("x"=12.0, "y"=13.0, "w"=486.0, "h"=486.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    box("Rectangle59", table("x"=50.0, "y"=260.0, "w"=409.0, "h"=65.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle59_Border", table("x"=50.0, "y"=260.0, "w"=409.0, "h"=65.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    box("Rectangle6", table("x"=181.0, "y"=174.0, "w"=147.0, "h"=56.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle6_Border", table("x"=181.0, "y"=174.0, "w"=147.0, "h"=56.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    text("LOADING...", table("text"="LOADING...", "x"=117.0, "y"=150.0, "w"= 282.0, "h"=103.0, "r"=0, "g"=170, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    box("Rectangle49", table("x"=62.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle50", table("x"=102.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle51", table("x"=142.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle52", table("x"=182.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle53", table("x"=222.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle54", table("x"=262.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle55", table("x"=302.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0))
+    box("Rectangle58", table("x"=422.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle58_Border", table("x"=422.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=1, "outline"=1))
+    box("Rectangle60", table("x"=342.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle60_Border", table("x"=342.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=1, "outline"=1))
+    box("Rectangle61", table("x"=382.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle61_Border", table("x"=382.0, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=1, "outline"=1))
+}
+
+function screenMenu() {
+    Screen = "Menu"
+    EGP:egpClear()
+    box("Background", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Background_Border", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=1, "outline"=1))
+    box("Rectangle7", table("x"=16.0, "y"=16.0, "w"=480.0, "h"=480.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle7_Border", table("x"=16.0, "y"=16.0, "w"=480.0, "h"=480.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=5, "outline"=1))
+    text("$0.00", table("text"="$ 0.00", "x"=149.0, "y"=448.0, "w"= 180.0, "h"=38.0, "r"=0, "g"=170, "b"=0, "size"=27, "halign"=1, "valign"=1))
+    text("TaxDisplay", table("text"="Tax Display", "x"=13.0, "y"=411.0, "w"= 160.0, "h"=38.0, "r"=0, "g"=170, "b"=0, "size"=16, "halign"=1, "valign"=1))
+    text("TOTAL", table("text"="TOTAL", "x"=175.0, "y"=427.0, "w"= 44.0, "h"=33.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    text("", table("text"="", "x"=154.0, "y"=411.0, "w"= 65.0, "h"=32.0, "r"=0, "g"=170, "b"=0, "size"=14, "halign"=1, "valign"=1))
+    box("Rectangle6", table("x"=24.0, "y"=23.0, "w"=460.0, "h"=30.0, "r"=0, "g"=170, "b"=0, "radius"=0))
+    box("Rectangle6_Border", table("x"=24.0, "y"=23.0, "w"=460.0, "h"=30.0, "r"=0, "g"=0, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    text("SHOPPINGCART-", table("text"="SHOPPING CART - ", "x"=10.0, "y"=16.0, "w"= 287.0, "h"=44.0, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box("Rectangle1", table("x"=24.0, "y"=69.0, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box("Rectangle3", table("x"=25.52, "y"=70.51, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box("Rectangle2", table("x"=24.51, "y"=70.51, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("HEAVYARMOUR", table("text"="HEAVY ARMOUR", "x"=24.0, "y"=69.0, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=24.15, "y"=157.9, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.67, "y"=159.41, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.65, "y"=159.41, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("C4EXPLOSIVE", table("text"="C4 EXPLOSIVE", "x"=24.15, "y"=157.9, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=347.0, "y"=374.0, "w"=133.91, "h"=32.66, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=348.49, "y"=374.64, "w"=132.42, "h"=32.02, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=347.5, "y"=374.64, "w"=132.91, "h"=31.38, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("CHECKOUT", table("text"="CHECKOUT", "x"=347.0, "y"=374.0, "w"= 134.0, "h"=32.66, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=173.0, "y"=375.0, "w"=160.66, "h"=30.66, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=174.78, "y"=375.6, "w"=158.87, "h"=30.06, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=173.59, "y"=375.6, "w"=159.47, "h"=29.46, "r"=209, "g"=65, "b"=40, "radius"=0))
+    text("CLEAR", table("text"="CLEAR", "x"=173.0, "y"=375.0, "w"= 160.77, "h"=30.66, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    box("Rectangle8", table("x"=173.0, "y"=69.0, "w"=306.0, "h"=291.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle8_Border", table("x"=173.0, "y"=69.0, "w"=306.0, "h"=291.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+
+    # Button Section
+    box(table("x"=24.0, "y"=243.95, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.52, "y"=245.47, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.51, "y"=245.47, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("HKRIFLE", table("text"="HK RIFLE", "x"=24.0, "y"=243.95, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=24.15, "y"=332.85, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.67, "y"=334.36, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.65, "y"=334.36, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("PRODUCT4", table("text"="PRODUCT 4", "x"=24.15, "y"=332.85, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+}
+
+if (userInput()) {
+    screenLoading()
+    timer(3, function() {
+        screenMenu()
+    })
+}
+
+if (initial()) {
+    timer(1, 0, function() {
+        if(isPlayerNearby(200)) {
+            if (Screen == "") {
+                screenStart()
+                #blinkFadeOut("ScreenMask", 5)
+            }
+        }
+        else {
+            glitchText("Login", "asdwasd", 5)
+        }
+    })
+}

@@ -1,0 +1,69 @@
+@name BetterFind
+@inputs 
+@outputs 
+@persist Players:array FindPlayer:entity
+@trigger 
+@strict
+
+function number string:startsWith(String:string) {
+    return This:left(String:length()) == String
+}
+
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg(Text)
+}
+
+function entity string:findPlayer() {
+    if (This:sub(1, 5):upper() == "STEAM") {
+        FindPlayer = noentity()
+        return findPlayerBySteamID(This)
+    }
+    
+    Players = array()
+    foreach (_:number, Player:entity = players()) {
+        let Names = Player:name():explode(" ") # Seperates player name into multiple array arguments i.e ["Bob", "Tomato"]
+        foreach(_:number, Name:string = Names) {
+            if (Name:startsWith(This)) {
+                Players:pushEntity(Player)
+            }
+        }
+        
+    }
+    if (Players:count() > 1) {
+        # Activate multiple player chatlog
+        foreach(Index:number, Player:entity = Players) {
+            owner():msg(Index + ". " + Player:name())
+        }
+        FindPlayer = entity() # Returns the E2 entity as a dummy entity for comparison
+    }
+    elseif(Players:count()) {
+        FindPlayer = Players[1, entity]
+    }
+    return FindPlayer
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Player == owner()) {
+        let Count = Players:count()
+        if (Count) {
+            let Index = Message:toNumber()
+            if (inrange(Index,1,Count)) {
+                hideChat(1)
+                FindPlayer = Players[Index, entity]:steamID():findPlayer()
+                Players = array()
+                timer("findPlayer", 0)
+            }
+        }
+    }
+}
+
+if (first()) {
+    FindPlayer = noentity()
+    
+    "D":findPlayer()
+}
+
+if (clk("findPlayer")) {
+    print(FindPlayer:name())
+}

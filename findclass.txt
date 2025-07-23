@@ -1,0 +1,16 @@
+@name FindClass
+@inputs 
+@outputs 
+@persist 
+@strict
+
+event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
+    if (Player == owner()) {
+        if (Key == "e" && Down) {
+            let AimEntity = Player:aimEntity()
+            if (AimEntity:isValid()) {
+                print(AimEntity:type())
+            }
+        }
+    }
+}

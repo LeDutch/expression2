@@ -1,0 +1,109 @@
+@name Tomato Dirty Money
+@inputs BottomProp:entity
+@outputs 
+@persist Boxes:table BoxPrice:number
+@strict
+
+#include "lib/tomato_core"
+#include "lib/tomato_egp"
+#include "lib/tomato_ui"
+
+if (initial()) {
+    # Initialize
+    Boxes = table()
+    BoxPrice = 30000
+    
+    # Background
+    box(table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r"=106, "g"=30, "b"=85, "size"=30, "radius"=28, "outline"=1))
+    
+    # Button Section
+    box("Start", table("x"=111.0, "y"=365.0, "w"=289.0, "h"=117.0, "r"=166, "g"=77, "b"=121, "radius"=14.0))
+    box(table("x"=111.0, "y"=365.0, "w"=289.0, "h"=117.0, "r"=26, "g"=26, "b"=29, "radius"=14.0, "size"=20, "outline"=1))
+    text("StartText", table("text"="Start", "x"=111.0, "y"=366.67, "w"= 289.0, "h"=115.33, "r"=255, "g"=255, "b"=255, "size"=27, "halign"=1, "valign"=1))
+    
+    # MenuBG Section
+    box(table("x"=10.0, "y"=10.0, "w"=492.0, "h"=356.0, "r"=26, "g"=26, "b"=29, "radius"=14.0))
+    box(table("x"=10.0, "y"=482.0, "w"=492.0, "h"=20.0, "r"=26, "g"=26, "b"=29, "radius"=14.0))
+    box(table("x"=400.0, "y"=345.0, "w"=102.0, "h"=157.0, "r"=26, "g"=26, "b"=29, "radius"=14.0))
+    box(table("x"=10.0, "y"=336.0, "w"=101.0, "h"=166.0, "r"=26, "g"=26, "b"=29, "radius"=14.0))
+
+    # Menu Section
+    text("Title", table("text"="Dirty Money Chute", "x"=76.0, "y"=189.0, "w"= 360.0, "h"=102.0, "r"=255, "g"=255, "b"=255, "size"=39, "halign"=1, "valign"=1))
+    text("Info", table("text"="Current Price: "+abbreviateNum(BoxPrice), "x"=130.0, "y"=291.0, "w"= 252.0, "h"=75.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+    box("Logo", table("x"=203.0, "y"=83.0, "w"=106.0, "h"=106.0, "r"=166, "g"=77, "b"=121, "material"="materials/underground/crate.png"))
+
+    chat("title", function(Args:array) {
+        let Message = Args:implode(" ")
+        let Title = EGP:egpobject(Elements:get("Title"))
+        Title["text", string] = Message
+        },
+    owner())
+    chat("price", function(Args:array) {
+        let Price = Args[1, string]:toNumber()
+        let Info = EGP:egpobject(Elements:get("Info"))
+        BoxPrice = Price
+        Info["text", string] = "Current Price: "+abbreviateNum(BoxPrice)
+        },
+    owner())
+    chat("help", function(_:array) {
+        print("!title - sets title")
+        print("!price - sets box price")
+        },
+    owner())
+    EGP["Fade", number] = 0
+}
+
+if (userInput()) {
+    let Cursor = cursorObj()
+    switch (Cursor) {
+        case "Start",
+            moveTo("Start", 0.5, vec2(111, 100))
+            opacity("StartText", 0)
+            box("Logo", table("x"=203.0, "y"=83.0, "w"=106.0, "h"=106.0, "r"=26, "g"=26, "b"=29))
+            loadingSpinner("TheSpinner", table("coords"=vec2(256,100), "size"=10))
+            EGP["Fade", number] = 1
+            let CheckProxim = function() {}
+            CheckProxim = function() {
+                if (->BottomProp) {
+                    if(findCanQuery()) {
+                        let Min = BottomProp:aabbWorldMin()
+                        let Max = BottomProp:aabbWorldMax() + vec(0,0,50)
+                        findIncludeClass("dirty_money")
+                        findInBox(Min, Max)
+                        let Results = findToArray()
+                        foreach(_:number, Result:entity = Results) {
+                            let ID = toString(Result:id())
+                            let Type = Result:type()
+                            if(!Boxes:exists(ID) && Type == "dirty_money") {
+                                Boxes[ID, entity] = Result
+                                moneyGive(CurrentUser, BoxPrice)
+                            }
+                        }
+                    }
+                }
+                else {
+                    print("Error: Wire the bottom red prop to the E2")
+                }
+                timer(0.5, function() {
+                    if (!isPlayerNearbyToEnt(CurrentUser, 50, EGP:entity())) {
+                        stopSpinner("TheSpinner")
+                        timer(1, function() {
+                            moveTo("Start", 0.5, vec2(111, 365))
+                            box("Logo", table("x"=203.0, "y"=83.0, "w"=106.0, "h"=106.0, "r"=166, "g"=77, "b"=121, "material"="materials/underground/crate.png"))
+                            timer(0.5, function() {
+                                fadeIn("StartText", 0.5)
+                            })
+                            EGP["Fade", number] = 0
+                        })
+                    }
+                    else {
+                        timer(0.5, function() {
+                            CheckProxim()
+                        })
+                    }
+                })
+            }
+            CheckProxim()
+        break
+    }
+}

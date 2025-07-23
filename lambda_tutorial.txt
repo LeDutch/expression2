@@ -1,0 +1,133 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@strict
+
+if (first()) {
+    # Bob Tomato's quick guide to Lambda & New Timers
+    
+    #================ Lambdas ===================#
+    const Name = owner():name()
+    
+    # I have declared an empty lambda
+    let Lambda = function() {}
+    # I can redefine the function but keep it's memory address.
+    Lambda = function(I:number, Word:string) {
+        # The function is called for every character of your player name
+        Word += Name[I]
+        I++
+        if (Word:length() == Name:length()) {
+            return Word # Stop condition
+        }
+        return Lambda(I, Word)[string] # I can call the function in itself because I declared it as an empty function earlier
+    }
+    
+    # You can also store lambda functions in tables
+    Table = table()
+    Table["NameOfFunction", function] = function() {
+        # I am a wrapper for the Lambda I just created.
+        print("Hmm, what is my name??")
+        print(Lambda(1, "")[string]) 
+        # All lambda functions need to have their return type specified when calling, in this case a string
+        # Instead of wasting memory space for two variables (let I = 1, let Word = ""), I can define them in the function parameters: Lambda(1, "")
+    }
+    
+    # Now if I want to call the lambda I can use
+    Table["NameOfFunction", function]()
+    
+    # All recursive functions need a stop call - in this case, if the word is the length of my name
+    
+    #================ Timers ===================#
+    # Full syntax
+    # timer(string name,number delay,number repetitions,function callback)
+    
+    # Syntax by assigning to string
+    # String=timer(number delay,number repetitions,function callback)
+    
+    # Quickly call a timer syntax (no name)
+    # String=timer(number delay,function callback)
+    
+    # KEY DETAIL
+    # The function callback in a timer is a lambda function.
+    let NoticeThisIsNotPersisted = 0
+    
+    # Lambda functions share the scope they are in, so the 'let' exists between loops even though it isnt persisted.
+    # Useful for not taking up memory with @persisted stuff.
+    
+    timer("this is a name", 1, 0, function() { # The timer is set to '0' which is unlimited repetitions for this demonstration
+        # The function callback is an example of a lambda
+        if (NoticeThisIsNotPersisted != 5) {
+            NoticeThisIsNotPersisted++
+            print("I have increased: " + NoticeThisIsNotPersisted)
+        }
+        else {
+            stoptimer("this is a name")
+            print("timer has stopped")
+            # Once the timer has stopped, the 'persisted' value no longer exists because the lambda callback function no longer exists.
+        }
+    })
+    
+    # Note you can get the same functionality by setting a repetition limit (the zero in the parameters)
+    # I used infinite repetitions, which is helpful to have in some code instead of the now deprecated (interval) method
+    
+}
+
+# Here is an example that I used in my poker game - to create and manage a deck of cards
+
+# This is 'emulating' object orientated design where a deck is created that has specific attributes 
+# and method calls. 
+function table deckCreate() {
+    # Lambda to create a card
+    let Card_create = function(Rank:string, Suit:string) {
+        let Card = table()
+        Card["Rank"] = Rank
+        Card["Suit"] = Suit
+        Card["toString"] = function() {
+            return Card["Rank", string] + " of " + Card["Suit", string]
+        }
+        return Card
+    }
+    let Deck = table()
+    Deck["Cards"] = table()
+    
+    # Initialize the deck
+    Deck["initialize"] = function() {
+        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
+        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+        
+        foreach(_:number, Suit:string = Suits) {
+            foreach(_:number, Rank:string = Ranks) {
+                let Card = Card_create(Rank, Suit)[table]
+                Deck["Cards", table]:pushTable(Card)
+            }
+        }
+    }
+    
+    # Shuffle the deck
+    Deck["shuffle"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        for (I = Count, 1, -1) {
+            let J = randint(1, I) # Random index between 0 and I
+            # Swap Cards[I] and Cards[J]
+            let Temp = Cards[I, table]
+            Cards[I] = Cards[J, table]
+            Cards[J] = Temp
+        }
+    }
+    
+    # Draw a card
+    Deck["draw"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        if (Count > 0) {
+            let LastCard = Cards[Count, table] # Get the last card
+            Deck["Cards", table]:pop()
+            return LastCard
+        }
+        return table() # Deck is empty
+    }
+    
+    return Deck
+}

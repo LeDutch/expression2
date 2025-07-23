@@ -1,0 +1,827 @@
+@name Tomato Lib
+@inputs EGP:wirelink User:entity
+@outputs 
+@persist [ScreenXY Animation DropdownPage]:number [Owner]:entity [Prefix PrefixColour]:string
+@persist [Elements Timer]:table [White Green Red Dark Primary Secondary Light]:vector
+
+if (first()) {
+    #Change chip appearance
+    entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
+    entity():setSubMaterial(3, "zerochain/props_methlab/gasmask/zmlab2_gasmask_straps_diff")
+    entity():setColor(vec(255,0,0))
+    
+    #Generic variable initiation 
+    ScreenXY = 512
+    Elements = table()
+    Timer = table()
+    User = noentity()
+    Prefix = "E2"
+    PrefixColour = "!#d4af37"
+    Owner = owner()
+    Animation = 0
+    DropdownPage = 0
+    
+    #Colours
+    White = vec(255,255,255)
+    Black = vec(0,0,0)
+    Green = vec(0,127,31)
+    Red = vec(127,0,0)
+    
+    Dark = vec(39, 55, 77)
+    Primary = vec(82, 109, 130)
+    Secondary = vec(157, 178, 191)
+    Light = vec(221, 230, 237)
+    
+    #Error hotfix - To do
+    if (Black != vec() && Red != vec() && Owner:isValid() && ScreenXY) {
+    }
+    
+    #Ease of use functions
+    #------------------------------------------#
+    
+    #Table functions
+    function number table:get(Name:string) {
+        if (This:exists(Name)) {
+            return This[Name, number]   
+        }
+        let FreeID = This:flip():ncount()+1
+        This[Name, number] = FreeID
+        return FreeID
+    }
+    function number table:getTime(Name:string) {
+        return This[Name, number]
+    }
+    function table:setTime(Name:string, Time:number) {
+        This[Name, number] = Time
+    }
+    function table:addTime(Name:string, Time:number) {
+        let A = Timer:getTime(Name)
+        A += Time
+        This[Name, number] = A
+    }
+    function table:reduceTime(Name:string, Time:number) {
+        let A = Timer:getTime(Name)
+        A -= Time
+        This[Name, number] = A
+    }
+    
+    #String functions
+    function number string:startsWith(String:string) {
+        return This:left(String:length()) == String
+    }
+    
+    #Array functions
+    function number array:find(E:entity) {
+        for (I = 1, This:count()) {
+            if (This[I, entity] == E) {return I}
+        }
+        return 0
+    }
+    function number array:findString(E:string) {
+        for (I = 1, This:count()) {
+            if (This[I, string] == E) {return I}
+        }
+        return 0
+    }
+    function number table:findString(E:string) {
+        for (I = 1, This:count()) {
+            if (This[I, string] == E) {return I}
+        }
+        return 0
+    }
+    function number table:find(E:entity) {
+        for (I = 1, This:count()) {
+            if (This[I, entity] == E) {return I}
+        }
+        return 0
+    }
+    function array array:reverseString() {
+        local ReversedArr = array()
+        let Count = This:count()
+        for(I=1, Count) {
+            let Index = Count - I
+            ReversedArr:pushString(This[Index, string])
+        }
+        return ReversedArr
+    }
+    
+    #Entity/User functions
+    function number userInput() {
+        return ~User && User:isValid() && !Animation
+    }
+    function number userInput(Ent:entity) {
+        return ~User && Ent:isValid() && !Animation
+    }
+    function number cursorPos(Num:number){
+        return EGP:egpObjectContainsPoint(Num, EGP:egpCursor(User))
+    }
+    function number cursorPos(Num:number, Entity:entity){
+        return EGP:egpObjectContainsPoint(Num, EGP:egpCursor(Entity))
+    }
+    function string cursorObj(Arr:array, Entity:entity) {
+        let Cursor = EGP:egpCursor(Entity)
+        foreach(_:number, Index:string = Arr) {
+            let ID = Elements:get(Index)
+            if (EGP:egpObjectContainsPoint(ID, Cursor)) {
+                return Index
+            }
+        }
+        return ""
+    }
+    function void entity:msg(Text:string) {
+        if (!This:isValid()) {return}
+            This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+            #print(Prefix+": " + Text)
+    }
+    function entity string:findPlayer() {
+        return This:sub(1, 5):upper() == "STEAM" ? findPlayerBySteamID(This) : findPlayerByName(This)
+    }
+    function number proximityCheck(Radius:number) {
+        findIncludeClass("player")
+        findInSphere(entity():pos(), Radius)
+        let Array = findToArray()
+        if (Array:count()) {
+            return 1
+        }
+        return 0
+    }
+    function number proximityCheck(Player:entity) {
+        let Min = entity():aabbWorldMin() - vec(50, 50, 50)
+        let Max = entity():aabbWorldMax() + vec(50, 50, 50)
+        findIncludeEntity(Player)
+        return findInBox(Min, Max)
+    }
+    function number proximityCheck(Player:entity, Radius:number) {
+        findIncludeClass("player")
+        findInSphere(entity():pos(), Radius)
+        let Array = findToArray()
+        if (Array:find(Player)) {
+            return 1
+        }
+        return 0
+    }
+    function number proximityCheck(Player:entity, Entity:entity, Radius:number) {
+        let Min = Entity:aabbWorldMin() - vec(Radius, Radius, Radius)
+        let Max = Entity:aabbWorldMax() + vec(Radius, Radius, Radius)
+        findIncludeEntity(Player)
+        return findInBox(Min, Max)
+    }
+    
+    #Format Funcs
+    function string formatNumber(Number:number) {
+        if (Number >= 1000000) {
+            let RoundedNumber = round(Number / 100000) * 100000  # Round to two decimal places
+            return (RoundedNumber / 1000000) + "M"
+        } elseif (Number >= 1000) {
+            let RoundedNumber = round(Number / 100) * 100  # Round to two decimal places
+            return (RoundedNumber / 1000) + "K"
+        }
+        return toString(round(Number))
+    }
+    function string formatNumberWithSpaces(Num:number) {
+        let NumberString = toString(Num)
+        let Length = NumberString:length()
+        for (I=1, Length) {
+            let Digit = Length - I
+            if (!(I % 3)) {
+                NumberString = NumberString:sub(1,Digit) + " " + NumberString:sub(Digit+1)
+            }
+        }
+        return NumberString
+    }
+    function string formatName(Text:string, Chars:number) {
+        if (Text:length() > Chars) {
+            Text = Text:sub(1, Chars-3) + "..."
+        }
+        return Text
+    }
+    function string formatHrs(Number:number) {
+        if (Number >= 24) {
+            return round(Number / 24, 2) + " days"
+        }
+        if (Number >= 1) {
+            return round(Number, 2) + (Number > 1 ? " hrs" : " hr")
+        }
+        return round(Number * 60, 2) + (Number > 0.1 ? " mins" : " min")
+    }
+    function string formatSecs(Number:number) {
+        let Time = round(Number/60, 2)
+        if (Number > 60) {
+            return Time + " mins"
+        }
+        elseif(Number == 60) {
+            return Time + " min"
+        }
+        elseif (Number < 60) {
+            return Number + " secs"
+        }
+        return Number + " sec"
+    }
+    function string table:bubblesort() {
+        let Text = ""
+        let Keys = This:keys()
+        let Values = This:values()
+        for (I = 1, This:count()) {
+            for (J = 1, This:count() - I) {
+                if (Values[J,number] > Values[J+1,number]) {
+                    # Swap elements if they are out of order
+                    let TempKey = Keys[J, string]
+                    let Temp = Values[J, number]
+                    Values[J, number] = Values[J + 1, number]
+                    Values[J + 1, number] = Temp
+                    Keys[J, string] = Keys[J+1, string]
+                    Keys[J + 1, string] = TempKey
+                }
+            }
+        }
+        for (I=1, This:count()) {
+            Text += (Keys[I, string] + " = " + Values[I, number] + "% \n")
+        }
+        return Text
+    }
+    function array table:sort() {
+        let Array = array()
+        let Keys = This:keys()
+        let Values = This:values()
+        for (I = 1, This:count()) {
+            for (J = 1, This:count() - I) {
+                if (Values[J,number] > Values[J+1,number]) {
+                    # Swap elements if they are out of order
+                    let TempKey = Keys[J, string]
+                    let Temp = Values[J, number]
+                    Values[J, number] = Values[J + 1, number]
+                    Values[J + 1, number] = Temp
+                    Keys[J, string] = Keys[J+1, string]
+                    Keys[J + 1, string] = TempKey
+                }
+            }
+        }
+        for (I=1, This:count()) {
+            Array:pushString(Keys[I,string])
+        }
+        return Array
+    }
+    function array array:reverse() {
+        let Array = array()
+        let Index = This:count()
+        for(I=1, Index) {
+            Array:pushNumber(This[Index-I+1, number])
+        }
+        return Array
+    }
+    function array array:names() {
+        let Array = array()
+        for (I = 1, This:count()) {
+            Array:pushString(This[I,entity]:name())
+        }
+        return Array
+    }
+    function number array:exists(A:string) {
+        for (I = 1, This:count()) {
+            if (This[I, string] == A) {
+                return 1
+            }
+        }
+        return 0
+    }
+    
+    function string array:string() {
+        let Text = ""
+        for (I=1, This:count()) {
+            if (This[I, string]) {
+                Text += This[I, string] + "\n"
+            }
+            else {
+                Text += formatNumber(This[I, number]) + "\n"
+            }
+        }
+        if (Text == "") {
+            return " "
+        }
+        return Text
+    }
+    function string array:string(Prefix:string) {
+        let Text = ""
+        for (I=1, This:count()) {
+            if (This[I, string]) {
+                Text += Prefix + This[I, string] + "\n"
+            }
+            else {
+                Text += Prefix + formatNumber(This[I, number]) + "\n"
+            }
+        }
+        if (Text == "") {
+            return " "
+        }
+        return Text
+    }
+    
+    function array calcOddsWithHouseEdge(Multipliers:array, HouseEdge:number) {
+        let Probabilities = array()
+        let TotalMultipliers = 0
+        
+        # Step 1: Calculate the total sum of all multipliers
+        for (I = 1, Multipliers:count()) {
+            TotalMultipliers += Multipliers[I, number]
+        }
+        
+        # Step 2: Calculate the player return (100% - HouseEdge)
+        let PlayerReturn = 1 - HouseEdge
+        
+        # Step 3: Calculate the probability for each multiplier
+        for (I = 1, Multipliers:count()) {
+            let ExpectedReturn = PlayerReturn / TotalMultipliers
+            let Probability = ExpectedReturn / Multipliers[I, number]
+            Probabilities:pushNumber(Probability)
+        }
+        
+        # Normalize to make sure all probabilities add up to 1
+        let TotalProbabilities = 0
+        for (I = 1, Probabilities:count()) {
+            TotalProbabilities += Probabilities[I, number]
+        }
+        
+        for (I = 1, Probabilities:count()) {
+            Probabilities[I, number] = Probabilities[I, number] / TotalProbabilities
+        }
+        
+        return Probabilities
+    }
+    
+    #Number Funcs
+    function number pageIndex(Index:number, Page:number, Elements:number) {
+        return Index+(Page-1)*Elements
+    }
+    
+    #Create Element Functions
+    function string image (Image:string) { return Image }
+    function number size (Size:number) { return Size }
+    function number align (Align:number) { return Align }
+    function number curve (Radius:number) { return Radius }
+    function vector2 size (Size:vector2) { return Size }
+    function vector2 coords (Coords:vector2) { return Coords }
+    function vector color (Color:vector) { return Color }
+    function vector rgb(A:number,B:number,C:number) {
+        return vec(A,B,C)
+    }
+    
+    
+    function createLine(Text:string, Pos1:vector2, Pos2:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpLine(ID,Pos1, Pos2)
+    }
+    function createText(Text:string, Size:number, Coords:vector2, Parent:string) {
+        let ID = Elements:get(Text)
+        EGP:egpText(ID,Text,Coords)
+        EGP:egpSize(ID,Size)
+        EGP:egpParent(ID, Elements:get(Parent))
+    }
+    function createText(Text:string, Size:number, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpText(ID,Text,Coords)
+        EGP:egpSize(ID,Size)
+    }
+    function createText(Text:string, Size:number, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpText(ID, Text,Coords)
+        EGP:egpSize(ID, Size)
+        EGP:egpColor(ID, Color)
+    }
+    
+    function createText(Text:string, Size:number, Align:number, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpText(ID, Text,Coords)
+        EGP:egpSize(ID, Size)
+        EGP:egpAlign(ID, Align)
+    }
+    function createText(Text:string, Size:number, Align:number, Coords:vector2, Alpha:number) {
+        let ID = Elements:get(Text)
+        EGP:egpAlpha(ID, Alpha)
+        EGP:egpText(ID, Text,Coords)
+        EGP:egpSize(ID, Size)
+        EGP:egpAlign(ID, Align)
+    }
+    
+    function createText(Text:string, Size:number, Color:vector, Align:number, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpText(ID,  Text, Coords)
+        EGP:egpSize(ID,  Size)
+        EGP:egpColor(ID, Color)
+        EGP:egpAlign(ID, Align)
+    }
+    
+    function createTextLayout(Text:string, Size:vector2, Color:vector, Align:number, Coords:vector2) {
+        let ID = Elements:get(Text)
+        let Offset = vec2(0,0)
+        EGP:egpTextLayout(ID, Text, Coords-Offset, Size)
+        EGP:egpColor(ID, Color)
+        EGP:egpAlign(ID, Align)
+    }
+    
+    function createBox(Text:string, Size:vector2, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBox(ID,   Coords, Size)
+        EGP:egpColor(ID, Color)
+    }
+    function createBox(Text:string, Size:vector2, Color:vector, Coords:vector2, Alpha:number) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBox(ID,   Coords, Size)
+        EGP:egpColor(ID, Color)
+        EGP:egpAlpha(ID, Alpha)
+    }
+    
+    function createBoxOutline(Text:string, Size:vector2, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBoxOutline(ID,   Coords, Size)
+        EGP:egpColor(ID, Color)
+    }
+    
+    function createRoundedBox(Text:string, Size:vector2, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpRoundedBox(ID,   Coords, Size)
+        EGP:egpColor(ID, Color)
+    }
+    
+    function createTriangle(Text:string, Color:vector, C1:vector2, C2:vector2, C3:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpTriangle(ID,C1,C2,C3)
+        EGP:egpColor(ID,Color)
+    }
+    
+    function createTriangle(Text:string, Size:number, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        let CoordLeft = vec2(Coords:x() - Size, Coords:y() + Size)
+        let CoordRight = vec2(Coords:x() + Size, Coords:y() + Size)
+        EGP:egpTriangle(ID,Coords,CoordLeft,CoordRight)
+        EGP:egpColor(ID,Color)
+    }
+    
+    function createIsosceles(Text:string, Size:number, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        let CoordLeft = vec2(Coords:x() - Size*2, Coords:y() + Size)
+        let CoordRight = vec2(Coords:x() + Size*2, Coords:y() + Size)
+        EGP:egpTriangle(ID,Coords,CoordLeft,CoordRight)
+        EGP:egpColor(ID,Color)
+    }
+    
+    function createCircle(Text:string, Size:number, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpCircle(ID,Coords,vec2(Size))
+        EGP:egpColor(ID, Color)
+    }
+    
+    function createCircleOutline(Text:string, Size:number, Color:vector, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpWedgeOutline(ID,Coords,vec2(Size))
+        EGP:egpColor(ID, Color)
+    }
+    
+    function createSlider(Text:string, Size:vector2, Coords:vector2) {
+        let ID1 = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID1)
+        EGP:egpRoundedBox(ID1,Coords,vec2(10,10))
+        EGP:egpSize(ID1,Size)
+        
+        let ID2 = Elements:get(Text+"_button")
+        EGP:egpDrawTopLeft(ID2)
+        EGP:egpRoundedBox(ID2,Coords,vec2(10,10))
+        EGP:egpSize(ID2,vec2(Size:y(), Size:y()))
+        EGP:egpColor(ID2,Primary)
+    }
+    
+    function createIcon(Text:string, Size:number, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBox(ID, Coords, vec2(Size,Size))
+        EGP:egpMaterial(ID, "vgui/notices/generic")
+    }
+    
+    function createMaterial(Text:string, Size:vector2, Coords:vector2, Texture:string) {
+        let ID = Elements:get(Text)
+        EGP:egpBox(ID, Coords, Size)
+        EGP:egpMaterial(ID, Texture)
+    }
+    
+    function createCheckBox(Text:string, Size:vector2, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpRoundedBox(ID,Coords,vec2(10,10))
+        EGP:egpSize(ID,Size)
+        
+        let ID2 = Elements:get(Text+"_text")
+        EGP:egpText(ID2,Text,vec2(Coords:x()+75, Coords:y()+3))
+        EGP:egpSize(ID2,Size:y()-5)
+        EGP:egpColor(ID2,White)
+        
+        let ID3 = Elements:get(Text+"_background")
+        EGP:egpDrawTopLeft(ID3)
+        EGP:egpRoundedBox(ID3,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID3,vec2(Size:x()-2, Size:y()-2))
+        EGP:egpColor(ID3,Dark)
+        
+        let ID4 = Elements:get(Text+"_button")
+        EGP:egpDrawTopLeft(ID4)
+        EGP:egpRoundedBox(ID4,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID4,vec2(Size:y()-2, Size:y()-2))
+        EGP:egpColor(ID4,Primary)
+    }
+    
+    function createCheckBox(Text:string, Size:vector2, Coords:vector2, Toggle:number) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpRoundedBox(ID,Coords,vec2(10,10))
+        EGP:egpSize(ID,Size)
+        
+        let ID2 = Elements:get(Text+"_text")
+        EGP:egpText(ID2,Text,vec2(Coords:x()+60, Coords:y()+3))
+        EGP:egpSize(ID2,Size:y()-5)
+        EGP:egpColor(ID2,White)
+        
+        let ID3 = Elements:get(Text+"_background")
+        EGP:egpDrawTopLeft(ID3)
+        EGP:egpRoundedBox(ID3,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID3,vec2(Size:x()-2, Size:y()-2))
+        EGP:egpColor(ID3,Dark)
+        
+        let ID4 = Elements:get(Text+"_button")
+        EGP:egpDrawTopLeft(ID4)
+        EGP:egpRoundedBox(ID4,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID4,vec2(Size:y()-2, Size:y()-2))
+        EGP:egpColor(ID4,Primary)
+        
+        if(Toggle) {
+            let Checkbox = Elements:get(Text+"_background")
+            let Button = Elements:get(Text+"_button")
+            let Coords = EGP:egpPos(Checkbox)
+            let Size = EGP:egpSize(Checkbox)
+            if (EGP:egpColor(Checkbox) == Green) {
+                EGP:egpPos(Button,vec2(Coords:x(),Coords:y()))
+                EGP:egpColor(Checkbox,Dark)
+            }
+            else {
+                EGP:egpPos(Button,vec2(Coords:x()+Size:x()-EGP:egpSize(Button):y(),Coords:y()))
+                EGP:egpColor(Checkbox,Green)
+            }
+        }
+    }
+
+    function createCheckBox(Text:string, Size:vector2, Coords:vector2, Toggle:number, Offset:number) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpRoundedBox(ID,Coords,vec2(10,10))
+        EGP:egpSize(ID,Size)
+        
+        let ID2 = Elements:get(Text+"_text")
+        EGP:egpText(ID2,Text,vec2(Coords:x()+Offset, Coords:y()+3))
+        EGP:egpSize(ID2,Size:y()-5)
+        EGP:egpColor(ID2,White)
+        
+        let ID3 = Elements:get(Text+"_background")
+        EGP:egpDrawTopLeft(ID3)
+        EGP:egpRoundedBox(ID3,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID3,vec2(Size:x()-2, Size:y()-2))
+        EGP:egpColor(ID3,Dark)
+        
+        let ID4 = Elements:get(Text+"_button")
+        EGP:egpDrawTopLeft(ID4)
+        EGP:egpRoundedBox(ID4,vec2(Coords:x()+1, Coords:y()+1),vec2(10,10))
+        EGP:egpSize(ID4,vec2(Size:y()-2, Size:y()-2))
+        EGP:egpColor(ID4,Primary)
+        
+        if(Toggle) {
+            let Checkbox = Elements:get(Text+"_background")
+            let Button = Elements:get(Text+"_button")
+            let Coords = EGP:egpPos(Checkbox)
+            let Size = EGP:egpSize(Checkbox)
+            if (EGP:egpColor(Checkbox) == Green) {
+                EGP:egpPos(Button,vec2(Coords:x(),Coords:y()))
+                EGP:egpColor(Checkbox,Dark)
+            }
+            else {
+                EGP:egpPos(Button,vec2(Coords:x()+Size:x()-EGP:egpSize(Button):y(),Coords:y()))
+                EGP:egpColor(Checkbox,Green)
+            }
+        }
+    }
+    
+    function createDropdown(Text:string, Size:vector2, Coords:vector2) {
+        let ID = Elements:get(Text)
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBox(ID, Coords, Size)
+        EGP:egpColor(ID, White)
+        
+        let ID2 = Elements:get(Text+"_text")
+        EGP:egpText(ID2,Text,vec2(Coords:x()+5, Coords:y()+1))
+        EGP:egpSize(ID2,Size:y()-5)
+        EGP:egpColor(ID2,Dark)
+        
+        let ID3 = Elements:get(Text+"_icon")
+        EGP:egpText(ID3,"v",vec2(Coords:x()+Size:x()-15, Coords:y()+3))
+        EGP:egpSize(ID3,Size:y()-5)
+        EGP:egpColor(ID3,Dark)
+    }
+    
+    function createTick(Text:string, Size:vector2, Coords:vector2, Tick:number) {
+        let ID = Elements:get(Text)
+        let Tick1 = Elements:get(Text+"_tick1")
+        let Tick2 = Elements:get(Text+"_tick2")
+        EGP:egpDrawTopLeft(ID)
+        EGP:egpBoxOutline(ID, Coords, Size)
+        EGP:egpColor(ID, Light)
+        if (Tick) {
+            EGP:egpLine(Tick1, Coords+Size/4, Coords+Size/2)
+            EGP:egpLine(Tick2, Coords+Size/2+vec2(0,2), Coords+vec2(Size:x()+2, -5))
+            EGP:egpColor(Tick1, Green)
+            EGP:egpColor(Tick2, Green)
+            EGP:egpSize(Tick1, 3)
+            EGP:egpSize(Tick2, 3)
+        }
+    }
+    
+    function createPrinterIcon(Text:string, Coords:vector2) {
+        let Box1 = Elements:get(Text+"_box1")
+        let Box2 = Elements:get(Text+"_box2")
+        let Circle1 = Elements:get(Text+"_circle1")
+        let Circle2 = Elements:get(Text+"_circle2")
+        EGP:egpBoxOutline(Box1, Coords, vec2(30,14))
+        EGP:egpBoxOutline(Box2, Coords + vec2(2,2), vec2(26,10))
+        EGP:egpCircle(Circle1, Coords + vec2(7, 7), vec2(2,2))
+        EGP:egpCircle(Circle2, Coords + vec2(12, 7), vec2(2,2))
+        EGP:egpColor(Box1, Dark)
+        EGP:egpColor(Box2, Dark)
+        EGP:egpColor(Circle1, Dark)
+        EGP:egpColor(Circle2, Dark)
+    }
+    
+    #Use Element Functions
+    function number useCheckBox(Text:string, Simulate:number) {
+        let Checkbox = Elements:get(Text+"_background")
+        if((User:keyUse() & cursorPos(Checkbox)) || Simulate){
+            let Button = Elements:get(Text+"_button")
+            let Coords = EGP:egpPos(Checkbox)
+            let Size = EGP:egpSize(Checkbox)
+            if (EGP:egpColor(Checkbox) == Green) {
+                EGP:egpPos(Button,vec2(Coords:x(),Coords:y()))
+                EGP:egpColor(Checkbox,Dark)
+            }
+            else {
+                EGP:egpPos(Button,vec2(Coords:x()+Size:x()-EGP:egpSize(Button):y(),Coords:y()))
+                EGP:egpColor(Checkbox,Green)
+            }
+            return 1
+        }
+        return 0
+    }
+    
+    function number useSlider(Text:string, Min:number, Max:number, Interval:number) {
+        let Slider = Elements:get(Text)
+        if(cursorPos(Slider) & User:keyUse()){
+            let SliderButton = Elements:get(Text+"_button")
+            let ButtonSize = EGP:egpSize(SliderButton):x()
+            let MoveX = EGP:egpCursor(User):x()    
+            let SliderMinX = EGP:egpPos(Slider):x() + ButtonSize/2
+            let SliderMaxX = SliderMinX + EGP:egpSize(Slider):x() - ButtonSize + 1
+                
+            #Constraints
+            if(MoveX < SliderMinX){MoveX=SliderMinX}
+            elseif(MoveX > SliderMaxX){MoveX=SliderMaxX}       
+                
+            #Change pos of slider button
+            EGP:egpPos(SliderButton,vec2(MoveX-ButtonSize/2,EGP:egpPos(SliderButton):y())) 
+                
+            X = MoveX - SliderMinX
+            Amount = round((X*(Max/(SliderMaxX-SliderMinX)))/Interval)*Interval+Min
+            if(Amount >= Max){Amount = Max}
+            return Amount
+        }
+        return 0
+    }
+    
+    function number useDropDown(Text:string, Array:array) {
+        let Box = Elements:get(Text)
+        if((User:keyUse() & cursorPos(Box))){
+            let Coords = EGP:egpPos(Box)
+            let Size = EGP:egpSize(Box)
+            let Num = Array:count()
+            if (EGP:egpColor(Box) == Secondary) {
+                let ReturnNum = 0
+                EGP:egpSize(Box, vec2(Size:x(),25))
+                EGP:egpColor(Box, White)
+                for (I = 1,Num){
+                    if (cursorPos(Elements:get(Text+"_button"+I))) {
+                        EGP:egpSetText(Elements:get(Text+"_text"),Array[I,string])
+                        ReturnNum = I
+                    }
+                }
+                for (I = 1,Num){
+                    EGP:egpRemove(Elements:get(Text+"_button"+I))
+                    EGP:egpRemove(Elements:get(Text+"_text"+I))
+                    EGP:egpRemove(Elements:get(Text+"_row"+I))
+                }
+                return ReturnNum
+            }
+            else {
+                EGP:egpSize(Box, vec2(Size:x(),Size:y()+Num*Size:y()))
+                for (I = 1,Num){
+                    let ID = Elements:get(Text+"_button"+I)
+                    EGP:egpDrawTopLeft(ID)
+                    EGP:egpBox(ID, vec2(Coords:x(),Coords:y()+I*Size:y()), vec2(Size:x(),Size:y()))
+                    EGP:egpColor(ID, White)
+                    
+                    let ID2 = Elements:get(Text+"_text"+I)
+                    createText(Text+"_text"+I, size(16), color(Dark), coords(vec2(Coords:x()+5,Coords:y()+I*Size:y()+5)))
+                    EGP:egpSetText(ID2,Array[I,string])
+                    EGP:egpColor(ID2, Dark)
+                    
+                    let ID3 = Elements:get(Text+"_row"+I)
+                    EGP:egpBox(ID3, vec2(Coords:x(),Coords:y()+I*Size:y()), vec2(Size:x(),1))
+                    EGP:egpColor(ID3, Secondary)
+                }
+                EGP:egpColor(Box, Secondary)
+            }
+        }
+        return 0
+    }
+    function number useDropDown(Text:string, Array:array, Limit:number) {
+        let Box = Elements:get(Text)
+        let Next = Elements:get(Text+"_next")
+        let Back = Elements:get(Text+"_back")
+        let NextIcon = Elements:get(Text+"_nexticon")
+        let BackIcon = Elements:get(Text+"_backicon")
+        let Coords = EGP:egpPos(Box)
+        let Size = EGP:egpSize(Box)
+        let Page = Elements:get(Text+"_page")
+        function draw(Text:string, Array:array, Limit:number, Coords:vector2, Size:vector2, Page:number, NextIcon:number, BackIcon:number, Box:number) {
+            createBox(Text+"_next", size(vec2(20,15)), color(Primary),coords(Coords+vec2(Size:x()-20, -20)))
+            createBox(Text+"_back", size(vec2(20,15)), color(Primary),coords(Coords+vec2(0, -20)))
+            createText(Text+"_page", size(16),align(1),coords(Coords+vec2(Size:x()/2, -20)))
+            createText(Text+"_nexticon", size(16),align(1),coords(Coords+vec2(Size:x()-10, -23)))
+            createText(Text+"_backicon", size(16),align(1),coords(Coords+vec2(10, -23)))
+            EGP:egpSetText(Page, "Page: " + (DropdownPage + 1))
+            EGP:egpSetText(NextIcon, ">")
+            EGP:egpSetText(BackIcon, "<")
+            EGP:egpSize(Box, vec2(Size:x(),Size:y()+Limit*Size:y()))
+            for (I = 1,Limit){
+                let ID = Elements:get(Text+"_button"+I)
+                EGP:egpDrawTopLeft(ID)
+                EGP:egpBox(ID, vec2(Coords:x(),Coords:y()+I*Size:y()), vec2(Size:x(),Size:y()))
+                EGP:egpColor(ID, White)
+                    
+                let ID2 = Elements:get(Text+"_text"+I)
+                createText(Text+"_text"+I, size(16), color(Dark), coords(vec2(Coords:x()+5,Coords:y()+I*Size:y()+5)))
+                EGP:egpSetText(ID2,Array[I+DropdownPage*Limit,string])
+                EGP:egpColor(ID2, Dark)
+                    
+                let ID3 = Elements:get(Text+"_row"+I)
+                EGP:egpBox(ID3, vec2(Coords:x(),Coords:y()+I*Size:y()), vec2(Size:x(),1))
+                EGP:egpColor(ID3, Secondary)
+            }
+            EGP:egpColor(Box, Secondary)
+        }
+        if((User:keyUse() & cursorPos(Box))){
+            if (EGP:egpColor(Box) == Secondary) {
+                let ReturnNum = 0
+                EGP:egpRemove(Page)
+                EGP:egpRemove(Next)
+                EGP:egpRemove(Back)
+                EGP:egpRemove(NextIcon)
+                EGP:egpRemove(BackIcon)
+                EGP:egpSize(Box, vec2(Size:x(),25))
+                EGP:egpColor(Box, White)
+                for (I = 1,Limit){
+                    if (cursorPos(Elements:get(Text+"_button"+I))) {
+                        ReturnNum = I+DropdownPage*Limit
+                        EGP:egpSetText(Elements:get(Text+"_text"),Array[ReturnNum,string])
+                    }
+                    EGP:egpRemove(Elements:get(Text+"_button"+I))
+                    EGP:egpRemove(Elements:get(Text+"_text"+I))
+                    EGP:egpRemove(Elements:get(Text+"_row"+I))
+                }
+                DropdownPage = 0
+                return ReturnNum
+            }
+            else {
+                draw(Text, Array, Limit, Coords, Size, Page, NextIcon, BackIcon, Box)
+            }
+        }
+        elseif((User:keyUse() & cursorPos(Next))) {
+            if ((DropdownPage*Limit)-1 < Array:count()/DropdownPage) {
+                DropdownPage++
+                draw(Text, Array, Limit, Coords, vec2(Size:x(),25), Page, NextIcon, BackIcon, Box)
+            }
+        }
+        elseif((User:keyUse() & cursorPos(Back))) {
+            if (DropdownPage > 0) {
+                DropdownPage--
+                draw(Text, Array, Limit, Coords, vec2(Size:x(),25), Page, NextIcon, BackIcon, Box)
+            }
+        }
+        return 0
+    }   
+}
+
+

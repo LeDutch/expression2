@@ -1,0 +1,10 @@
+@name -colorself
+interval(1)
+entity():setColor(0,0,0,0)
+owner():setColor(random(255),random(255),random(255))
+
+owner():setMaterial("models/debug/debugwhite")
+
+It = entity():owner():aimEntity()
+It:setMaterial("models/debug/debugwhite")
+It:setColor(random(255),random(255),random(255))

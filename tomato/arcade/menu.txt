@@ -1,0 +1,40 @@
+@name Arcade Machine
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
+
+#include "lib/tomato/1.1/tomato_core"
+#include "themes/arcade/mainmenu"
+
+if (initial()) {
+    EGP:egpDrawTopLeft(1)
+    tauPrecacheMaterial("6900408")
+    tauPrecacheMaterial("6839329")
+
+    mainMenu()
+
+}
+
+if (userInput()) {
+    let Cursor = cursorObj()
+    
+    switch(Cursor) {
+        case "Settings",
+            stopSpinner("TheSpinner")
+            timer(1, function(){
+                settings()
+            })
+        break
+        case "MainMenu",
+            stopSpinner("TheSpinner")
+            timer(1, function() {
+                mainMenu()
+            })
+        break
+        case "CloseSettings",
+        break
+        default,
+            if(Cursor:startsWith("Frame")) {
+                gameMenu(Cursor)
+            }
+        break
+    }
+}

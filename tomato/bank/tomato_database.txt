@@ -1,0 +1,410 @@
+@name Tomato Database
+@persist [DB]:table
+@persist [BankName CurrentDate FileName DSGroup Hash]:string
+@persist [Hashes]:array
+
+if(first() || dupefinished()) {
+    #include "library/tomato_lib"
+    
+    DSGroup = "tomatobankinggroup"
+    BankName = "BetterBank"
+    FileName = "tomato/" + BankName:lower() + ".txt"
+    Prefix = BankName
+    
+    dsJoinGroup("tomatobankinggroup")
+    
+    local Date = dateUTC()
+    CurrentDate = toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])
+    
+    function dbReset() {
+        local TAXES = table( # Make sure tier is lower case
+            "default" = 25,
+            "platinum" = 15,
+            "diamond" = 10,
+            "staff" = 5
+        )
+        local VAULTS = table(
+        "VaultNum" = 8,
+        "Collector" = noentity())
+        for (I = 1,10){
+                VAULTS[I, table] = table(
+                    "Name" = "Vault " + I,
+                    "Price" = 10000,
+                    "Size" = 1,
+                    "Account" = noentity(),
+                    "Time" = 0,
+                    "Corner1" = vec(),
+                    "Corner2" = vec()
+            )
+        }
+        
+        DB = table(
+            "StartDate" = CurrentDate,
+            "Alarm" = table(
+                "Corner1" = vec(),
+                "Corner2" = vec()),
+            "Staff" = table(owner():steamID() = owner():name()),
+            "Taxes" = TAXES,
+            "Vaults" = VAULTS,
+            "Profit" = table(),
+            "Tax" = table(),
+            "Customers" = table()
+        )
+    }
+    
+    function endLease(VaultNum) {
+        local TextID = Elements:get("Vault "+VaultNum)
+        Timer:setTime(toString(VaultNum), 0)
+        DB["Vaults", table][VaultNum, table]["Account", entity] = noentity()
+    }
+    
+    function addPlayer(Player:entity) {
+        local Steam = Player:steamID()
+        local Name = Player:name()
+        if (!DB:exists(Steam)) {
+            DB["Customers", table][Steam, table] = table(
+                "Name" = Name,
+                "Membership" = "default",
+                "Tenure" = CurrentDate,
+                "Tax" = table(
+                    "Total" = 0
+                ),
+                "Profit" = table(
+                    "Total" = 0
+                ),
+                "Racks" = table(),
+                "Printers" = table(),
+                "Items" = table()
+            )
+            owner():msg(Name + " was added to the database.")
+        }
+        else {
+            owner():msg(Name + " is already in database.")
+        }
+    }
+    
+    function addTaxTier(Player:entity, TaxLevel:string) {
+        local STEAM = Player:steamID()
+        DB["Customers", table][STEAM,table]["Membership",string] = TaxLevel
+        print("Added " + Player:name() + " to " + TaxLevel + " tier.")
+    }
+    
+    function handleChat(Player:entity, Message:string, _:number) {
+        local AimEntity = Player:aimEntity()
+        Arguments = Message:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        switch(Command) {
+            case "vaults",               
+                Number = Arguments[1,string]:toNumber()
+                if (0 < Number  <= 8) {
+                    DB["Vaults", table]["VaultNum", number] = Number
+                    Player:msg("Changed vaults to " + Number)
+                }
+                else {Player:msg("ERROR: Type in between 1-8 vaults")}
+            break
+            case "name",
+                local VaultNum = Arguments[1,string]:toNumber()
+                local Text = Arguments[2,string]
+                DB["Vaults", table][VaultNum, table]["Name", string] = Text
+                Player:msg("Changed vault name of " + VaultNum + " to " + Text)
+            break
+            case "size",
+                local VaultNum = Arguments[1,string]:toNumber()
+                local Text = Arguments[2,string]               
+                DB["Vaults", table][VaultNum, table]["Size", number] = Text:toNumber()
+                Player:msg("Changed vault size of " + VaultNum + " to " + Text)
+            break
+            case "price",
+                local VaultNum = Arguments[1,string]:toNumber()
+                local Text = Arguments[2,string]               
+                DB["Vaults", table][VaultNum,table]["Price", number] = Text:toNumber()
+                Player:msg("Changed vault price of " + VaultNum + " to " + Text)
+            break
+            case "evict",
+                local VaultNum = Arguments[1,string]:toNumber()
+                local Account = DB["Vaults", table][VaultNum,table]["Account", entity]
+                if (Account:isValid()) {
+                   DB["Vaults", table][VaultNum,table]["Time", number] = 0
+                    Player:msg("Evicted Account: " + Account:name())
+                    endLease(VaultNum)     
+                }    
+                else {Player:msg("That vault is unoccupied.")}
+            break
+            case "addtime",
+                local AccountNum = Arguments[1,string]:toNumber()
+                if (AccountNum > DB["Vaults", table]:count()) {
+                    Player:msg("!addtime (vault number) (amount in minutes)")
+                }
+                else {
+                    local Time = Arguments[2,string]:toNumber()
+                    local Account = DB["Vaults", table][AccountNum,table]["Account", entity]
+                    if (Account:isValid()) {
+                        DB["Vaults", table][AccountNum, table]["Time",number] = DB["Vaults", table][AccountNum, table]["Time",number] + Time
+                        Player:msg("Added time to account: " + Account:name())
+                        Account:msg(Time + " minutes were added to your vault.")
+                    }
+                    else {Player:msg("Please select an occupied vault!")} 
+                }    
+            break
+            case "set",
+                local Action = Arguments[1,string]
+                if (Action == "alarm") {
+                    local Corner = Arguments[2,string]
+                    if (Corner == "1") {
+                        DB["Alarm", table]["Corner"+Corner, vector] = Player:pos() + vec(0,0,50)
+                        Player:msg("Corner " + Corner + " set!")
+                    }
+                    elseif(Corner == "2") {
+                        DB["Alarm", table]["Corner"+Corner, vector] = Player:pos()
+                        Player:msg("Corner " + Corner + " set!")
+                    }
+                    else {
+                        Player:msg("Incorrect corner format!")
+                    }
+                }
+                elseif(Action == "vault") {
+                    local VaultNum = Arguments[2,string]:toNumber()
+                    local Corner = Arguments[3,string]
+                    if (VaultNum <= 10) {
+                        if (Corner == "1") {
+                            DB["Vaults", table][VaultNum, table]["Corner"+Corner, vector] = Player:pos()
+                            Player:msg("Vault " + VaultNum + " corner " + Corner + " set!")
+                        }
+                        elseif(Corner == "2") {
+                            DB["Vaults", table][VaultNum, table]["Corner"+Corner, vector] = Player:pos() + vec(0,0,100)
+                            Player:msg("Vault " + VaultNum + " corner " + Corner + " set!")
+                        }
+                        else {
+                            Player:msg("Incorrect corner format!")
+                        }
+                    }
+                    else {
+                        Player:msg("Select number 1-8 vault!")
+                    }
+                }
+                else {
+                    Player:msg("Incorrect format!")
+                }
+            break
+            case "tax",
+                local Name = Arguments[1,string]
+                local TaxLevel = Arguments[2,string]:lower()
+                local User = Name:findPlayer()
+                if (User:isValid() & DB["Customers", table]:exists(User:steamID())) {
+                    addTaxTier(User, TaxLevel)
+                }
+                else {
+                    Player:msg("Incorrect format or player not in database!")
+                }
+            break
+            case "add",
+                local Name = Arguments[1,string]
+                local User = Name:findPlayer()
+                if (User:isValid()) {
+                    addPlayer(User)
+                }
+                else {
+                    Player:msg("Could not find " + User:name() +"!")
+                }
+            break
+            case "reset",
+                dbReset()
+                fileWrite(FileName, jsonEncode(DB))
+                Player:msg("Database reset!")
+            break
+            case "load",
+                timer("loadfile", 0)
+            break
+            case "staff",
+                local Action = Arguments[1,string]
+                local Name = Arguments[2,string]
+                local User = Name:findPlayer()
+                if (Name:length()) {
+                    if (Action == "add") {
+                        DB["Staff", table][User:steamID(), string] = User:name()
+                        Player:msg("Added " + User:name() +" to staff!")
+                    }
+                    elseif(Action == "del") {
+                        DB["Staff", table]:removeString(User:steamID())
+                        Player:msg("Removed " + User:name() +" from staff!")
+                    }
+                    else {
+                        Player:msg("Incorrect syntax!")
+                    }
+                }
+                else {
+                    print(DB["Staff", table]:toString())
+                }
+            break
+            case "get",
+                local Name = Arguments[1,string]
+                local User = Name:findPlayer()
+                local Steam = User:steamID()
+                local UserInfo = DB["Customers", table][Steam, table]
+                if (User:isValid()) {
+                    if (UserInfo) {
+                        Player:msg(UserInfo:toString())
+                    }
+                    else {
+                        Player:msg("Could not find " + Name + " in database!")
+                    }
+                }
+                else {
+                    Player:msg("Could not find player " + Name + "!")
+                }
+            break
+            case "addtax",
+                local Name = Arguments[1,string]:lower()
+                local TaxLevel = Arguments[2,string]:toNumber()
+                if (Name:length() & TaxLevel) {
+                    DB["Taxes", table][Name, number] = TaxLevel
+                    Player:msg("Tax tier '" + Name + "' (" + TaxLevel + "%) set to database!")
+                }
+                else {
+                    Player:msg("Please specify correct format!")
+                }
+            break
+            case "deltax",
+                local Name = Arguments[1,string]:lower()
+                if (Name:length()) {
+                    if (DB["Taxes", table]:remove(Name)) {
+                        Player:msg("Tax tier '" + Name + "' removed from database!")
+                        fileWrite(FileName, jsonEncode(DB))
+                    }
+                    else {
+                        Player:msg("Could not find'" + Name + "' in database!")
+                    }
+                }
+                else {
+                    Player:msg("Please specify correct format!")
+                }
+            break
+            case "help",
+                local Page = ""
+                local Array = array()
+                if (Arguments:count()) {
+                    Page = Arguments[1,string]:lower()
+                }
+                if (Page == "admin") {
+                    Array = array(
+                    "---------------Bank Admin-------------",
+                    "NOTE: (player) uses steamID or name",
+                    "!track (player) - tracks a printer rack",
+                    "!untrack - removes auto collection",
+                    "!tax (player) (tier) - change tax tier",
+                    "!staff add (player) - adds staff member",
+                    "!staff del (player) - deletes staff member",
+                    "!reset - clears database",
+                    "!addtax (nameoftier) (percentage) - add a tax tier.")
+                }
+                elseif(Page == "setup") {
+                    "---------------Bank Setup--------------"
+                    "NOTE: (corner) is either 1 or 2 and saved on file",
+                    "!set alarm (corner) - setup corners for alarm",
+                    "!set vault (number) (corner) - setup corners for storage"
+                }
+                elseif(Page == "terminal") {
+                    Array = array(
+                    "---------------Bank Terminal-----------",
+                    "!vaults (number) to change vaults amount (1-8)",
+                    "!name (vault number) (name)",
+                    "!size (vault number) (level)",
+                    "!price (vault number) (amount)",
+                    "!addtime (vault number) (amount in minutes)",
+                    "!evict (vault number) - kicks out a player",
+                    "!notice (text) - sends to current customers.")
+                }
+                else {
+                    Array = array(
+                    "---------------Bank Generic-----------",
+                    "Select which help page to view.",
+                    "!help setup - setting up commands",
+                    "!help admin - admin commands",
+                    "!help terminal - terminal commands")
+                }
+                for (I = 1, Array:count()){
+                    Player:msg(""+Array[I,string])
+                }
+            break
+        }
+    }
+    timer("loadfile", 0)
+    timer("vaults", 0)
+}
+
+interval(100)
+
+if(dsClk("req")) {
+    Hash = dsGetString()
+    if(!Hashes:exists(Hash)) {
+        Hashes:pushString(Hash)
+        owner():msg("Linked to database: " + Hash)
+    }
+    for(I=1, Hashes:count()) {
+        if (Hash == Hashes[I, string]) {
+            DSGroup = "tomatobanking" + Hash:replaceRE("%d", "")
+            timer("send", 500)
+            break
+        }
+    }
+}
+
+if(clk("send")) {
+    dsSend(Hash, DSGroup, DB)
+}
+if(clk("loadfile")) {
+    fileLoad(FileName)
+    timer("loadfile", 2000)
+}
+if(clk("savefile")) {
+    fileWrite(FileName, jsonEncode(DB, 1))
+    timer("savefile", 10000)
+}
+if(clk("vaults")) {
+    local Vaults = DB["Vaults", table]
+    for (I = 1,Vaults:count()){
+        local Vault = Vaults[I, table]
+        local Time = Vault["Time",number]
+        if (Time) {
+            local Account = Vault["Account",entity]
+            DB["Vaults", table][I, table]["Time",number] = DB["Vaults", table][I, table]["Time",number] - 1
+            if (Time == 1) {
+                endLease(I) 
+                Account:msg("Your vault lease has expired! You have 15 minutes to gather your items.")
+            }
+            else {
+                if(Time == 11){ # 10 min
+                    Account:msg("Your storage lease expires in 10 minutes, head to the bank to renew.")
+                }
+                elseif(Time == 6){ # 5 min
+                    Account:msg("Your storage lease expires in 5 minutes, head to the bank to renew.")
+                }
+            }
+        }
+    }
+    timer("vaults", 60000)
+}
+
+event fileLoaded(Name:string, Content:string) {
+    if (Name == FileName) {
+        stoptimer("loadfile")
+        owner():msg("Database loaded.")
+        DB = jsonDecode(Content) 
+        for (I=1, 8) {
+            DB["Vaults", table][I, table]["Time", number] = 0
+        }
+        timer("savefile", 10000)
+    }
+}
+
+event fileErrored(Name:string, Error:number) {
+    if (Name == FileName) {
+        owner():msg("Data file not found, type !reset to create new file.")
+    }
+}
+
+event chat(Player:entity, Message:string, Team:number) {
+    if(Player == owner() && Message:index(1) == "!") {
+        handleChat(Player, Message, Team)
+    }
+}

@@ -1,0 +1,295 @@
+@name Tomato ROI Calculator
+@persist [DB Printers Names Costs Profits Tiers]:table
+@persist [Screen Tier AutoCollect]:number
+@persist [Profile]:entity
+@persist [BankName FileName Name Membership]:string
+
+if (~EGP) {reset()}
+if(first() || dupefinished()) {
+    #include "library/tomato_lib"
+    #include "library/tomato_animations"
+    #include "themes/bank/tomato_betterbank"
+    
+    Prefix = "ROI" 
+    User = noentity()
+    Profile = User
+    BankName = "BetterBank"
+    FileName = "tomato/" + BankName:lower() + ".txt"
+    
+    Names = table(
+        array("Basic",  "Advanced"),
+        array("Tier 3", "Tier 4"),
+        array("VIP",    "VIP+"),
+        array("Epic",   "Legendary")
+    )
+    
+    Costs = table(
+        "Basic" = 30000,
+        "Advanced" = 60000, 
+        "Tier 3" = 140000, 
+        "Tier 4" = 230000, 
+        "VIP" = 200000, 
+        "VIP+" = 275000, 
+        "Epic" = 375000, 
+        "Legendary" = 450000
+    )
+    
+    Profits = table(
+        "Basic" = 85000,
+        "Advanced" = 105000, 
+        "Tier 3" = 145000, 
+        "Tier 4" = 215000, 
+        "VIP" = 190000, 
+        "VIP+" = 280000, 
+        "Epic" = 345000, 
+        "Legendary" = 440000
+    )
+    
+    Tiers = table(
+        "Default" = 0,
+        "Tier 2" = 10,
+        "Tier 3" = 15,
+        "Tier 4" = 25
+    )
+    
+    Tier = Tiers["Default", number]
+    Membership = "default"
+    AutoCollect = 0
+    
+    #Ease of use functions
+    function changeScreen(Num) {
+        Animation = 1
+        Screen = Num
+        timer("changed", 200)
+    }
+    function drawPrinters() {
+        local XRight = ScreenXY/2+ScreenXY/4
+        
+        if (Printers:count()) {
+            createTextLayout("PrinterNames", size(vec2(200,160)), color(Dark), align(0), coords(vec2(XRight-100,110)))
+            local Text = Elements:get("PrinterNames")
+            EGP:egpSetText(Text, Printers:keys():string())
+            EGP:egpSize(Text, 20)
+                
+            createTextLayout("PrinterAmounts", size(vec2(200,160)), color(Dark), align(0), coords(vec2(XRight+60,110)))
+            local Text = Elements:get("PrinterAmounts")
+            EGP:egpSetText(Text, Printers:values():string())
+            EGP:egpSize(Text, 20)
+        }
+        else {
+            EGP:egpRemove(Elements:get("PrinterAmounts"))
+            EGP:egpRemove(Elements:get("PrinterNames"))
+        }
+    }
+    function calcPrinters() {
+        local ProfitID = Elements:get("Profit/hr:")
+        local CostID = Elements:get("Cost:")
+        local ROIID = Elements:get("ROI:")
+        if (Printers:count()) {
+            local Cost = 0
+            local Profit = 0
+            local Keys = Printers:keys()
+            for (I=1, Printers:count()) {
+                local Printer = Keys[I, string]
+                local Amount = Printers[Printer, number]
+                Cost += Costs[Printer, number]*Amount
+                Profit += Profits[Printer,number]*Amount
+            }
+            if (AutoCollect) {
+                local Tax = DB["Taxes", table][Membership, number]
+                Profit = Profit-Profit*(Tax/100)
+            }
+            else {
+                Profit = Profit+Profit*(Tier/100)
+            }
+            EGP:egpSetText(CostID, "Cost: " + formatNumber(Cost))
+            EGP:egpSetText(ProfitID, "Profit/hr: $" + formatNumber(Profit))
+            EGP:egpSetText(ROIID, "ROI: " + formatHrs(Cost/Profit))
+        }
+    }
+    
+    changeScreen(1)
+}
+
+interval(100)
+
+if (!proximityCheck(Profile, 100)) {
+    if(Screen != 1) {
+        changeScreen(1)
+    }
+}
+    
+if (Animation) {
+    if (Screen == 1) {
+        fadeIn("Welcome", 10, 0.5)
+        fadeIn("Press [E] to start", 10, 0.5)
+    }
+    elseif (Screen == 2) {
+        loadingSpinner("Loading")
+    }
+    else {
+        Animation = 0
+    }
+}
+else {
+    if (Screen == 1) {
+        if (Screen == 1) {
+            if (~User & User:isValid()) {
+                Profile = User
+                changeScreen(2)
+            }
+        }
+    }
+    elseif (Screen == 3) {
+        if (~User) {
+            local Check1 = useCheckBox("Do you want auto-collect enabled?", 0)
+            if (Check1) {
+                AutoCollect = Check1
+            }
+        }
+    }
+    elseif (Screen == 4) {
+        for (A=1, 4) {
+            for(B=1, 2) {
+                local ID = Elements:get("Printer"+A+B)
+                if(cursorPos(ID, Profile)) {
+                    EGP:egpColor(ID, Secondary)
+                    if (Profile:keyPressed("E")) {
+                        Name = Names[A, array][B, string]
+                        timer("printer", 200)
+                    }
+                }
+                elseif(EGP:egpColor(ID) != Primary) {
+                    EGP:egpColor(ID, Primary)
+                }
+            }
+        }
+        local ID = Elements:get("ClearBox")
+        if(cursorPos(ID, Profile)) {
+            EGP:egpColor(ID, Secondary)
+            if (Profile:keyPressed("E")) {
+                Printers = table()
+                local ProfitID = Elements:get("Profit/hr:")
+                local CostID = Elements:get("Cost:")
+                local ROIID = Elements:get("ROI:")
+                EGP:egpSetText(CostID, "Cost:")
+                EGP:egpSetText(ProfitID, "Profit/hr:")
+                EGP:egpSetText(ROIID, "ROI:")
+                drawPrinters()
+            }
+        }
+        elseif(EGP:egpColor(ID) != Primary) {
+            EGP:egpColor(ID, Primary)
+        }
+        local ID = Elements:get("CalcBox")
+        if(cursorPos(ID, Profile)) {
+            if (EGP:egpColor(ID) != Secondary) {
+                EGP:egpColor(ID, Secondary)
+            }
+        }
+        elseif(EGP:egpColor(ID) != Primary) {
+            EGP:egpColor(ID, Primary)
+        }
+        if (~User) {
+            local Options = array("Default", "Tier 2", "Tier 3", "Tier 4")
+            local Dropdown1 = useDropDown("TAU Tier:", Options)
+            if (Dropdown1) {
+                Tier = Tiers[Options[Dropdown1, string], number]
+            }
+            else {
+                local ID = Elements:get("CalcBox")
+                if(cursorPos(ID, Profile)) {
+                    if (Profile:keyPressed("E")) {
+                        calcPrinters()
+                    }
+                }
+            }
+        }
+    }
+    if (Screen >= 3) {
+        local BackID = Elements:get("BackButton")
+        local NextID = Elements:get("NextButton")
+        if(cursorPos(BackID, Profile)) {
+            EGP:egpColor(BackID, Secondary)
+            if (Profile:keyPressed("E")) {
+                if (Screen == 3) {
+                    changeScreen(1)
+                }
+                else {
+                    changeScreen(Screen - 1)
+                }
+            }
+        }
+        elseif(EGP:egpColor(BackID) != Primary) {
+            EGP:egpColor(BackID, Primary)
+        }
+        if(cursorPos(NextID, Profile)) {
+            EGP:egpColor(NextID, Secondary)
+            if (User:keyPressed("E")) {
+                changeScreen(Screen + 1)
+            }
+        }
+        elseif(EGP:egpColor(NextID) != Primary) {
+            EGP:egpColor(NextID, Primary)
+        }
+    }
+}
+
+#Change screens
+
+if (clk("printer")) {
+    Printers[Name, number] = Printers[Name, number] + 1
+    drawPrinters()
+}
+if (clk("changed")) {
+    Animation = 1
+    if (Screen == 1) {
+        drawCalcInitial(0)
+    }
+    elseif(Screen == 2) {
+        drawLoading()
+        timer("loadfile", 1000)
+    }
+    elseif(Screen == 3) {
+        AutoCollect = 0
+        drawCalcSettings()
+    }
+    elseif(Screen == 4) {
+        if (AutoCollect) {
+            drawCalculator(AutoCollect)
+            createText("Membership", size(16), align(1), coords(vec2(ScreenXY/4+10, 333)))
+            EGP:egpSetText(Elements:get("Membership"), DB["Customers", table][Profile:steamID64(), table]["Name", string] + ": " + Membership + " member")
+            Tier = 25
+        }
+        else {
+            drawCalculator(AutoCollect)
+            Tier = 0
+        }
+    }
+}
+
+if(clk("loadfile")) {
+    fileLoad(FileName)
+    timer("loadfile", 2000)
+}
+
+event fileLoaded(Name:string, Content:string) {
+    if (Name == FileName) {
+        Animation = 1
+        stoptimer("loadfile")
+        perf()
+        DB = jsonDecode(Content) 
+        if (Screen == 2) {
+            Printers = table()
+            Membership = DB["Customers", table][Profile:steamID64(), table]["Membership", string]
+            changeScreen(3)
+        }
+    }
+}
+
+event fileErrored(Name:string, Error:number) {
+    if (Name == FileName) {
+        owner():msg("Data file not found.")
+    }
+}
+

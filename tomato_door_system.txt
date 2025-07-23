@@ -1,0 +1,141 @@
+@name Tomato Door System
+@inputs [D1 D2 D3]:wirelink
+@outputs Alarm:number
+@persist Text:string 
+@persist [Players FadingDoors]:table
+@persist [Min Max]:vector
+
+if (~EGP) {reset()}
+if(first() || dupefinished()) {
+    #include "library/tomato_lib"
+    
+    Prefix = "Doors"
+    PrefixColour = "red"
+    
+    #Ease of use functions
+    function checkAlarm() {
+        if (Max != vec(0) && Min != vec(0)) {
+            findIncludeClass("player")
+            findInBox(Min, Max)
+                
+            foreach(_, Player:entity = findToArray()) {
+                if (Player:isAlive()) {
+                    if (!Players:exists(Player:steamID())) {
+                        Alarm = 1
+                        timer("stop",  1500)
+                    }      
+                }    
+            }
+        }
+    }
+    
+    function wirelink entity:getWirelink() {
+        foreach (_, V:wirelink = FadingDoors) {
+            if (This == V:entity()) {
+                return V
+            }
+        }
+        return nowirelink()
+    }
+    
+    DOORS = array()
+    for (I = 1, 3) {
+        let Name = "D" + I
+        FadingDoors[Name, wirelink] = ioGetInputWirelink("D" + I)
+    }
+    
+    Players[owner():steamID(), entity] = owner()
+    
+    timer("alarm",  1000)
+}
+
+let CLK = clkName()
+if (CLK) {
+    switch (CLK) {
+        case "alarm",
+            checkAlarm()
+            timer("alarm",  1000)
+        break
+        case "stop",
+            Alarm = 0
+        break
+        default,
+            local DoorEnt = entity(CLK:toNumber())
+            local Wire = DoorEnt:getWirelink()
+            if (Wire != nowirelink()) {
+                Wire["Fade", number] = 0
+            }
+        break
+    }
+}
+
+event chat(Player:entity, Message:string, Team:number) {
+    if(Player == owner() && Message:index(1) == "!") {
+        Arguments = Message:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        switch(Command) {
+            case "set",               
+                let Number = Arguments[1,string]:toNumber()
+                if (0 < Number  <= 2) {
+                    if (Number == 1) {
+                        Player:msg("Corner 1 set")
+                        Min = Player:pos()
+                    }
+                    elseif(Number == 2) {
+                        Player:msg("Corner 2 set")
+                        Max = Player:pos() + vec(0,0,50)
+                    }
+                }
+                else {
+                    Player:msg("ERROR: Type 1-2 corner")
+                }
+            break
+            case "add",
+                let Add = Arguments[1,string]:findPlayer()
+                if (Add:isValid()) {
+                    foreach (_, Player:entity = Players) {
+                        Player:msg("Added " + Add:name() + " to door system.")
+                    }
+                    Players[Add:steamID(), entity] = Add
+                    Add:msg("You were added to the door system")
+                }
+                else {
+                    Player:msg("ERROR: Could not find player " + Add:name())
+                }
+            break
+            case "del",
+            case "delete",
+                let Del = Arguments[1,string]:findPlayer()
+                if (Del:isValid()) {
+                    Players:remove(Del:steamID())
+                    foreach (_, Player:entity = Players) {
+                        Player:msg("Removed " + Del:name() + " from door system.")
+                    }
+                    Del:msg("You were removed from the door system")
+                }
+                else {
+                    Player:msg("ERROR: Could not find player " + Del:name())
+                }
+            case "list",
+                print(Players:toString())
+            break
+            default,
+            break
+        }
+    }
+}
+
+event keyPressed(Entity:entity, _:string, Down:number, Bind:string) {
+    if (Bind == "use" && !Down) {
+        local AimEntity = Entity:aimEntity()
+        local Wire = AimEntity:getWirelink()
+    
+        if (Wire != nowirelink()) { 
+            local Dist = abs(Entity:pos():distance(AimEntity:pos())) < 100 ? 1 : 0 
+            if (Players:keys():findString(Entity:steamID())) {
+                Wire["Fade", number] = 1
+                timer(AimEntity:id():toString(), 4000)
+            }
+        }
+    }
+}

@@ -1,0 +1,93 @@
+@name Mofo Dice - v2
+@inputs EGP:wirelink
+@persist Elements:table InPlay:number
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
+
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_core"
+
+function number calcProfit(Bet:number, Chance:number) {
+    return floor(Bet * 95 / Chance)
+}
+
+function void drawUI() {
+    EGP:clear()
+    EGP:egpDrawTopLeft(1)
+
+    box("Background", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=29, "g"=14, "b"=45, "radius"=0))
+    text("MofoDice", table("text"="Mofo Dice", "x"=165.0, "y"=58.0, "w"= 181.0, "h"=79.0, "r"=255, "g"=255, "b"=255, "size"=39, "halign"=1, "valign"=1))
+    box("Button", table("x"=123.0, "y"=370.0, "w"=266.0, "h"=77.0, "r"=201, "g"=131, "b"=211, "radius"=0))
+    text(table("text"="ROLL", "x"=123.0, "y"=370.0, "w"= 266.0, "h"=77.0, "r"=255, "g"=255, "b"=255, "size"=43, "halign"=1, "valign"=1))
+    
+    slider("Bet", table(
+    		"coords"=vec2(155,200), 
+    		"w"=200, 
+    		"scale"=2, 
+    		"text"="Bet Amount",
+    		"min"=10000,
+    		"max"=100000,
+    		"interval"=1000,
+      "primary"=vec(146,115,180),
+      "value"=0.1
+    ))
+
+    slider("Chance", table(
+    		"coords"=vec2(155,290), 
+    		"w"=200, 
+    		"scale"=2, 
+    		"text"="Chance to Win (%)",
+    		"min"=2,
+    		"max"=99,
+    		"interval"=1,
+      "primary"=vec(146,115,180),
+      "value"=49
+    ))
+    
+    let Payout = text(table("text"="Payout: $0", "x"=170.0, "y"=334.0, "w"= 172.0, "h"=36.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=1, "valign"=1))
+    timer(0.1, 0, function() {
+        let Chance = UI["Chance", table]["value", number]
+        let Bet = UI["Bet", table]["value", number]
+        let Amount = calcProfit(Bet, Chance)
+        if (Chance || Bet) {
+            Payout["text", string] = "Payout: $" + abbreviateNum(Amount < 1000000000000000 ? Amount : 0)
+        }
+    })
+}
+
+if (initial()) {
+    Prefix = "{![Mofo Dice]} "
+    InPlay = 0
+    drawUI()
+}
+
+if(userInput() && !InPlay) {
+    if (cursorObj() == "Button") {
+        let BetAmount = UI["Bet", table]["value", number]
+        moneyRequest(CurrentUser, BetAmount, 5, "Roll for: " + BetAmount + "?")
+        InPlay = 1
+    }
+}
+
+if (moneyClk()) {
+    let Bet = moneyClkAmount()
+    let Roll = randint(100)
+    let Chance = UI["Chance", table]["value", number]
+    let Outcome = Roll < Chance ? "WIN!" : "LOSS"
+    let RollText = noegpobject()
+    if (Roll < Chance) {
+        let Payout = calcProfit(Bet, Chance)
+        RollText = text(table("text"=Outcome + " You rolled: " + Roll, "x"=137.0, "y"=447.0, "w"= 238.0, "h"=35.0, "r"=88 , "g"=251, "b"=138, "size"=23, "halign"=1, "valign"=1))
+        CurrentUser:msg(Prefix + "You rolled a {#d4af37 DiceRoll} and won {cyan $" + abbreviateNum(Payout) + "}")
+        moneyGive(CurrentUser, Payout)
+    }
+    else {
+        RollText = text(table("text"=Outcome + " You rolled: " + Roll, "x"=137.0, "y"=447.0, "w"= 238.0, "h"=35.0, "r"=160 , "g"=0, "b"=61, "size"=23, "halign"=1, "valign"=1))
+    }
+    timer(1, function() {
+        RollText["text", string] = ""
+        InPlay = 0
+    })
+}
+if (moneyTimeout() || moneyNoClk()) {
+    InPlay = 0
+}

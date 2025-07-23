@@ -1,0 +1,261 @@
+@name Modified Report
+@inputs EGPReport:wirelink ReportUser:entity
+@persist BlacklistedPlayers:table
+# ^ General rule of thumb is that less persisted variables the better
+
+if (first() || dupefinished()) {
+    # Variables
+    BlacklistedPlayers = table()
+    
+    # Load the blacklist when the E2 starts
+    if(fileCanLoad()) {
+        fileLoad("report_blacklist.txt")
+    }
+}
+
+# Function for EGP Input (If player is pressing EGP Screen)
+function number userInput() {
+    return ~ReportUser && ReportUser:isValid()
+}
+
+# Check if an entity is blacklisted
+function number isBlacklisted(Entity:entity) {
+    return BlacklistedPlayers:exists(Entity:steamID())
+}
+
+# A neat find player function
+function entity string:findPlayer() {
+    return This:sub(1, 5):upper() == "STEAM" ? findPlayerBySteamID(This) : findPlayerByName(This)
+}
+
+# A neat messaging function
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    #This:tauSendChatMsg(Text)
+    print(Text)
+}
+
+# A neat click tracking function
+function void preventSpamClicks(User:entity, Interval:number) {
+    if(timerExists(User:steamID()+"Clicked")) {
+        User:msg("You are clicking too fast! Please wait " + Interval + " seconds.")
+        return 1
+    }
+    else {
+        timer(User:steamID()+"Clicked", Interval, function() {
+            # Do nothing
+        })
+    }
+    return 0
+}
+
+# Save the blacklist to file
+function saveBlacklist() {
+    if(fileCanWrite()) {
+        fileWrite("report_blacklist.txt", jsonEncode(BlacklistedPlayers, 1))
+        print("Saved blacklist with " + BlacklistedPlayers:count() + " player(s)")
+    }
+    else {
+        # Try again in X second/s
+        let Interval = 5
+        print("Can't save - Queueing save file for " + Interval + " second/s")
+        timer(Interval, function(){
+            saveBlacklist()
+        })
+    }
+}
+
+# Add a player to the blacklist by name
+function addToBlacklist(Target:string) {
+    let GetDate = function() {
+        const Date = dateUTC()
+        return toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])      
+    }
+    let Player = Target:findPlayer()
+    if (Player:isValid()) {
+        # An example of what you could do by saving as a json string not as direct text:
+        BlacklistedPlayers[Player:steamID(), table] = table(
+            "Name" = Player:name(),
+            "DateAdded" = GetDate()[string],
+            "Reason" = "Cereal egg yoghurt and milk."
+        )
+        
+        print(Player:name() + " has been added to report blacklist.")
+        saveBlacklist()
+    }
+    else {
+        print("Could not find player.")
+    }
+}
+
+# Remove a player from the blacklist by name
+function removeFromBlacklist(Target:string) {
+    let Player = Target:findPlayer()
+    if (Player:isValid()) {
+        BlacklistedPlayers:remove(Player:steamID())
+        
+        print(Player:name() + " has been removed from report blacklist.")
+        saveBlacklist()
+    }
+    else {
+        print("Could not find player.")
+    }
+}
+
+# A neat function to see what element the user is clicking
+function number cursorObj(...IDs:array) {
+    const Cursor = EGPReport:egpCursor(ReportUser)
+    # Iterate through objects
+    for (I = 1, IDs:count()) {
+        const ID = IDs[I, number]
+        const Object = EGPReport:egpobject(ID)
+        if (Object:containsPoint(Cursor)) {
+            return IDs[I, number]
+        }
+    }
+
+    return 0
+}
+
+# Your EGP Code
+if (first() || dupefinished() || ~EGPReport) {
+    # Clear the EGP screen
+    EGPReport:egpClear()
+    
+    # Background
+    EGPReport:egpBox(1, vec2(512/2,512/2), vec2(512,512))
+    EGPReport:egpColor(1, vec(255,0,0))
+    
+    # Title
+    EGPReport:egpText(2, "REPORT", vec2(512/2,30))
+    EGPReport:egpSize(2, 50)
+    EGPReport:egpColor(2, vec(255,255,255))
+    EGPReport:egpAlign(2,1)
+    
+    # Request Access button
+    EGPReport:egpBox(3, vec2(512/2,140), vec2(300,75))
+    EGPReport:egpColor(3, vec4(255,255,255,150))
+    
+    EGPReport:egpBox(4, vec2(512/2,140), vec2(290,70))
+    EGPReport:egpColor(4, vec4(0,0,0,150))
+    
+    EGPReport:egpText(5, "REQUEST ACCESS", vec2(512/2,120))
+    EGPReport:egpSize(5, 35)
+    EGPReport:egpColor(5, vec(255,255,255))
+    EGPReport:egpAlign(5, 1)
+    
+    # Report Cheating button
+    EGPReport:egpBox(6, vec2(512/2,240), vec2(300,75))
+    EGPReport:egpColor(6, vec4(255,255,255,150))
+    
+    EGPReport:egpBox(7, vec2(512/2,240), vec2(290,70))
+    EGPReport:egpColor(7, vec4(0,0,0,150))
+    
+    EGPReport:egpText(8, "REPORT CHEATING", vec2(512/2,220))
+    EGPReport:egpSize(8, 35)
+    EGPReport:egpColor(8, vec(255,255,255))
+    EGPReport:egpAlign(8, 1)
+    
+    # Report Player button
+    EGPReport:egpBox(9, vec2(512/2,340), vec2(300,75))
+    EGPReport:egpColor(9, vec4(255,255,255,150))
+    
+    EGPReport:egpBox(10, vec2(512/2,340), vec2(290,70))
+    EGPReport:egpColor(10, vec4(0,0,0,150))
+    
+    EGPReport:egpText(11, "REPORT PLAYER", vec2(512/2,320))
+    EGPReport:egpSize(11, 35)
+    EGPReport:egpColor(11, vec(255,255,255))
+    EGPReport:egpAlign(11, 1)
+    
+    # Game Fucked button
+    EGPReport:egpBox(12, vec2(512/2,440), vec2(300,75))
+    EGPReport:egpColor(12, vec4(255,255,255,150))
+    
+    EGPReport:egpBox(13, vec2(512/2,440), vec2(290,70))
+    EGPReport:egpColor(13, vec4(0,0,0,150))
+    
+    EGPReport:egpText(14, "GAME FUCKED", vec2(512/2,420))
+    EGPReport:egpSize(14, 35)
+    EGPReport:egpColor(14, vec(255,255,255))
+    EGPReport:egpAlign(14, 1)
+}
+
+if(userInput()) {
+    if (isBlacklisted(ReportUser)) {
+        ReportUser:msg("{red You are not allowed to submit reports.}")
+    }
+    elseif(!preventSpamClicks(ReportUser, 10)) { # 10 seconds
+        let Button = cursorObj(3,6,9,12)
+        switch(Button) {
+            case 3, # Request access
+                owner():msg("{yellow [REPORT] " + ReportUser:name() + " has requested access to the game.}")
+            break
+            case 6, # Report cheating
+                owner():msg("{red [REPORT] " + ReportUser:name() + " has reported potential cheating!}")
+            break
+            case 9, # Report player
+                owner():msg("{orange [REPORT] " + ReportUser:name() + " has submitted a player report.}")
+            break
+            case 12, # Game fucked
+                owner():msg("{red [REPORT] " + ReportUser:name() + " reports that the game is fucked!}")
+            break
+        }
+        entity():soundPlay(0, 0, "buttons/button14.wav")
+        ReportUser:msg("{yellow Report sent! Please wait before sending another report.}")
+    }
+}
+
+# Using event for file loaded instead of function
+event fileLoaded(File:string, Data:string) {
+    if(File == "report_blacklist.txt") {
+        if(Data != "") {
+            BlacklistedPlayers = jsonDecode(Data)
+            print("Blacklist loaded...")
+        }
+    }
+}
+
+# Improved command handler function
+function void cmd(Command:string, Args:array) {
+    switch(Command) {
+        case "BL",
+            if(Args:count() >= 1) {
+                addToBlacklist(Args[1, string])
+            }
+        break
+        case "UBL",
+            if(Args:count() >= 1) {
+                local PlayerName = Args[1, string]
+                removeFromBlacklist(PlayerName)
+                print("Executed unblacklist command for: " + PlayerName)
+            }
+        break
+        case "SHOWBL",
+            print("Current Blacklist Contents:")
+            print("BlacklistedPlayers table size: " + BlacklistedPlayers:count())
+            print(BlacklistedPlayers:toString())
+        break
+        case "LOADBL",
+            if(fileCanLoad()) {
+                fileLoad("report_blacklist.txt")
+            }
+        break
+        case "SAVEBL",
+            saveBlacklist()
+        break
+    }
+}
+
+# Using the new event system for chat commands instead of runOnChat
+event chat(Player:entity, Message:string, _:number) {
+    if(Player == owner() && Message:sub(1, 1) == "!") {
+        local Args = Message:explode(" ")
+        local Command = Args[1, string]:upper()
+        Args:remove(1)
+        cmd(Command:sub(2), Args)
+        hideChat(1)
+    }
+}
+
+

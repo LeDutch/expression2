@@ -1,0 +1,167 @@
+@name Red Light + Green Light
+@inputs [Gimbal Turret]:wirelink
+@outputs [Colour]:vector
+@persist [PlayerPos PlayersWhoMoved]:table
+@persist [OriginalAngle]:angle
+@persist [IsRedLight NewLight Check]:number
+@model models/squad/sf_plates/sf_plate2x2.mdl
+
+if(first() || dupefinished()){
+    PlayerPos = table() 
+    PlayersWhoMoved = table()
+    IsRedLight = 0
+    NewLight = 0
+    Colour = vec(0,255,0)
+    OriginalAngle = ang()
+    entity():setColor(Colour)
+    entity():setMaterial("models/debug/debugwhite")
+    
+    if (Gimbal:entity():isValid()) {
+        Gimbal["On", number] = 0
+    }
+    if (Turret:entity():isValid()) {
+        OriginalAngle = Turret:entity():angles()
+        Turret["Fire", number] = 0
+    }
+    
+    function number connected() {
+        return Gimbal:entity():isValid() && Turret:entity():isValid()
+    }
+    
+    function number table:findPlayer(Ply:entity) {
+        foreach(K:number, Player:table = This){
+            if (Player["Player", entity] == Ply) {
+                return K
+            }
+        }
+        return 0
+    }
+    
+    function void entity:msg(Text:string) {
+        if (!This:isValid()) {return}
+        #ifdef This:tauSendChatMsg("{green Event}: " + Text)
+        #else 
+            print(Text)
+    }
+    
+    function array findPlayers(){
+        local Temp = array()
+        findIncludeClass("player")
+        #findInBox(vec(-2169,2164,9653), vec(2159,-2153,10462))
+        findInSphere(entity():pos(), 600)
+        foreach(_:number, Ply:entity = findToArray()){
+            Temp:pushEntity(Ply)
+            
+        }
+        return Temp
+    }
+}
+
+if (~Gimbal) {
+    Gimbal["On", number] = 1
+}
+if (~Turret) {
+    OriginalAngle = Turret:entity():angles()
+    Turret["Fire", number] = 0
+}
+
+if(clk("newLight")){
+    Check = 0
+    NewLight = 0
+    IsRedLight = !IsRedLight
+    if (IsRedLight) {
+        timer("check", 1000)
+    }
+    concmd("tauevents eal " + IsRedLight ? "RED LIGHT" : "GREEN LIGHT")
+    entity():setColor(Colour)
+    if(IsRedLight){
+        PlayerPos = table()
+        foreach(K:number, Ply:entity = findPlayers()){
+            PlayerPos:pushTable(table())
+            PlayerPos[K, table]["Player", entity] = Ply
+            PlayerPos[K, table]["Pos", vector] = Ply:pos()
+        }
+    }
+    else {
+        timer("newLight", randint(3,5) * 1000)
+    }
+}
+if(clk("check")){
+    Check = 1
+}
+if(clk("stop")) {
+    Gimbal["On", number] = 0
+    reset()
+}
+
+event tick() {
+    if (connected()) {
+        if(IsRedLight && Check){
+            Colour = vec(0,255,0)
+            foreach(_:number, Player:table = PlayerPos){
+                let Ply = Player["Player", entity]
+                if (Ply:isAlive()) {               
+                    let SavedPos = Player["Pos", vector]
+                    let CurrentPos = Ply:pos()
+                    if (SavedPos != CurrentPos && !PlayersWhoMoved:findPlayer(Ply)) {
+                        PlayersWhoMoved:pushTable(Player)
+                        stoptimer("newLight")
+                        NewLight = 0
+                    }
+                }
+            }
+            if (PlayersWhoMoved:count()) {
+                let Player = PlayersWhoMoved[1, table]
+                let Ply = Player["Player", entity]
+                if (Ply:isAlive() && Ply:pos():distance(Turret:entity():pos()) < 2000) {
+                    let CurrentPos = Ply:pos()
+                    Gimbal["Target", vector] = CurrentPos + vec(0,0,50)
+                    Turret["Fire", number] = 1   
+                }
+                else {
+                    Turret["Fire", number] = 0 
+                    PlayerPos:removeTable(1)
+                    PlayersWhoMoved:removeTable(1)
+                }
+            }
+            elseif(!NewLight) {
+                Turret["Fire", number] = 0
+                NewLight = 1
+                timer("newLight", randint(3,5) * 1000)
+            }
+        }
+        else {
+            Gimbal["Angle", angle] = OriginalAngle
+            Colour = vec(255,0,0)
+        }
+    }
+}
+
+event removed(Resetting:number) {
+    Gimbal["Angle", angle] = OriginalAngle
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Player == owner() && Message[1] == "!") {
+        let Arguments = Message:sub(2):explode(" ")
+        let Command = Arguments:shiftString() 
+        if(Command == "stop") {
+            stoptimer("newLight")
+            Gimbal["Angle", angle] = OriginalAngle
+            timer("stop", 200)
+            Player:msg("Tracking stopped")
+        }
+        elseif(Command == "start") {
+            OriginalAngle = Turret:entity():angles()
+            Turret["Fire", number] = 0
+            Gimbal["On", number] = 1
+            Player:msg("Tracking started")
+            timer("newLight", randint(3,5) * 1000)
+        }
+        elseif(Command == "kill") {
+            PlayersWhoMoved:removeTable(1)
+            PlayerPos:removeTable(1)
+            Player:msg("DEBUG player killed.")
+        }
+    }
+}

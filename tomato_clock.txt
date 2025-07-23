@@ -1,0 +1,28 @@
+@name Tomato Clock
+@inputs HourGimbal:wirelink MinuteGimbal:wirelink
+@outputs 
+@persist
+@trigger 
+@strict
+
+if (first() || ~HourGimbal || ~MinuteGimbal) {
+    HourGimbal["On", number] = 1
+    MinuteGimbal["On", number] = 1
+    
+    timer("second", 1000)
+}
+
+if (clk("second")) {
+    let Time = date(time())
+    
+    # Calculate hour hand angle (0 at 12 o'clock)
+    let HourAngle = (Time["hour", number] % 12) * 30  # 30 degrees per hour
+    let HourOffset = Time["min", number] * 0.5  # Additional angle for minutes
+    HourGimbal["Angle", angle] = ang(0,-HourAngle - HourOffset,0)
+    
+    # Calculate minute hand angle (0 at 12 o'clock)
+    let MinuteAngle = Time["min", number] * 6  # 6 degrees per minute
+    MinuteGimbal["Angle", angle] = ang(0,-MinuteAngle,0)
+    
+    timer("second", 1000)
+}

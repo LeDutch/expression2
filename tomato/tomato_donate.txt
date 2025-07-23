@@ -1,0 +1,342 @@
+@name Tomato Donate
+@inputs EGP:wirelink 
+@outputs 
+@persist MoveX Down User:entity ReqAmount Amount
+@persist Places:array Amounts:array PlacesNum SaveUser:string DonationAmount
+@persist TopAmount TopPlayer:string SecAmount SecPlayer:string  ThAmount ThPlayer:string TotalAmount
+@persist N:number A:number B:number D:number
+@trigger 
+
+
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+ 
+if(first() || dupefinished()){
+#Global Vars
+Amount = 10000
+D = 500000
+    
+EGP:egpClear()
+
+#Main paints
+EGP:egpCircle(1, vec2(200, 260), vec2(190))
+EGP:egpColor(1,vec(255, 255, 255))
+  
+EGP:egpCircle(5, vec2(200, 260), vec2(180))
+EGP:egpMaterial(5, "entities/weapon_fists.png")
+
+#Slider stuff
+EGP:egpDrawTopLeft(2)
+EGP:egpRoundedBox(2,vec2(100,355),vec2(10,10))
+EGP:egpSize(2,vec2(200,20))
+ 
+EGP:egpDrawTopLeft(3)
+EGP:egpRoundedBox(3,vec2(100,355),vec2(10,10))
+EGP:egpSize(3,vec2(20,20))
+EGP:egpColor(3,vec(72,72,72))
+ 
+EGP:egpDrawTopLeft(4)
+EGP:egpRoundedBox(4,vec2(132,390),vec2(10,10))
+EGP:egpSize(4,vec2(140,30))
+EGP:egpColor(4,vec(72,72,72))
+
+#Secondary paints
+EGP:egpText(9,"Donate: $10000",vec2(202,397))
+EGP:egpSize(9,16)
+EGP:egpAlign(9,1)
+ 
+EGP:egpDrawTopLeft(7)#second
+EGP:egpBox(7,vec2(130,341),vec2(10,10))
+EGP:egpSize(7,vec2(40,15))
+EGP:egpColor(7,vec(218,218,218))
+
+EGP:egpDrawTopLeft(6)#first
+EGP:egpBox(6,vec2(180,341),vec2(10,10))
+EGP:egpSize(6,vec2(40,15))
+ 
+EGP:egpDrawTopLeft(8)#third
+EGP:egpBox(8,vec2(230,341),vec2(10,10))
+EGP:egpSize(8,vec2(40,15))
+EGP:egpColor(8,vec(218,218,218))
+ 
+EGP:egpText(20,"1st",vec2(192,342))
+EGP:egpColor(20,vec(18,18,18)) 
+EGP:egpFont(20,"Roboto" ,12) 
+
+EGP:egpText(19,"2nd",vec2(142,342))
+EGP:egpColor(19,vec(18,18,18))
+EGP:egpFont(19,"Roboto" ,12) 
+
+EGP:egpText(21,"3rd",vec2(242,342))
+EGP:egpColor(21,vec(18,18,18))
+EGP:egpFont(21,"Roboto" ,12) 
+
+EGP:egpText(37,"Type !title (name) to change Title",vec2(202,102))
+EGP:egpAlign(37,1)
+EGP:egpColor(37,vec(0,0,0))
+EGP:egpFont(37,"Roboto" ,30)
+
+EGP:egpText(36,"Type !title (name) to change Title",vec2(200,100))
+EGP:egpAlign(36,1)
+EGP:egpFont(36,"Roboto" ,30)
+
+EGP:egpText(29,"Donation Goal: $500000",vec2(202,147))
+EGP:egpAlign(29,1)
+EGP:egpColor(29,vec(0,0,0))
+EGP:egpFont(29,"Roboto" ,22) 
+
+EGP:egpText(23,"Donation Goal: $500000",vec2(200,145))
+EGP:egpAlign(23,1)
+EGP:egpFont(23,"Roboto" ,22) 
+   
+EGP:egpText(13,"LEADERBOARD" ,vec2(95,0))
+EGP:egpSize(13,36)
+
+EGP:egpText(14,"A Tomato Production" ,vec2(190,30)) 
+EGP:egpFont(14,"Roboto" ,16) 
+
+EGP:egpBox(15,vec2(100,168),vec2(10,10))
+EGP:egpSize(15,vec2(200,15))
+EGP:egpColor(15,vec(160,160,160))
+
+EGP:egpBox(16,vec2(100,168),vec2(10,10))
+EGP:egpSize(16,vec2(1,15))
+
+EGP:egpText(34,"Recent Donors",vec2(400,200))
+EGP:egpFont(34,"Roboto" ,16)
+
+EGP:egpBox(35,vec2(400,217),vec2(10,10))
+EGP:egpSize(35,vec2(100,3))
+}
+ 
+
+function number pressedPos(Num){
+    if(User:keyPressed("E") & inrange(EGP:egpCursor(User),EGP:egpPos(Num),EGP:egpPos(Num) + EGP:egpSize(Num))){
+       return 1
+    }    
+    return 0
+}
+interval(100)
+
+findByClass("player")
+User = findClosest(entity():pos())
+N += 9
+X = randint(0,255)
+Y = randint(0,255)
+Z = randint(0,255)
+
+if (D <= TotalAmount) {
+    D *= 2
+    EGP:egpText(23,"Donation Goal: $" + D,vec2(200,145))
+    EGP:egpText(29,"Donation Goal: $" + D,vec2(202,147))
+    EGP:egpColor(29,vec(0,0,0))
+    
+    soundPlay(24,0,"music/hl1_song25_remix3.mp3")
+    soundVolume(24,25)
+    B = 20
+    
+    #Donation Goal Reached
+    EGP:egpCircle(25, vec2(106, 270), vec2(52))
+    EGP:egpColor(25,vec(72, 72, 72))
+    EGP:egpCircle(26, vec2(106, 270), vec2(50))
+    EGP:egpColor(26,vec(255, 255, 255))
+    EGP:egpText(27,"Goal" ,vec2(104,245)) 
+    EGP:egpFont(27,"Roboto" ,32) 
+    EGP:egpColor(27,vec(18,18, 18))
+    EGP:egpAlign(27,1)
+    EGP:egpText(28,"Reached" ,vec2(106,270)) 
+    EGP:egpFont(28,"Roboto" ,16) 
+    EGP:egpColor(28,vec(18,18, 18))
+    EGP:egpAlign(28,1)
+    EGP:egpSize(16,vec2(200*(TotalAmount/D),15))
+}
+elseif (B > 0) {
+    B -= 1
+    EGP:egpColor(25,vec(X,Y,Z))
+}
+else {
+    EGP:egpRemove(25)
+    EGP:egpRemove(26)
+    EGP:egpRemove(27)
+    EGP:egpRemove(28)
+}
+
+if(A > 0) {
+    A -= 1
+    EGP:egpColor(18,vec(X,Y,Z))
+    }
+else {
+    EGP:egpRemove(17)
+    EGP:egpRemove(18)
+}
+
+EGP:egpAngle(17, -10 + abs(cos(90 + N)) * 35)
+ 
+#this is the code for the slide bar
+if(User:keyPressed("E") & inrange(EGP:egpCursor(User),EGP:egpPos(2),EGP:egpPos(2) + EGP:egpSize(2))){
+    MoveX = EGP:egpCursor(User):x()    
+    if(MoveX < 110){MoveX=110}elseif(MoveX > 297){MoveX=297}       
+    EGP:egpRoundedBox(3,vec2(MoveX-10,355),vec2(20,20))  
+    X = round(MoveX-84)
+    Amount = round((X*400)/1000)*1000
+    if(Amount > 50000){
+         Amount = round((X*9000)/10000)*10000
+         Amount -= 1000000
+    }
+    if(Amount > 850000){Amount = 1000000}
+    if(Amount == 0){Amount = 10000}
+    EGP:egpText(9,"Donate: $" + Amount,vec2(202,397))       
+}
+ 
+ 
+#Donate button event
+if(pressedPos(4)){
+    SaveUser=User:name()  
+    ReqAmount = Amount
+    moneyRequest(User,ReqAmount)
+}
+    
+
+#if person pays
+if(moneyClk()){
+    #looks if the user has donated before
+    AcountFound = 0
+    for(I = 1,Places:count()){
+    if(Places[I,string] == SaveUser){PlacesNum = I AcountFound = 1}
+    }
+    if(AcountFound == 1){#they have donated before so add the amount to their account
+    Amounts[PlacesNum,number] = Amounts[PlacesNum,number] + ReqAmount    
+    }else{#they are a first time donator so let's create them an account
+    Places:pushString(SaveUser)
+    Amounts:pushNumber(ReqAmount)  
+    }
+
+    #find what place everyone is on the leader board
+    for (I = 1,Amounts:count()){          
+    if(Amounts[I,number] == TopAmount){Amounts[I,number]=Amounts[I,number]+1}
+    if(Amounts[I,number] > TopAmount){TopAmount = Amounts[I,number] TopPlayer = Places[I,string]}
+    }
+
+    for (I = 1,Amounts:count()){
+    if(Amounts[I,number] == SecAmount){Amounts[I,number]=Amounts[I,number]+1}
+    if(Amounts[I,number] > SecAmount && Amounts[I,number] < TopAmount){SecAmount = Amounts[I,number] SecPlayer = Places[I,string]}
+    }
+ 
+    for (I = 1,Amounts:count()){
+    if(Amounts[I,number] == ThAmount){Amounts[I,number]=Amounts[I,number]+1}
+    if(Amounts[I,number] > ThAmount && Amounts[I,number] < SecAmount){ThAmount = Amounts[I,number] ThPlayer = Places[I,string]}
+    }
+ 
+    #find the total amount donated
+    TotalAmount = 0
+    for (I = 1,Amounts:count()){
+        TotalAmount += Amounts[I,number]
+    }
+ 
+    #update screen
+    PerMoney = 120/TotalAmount
+    
+    RandX = randint(0, 350)
+    RandY = randint(0, 150)
+    
+    PlayerList = players()
+    foreach(Index, Target:entity=PlayerList){
+        if(Target:name()=="Bob Tomato"){
+          moneyGive(Target, ReqAmount * 0.05)
+        }
+    }
+    soundPlay(19,0,"hl1/fvox/bell.wav")
+    soundVolume(19,25)
+    
+    A = 10
+    EGP:egpBox(17, vec2(20+RandX, 280 + RandY), vec2(32, 32))
+    EGP:egpMaterial(17, "vgui/achievements/collect_gifts")
+    
+    EGP:egpText(18,"Thanks " + SaveUser + "!" ,vec2(50 + RandX, 315 + RandY)) 
+    EGP:egpAlign(18,1)
+    EGP:egpColor(18,vec(127,31,255))
+    EGP:egpSize(18,12)
+    
+    if (TotalAmount/D<1) {EGP:egpSize(16,vec2(200*(TotalAmount/D),15))}
+    
+    NumPlayers = Places:count()
+    for(I = 1,6){
+        EGP:egpText(40 + I,Places[1+NumPlayers-I,string],vec2(400,215+I*10))
+        EGP:egpSize(40 + I,12)
+    }
+    
+    EGP:egpDrawTopLeft(7)#second
+    EGP:egpBox(7,vec2(130,341-SecAmount*PerMoney),vec2(10,10))
+    
+    EGP:egpDrawTopLeft(6)#first
+    EGP:egpBox(6,vec2(180,341-TopAmount*PerMoney),vec2(10,10))
+     
+    EGP:egpDrawTopLeft(8)#third
+    EGP:egpBox(8,vec2(230,341-ThAmount*PerMoney),vec2(10,10))
+ 
+    EGP:egpSize(6,vec2(40,15+TopAmount*PerMoney))
+    EGP:egpSize(7,vec2(40,15+SecAmount*PerMoney))
+    EGP:egpSize(8,vec2(40,15+ThAmount*PerMoney))
+    
+    EGP:egpText(31,"$" + ThAmount,vec2(250,325-ThAmount*PerMoney)) 
+    EGP:egpText(32,"$" + SecAmount,vec2(150,325-SecAmount*PerMoney)) 
+    EGP:egpText(33,"$" + TopAmount,vec2(200,325-TopAmount*PerMoney)) 
+    EGP:egpAlign(31,1)
+    EGP:egpAlign(32,1)
+    EGP:egpAlign(33,1)
+    EGP:egpFont(31,"Roboto" ,12)
+    EGP:egpFont(32,"Roboto" ,12)
+    EGP:egpFont(33,"Roboto" ,12)
+  
+    EGP:egpText(30,SecPlayer ,vec2(151,306-SecAmount*PerMoney))
+    EGP:egpColor(30,vec(0,0,0))    
+    EGP:egpSize(30,16)
+    EGP:egpAlign(30,1)
+    EGP:egpText(10,SecPlayer ,vec2(150,305-SecAmount*PerMoney))
+    EGP:egpColor(10,vec(182,182,182))    
+    EGP:egpSize(10,16)
+    EGP:egpAlign(10,1)
+    
+    EGP:egpText(22,TopPlayer ,vec2(201,306-TopAmount*PerMoney))
+    EGP:egpColor(22,vec(0,0,0))
+    EGP:egpSize(22,16)
+    EGP:egpAlign(22,1)
+    EGP:egpText(11,TopPlayer ,vec2(200,305-TopAmount*PerMoney))
+    EGP:egpColor(11,vec(255,221,0))
+    EGP:egpSize(11,16)
+    EGP:egpAlign(11,1)
+ 
+    EGP:egpText(38,ThPlayer ,vec2(251,306-ThAmount*PerMoney))
+    EGP:egpColor(38,vec(0,0,0))
+    EGP:egpSize(38,16)
+    EGP:egpAlign(38,1)
+    EGP:egpText(12,ThPlayer ,vec2(250,305-ThAmount*PerMoney))
+    EGP:egpColor(12,vec(127,95,0))
+    EGP:egpSize(12,16)
+    EGP:egpAlign(12,1)
+}
+
+runOnChat(1)#this is a function to test wbat it would look like if someone else pushed the button
+if(chatClk(owner()))  
+{  
+    if(owner():lastSaid():index(1) == "!")  
+    {  
+        Arguments = owner():lastSaid():sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        if(Command == "add")  
+        {                    
+            SaveUser= Arguments[1,string]
+            ReqAmount = Amount
+            moneyRequest(owner(),ReqAmount)
+        }
+        elseif (Command == "title")  
+        {
+            Title = ""
+            for(I = 1,Arguments:count()){
+                Title += Arguments[I,string] 
+                Title += " " 
+            }                  
+            EGP:egpText(37,Title,vec2(202,102))
+            EGP:egpText(36,Title,vec2(200,100))
+        }
+    }  
+}

@@ -1,0 +1,103 @@
+@name Tomato Smart Camera
+@inputs Gimbal:wirelink Camera:wirelink
+@persist OriginalAngle:angle
+@persist [Radius ProximityCheck]:number
+@persist [Prefix PrefixColour]:string
+@persist [Player]:entity
+
+if (first() || dupefinished()) {
+    Radius = 200
+    Prefix = "Camera"
+    PrefixColour = "red"
+    OriginalAngle = ang()
+    Player = noentity()
+    
+    function number connected() {
+        return Gimbal:entity():isValid() && Camera:entity():isValid()
+    }
+    function number proximityCheck(Entity:entity, Radius:number) {
+        findIncludeClass("player")
+        findInSphere(Entity:pos(), Radius)
+        local Array = findToArray()
+        if (Array:count()) {
+            return 1
+        }
+        return 0
+    }
+    function void entity:msg(Text:string) {
+        if (!This:isValid()) {return}
+        This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+    }
+    timer("proxim", 1000)
+}
+
+if (~Camera) {
+    if (!OriginalAngle) {
+        OriginalAngle = Camera:entity():angles()
+    }
+}
+    
+if (~Gimbal) {
+    Gimbal["On", number] = 1
+    Target = Gimbal["Target", vector]
+}
+
+if(clk("proxim")) {
+    if (connected()) {
+        ProximityCheck = proximityCheck(Camera:entity(), Radius)
+    }
+    timer("proxim", 1000)
+}
+
+event removed(Resetting:number) {
+    Gimbal["On", number] = 0
+}
+
+event tick() {
+    if (connected()) {
+        if (ProximityCheck) {
+            if (!Player:isValid()) {
+                findIncludeClass("player")
+                Player = findClosest(entity():pos())
+            }
+            else {
+                Gimbal["Target", vector] = Player:pos() + vec(0,0,50)
+            }
+        }
+        else {
+            if (Player:isValid()) {
+                Gimbal["Angle", angle] = OriginalAngle
+                Player = noentity()
+            }
+        }
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Player == owner() && Message:index(1) == "!") {
+        let Arguments = Message:sub(2):explode(" ")
+        let Command = Arguments:shiftString() 
+        if (Command == "radius") {
+            let Amount = Arguments[1,string]:toNumber()
+            if (Amount) {
+                Radius = Amount
+                Player:msg("Radius changed to " + Radius)
+            }
+            else {
+                Player:msg("Syntax !radius (amount)")
+            }
+        }
+        elseif(Command == "stop") {
+            Gimbal["On", number] = 0
+            Player:msg("Tracking stopped")
+        }
+        elseif(Command == "start") {
+            Gimbal["On", number] = 1
+            Player:msg("Tracking started")
+        }
+        elseif(Command == "set") {
+            OriginalAngle = Camera:entity():angles()
+            Player:msg("Original angle set")
+        }
+    }
+}

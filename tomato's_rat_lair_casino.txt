@@ -1,0 +1,40 @@
+@name Tomato's Rat Lair Casino
+@inputs EGP:wirelink
+@persist Elements:table
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_animations"
+
+#include "themes/ratlair/mainmenu"
+
+if (first() || dupefinished() || ~EGP) {
+    EGP:egpDrawTopLeft(1)
+    tauPrecacheMaterial("6577271")
+    tauPrecacheMaterial("1844293")
+    tauPrecacheMaterial("8217617")
+    tauPrecacheMaterial("7480435")
+    tauPrecacheMaterial("1380552")
+
+    mainMenu()
+
+}
+
+if (userInput()) {
+    let Cursor = cursorObj()
+    
+    switch(Cursor) {
+        case "Settings",
+            settings()
+        break
+        case "MainMenu",
+            mainMenu()
+        break
+        case "CloseSettings",
+        break
+            
+        default,
+        break
+    }
+}

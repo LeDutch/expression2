@@ -1,0 +1,363 @@
+@name Tomato UI
+@persist UI:table
+
+#include "lib/tomato/1.0/tomato_egp"
+#include "lib/tomato/1.0/tomato_animations"
+
+if (first()) {
+    # Initialize variables
+    UI = table()
+}
+
+#[ =================== Guide ============================ #
+ This UI library uses the following syntax for variadic parameters:
+ If parameters aren't specified, default values are assigned.
+
+ To create a UI object, use the following:
+
+ functionName("Name", 
+    table(
+        "scale"=number, # Every UI component has a set default height/width if you want to scale this
+        "coords"=vec2(),
+        "angle"=number,
+        "opacity"=number,
+        "text"=string,
+        "w"=number,
+        "h"=number,
+        "duration"=number, # Duration of animation
+        
+        #Slider params
+        "min"=number,
+        "max"=number,
+        "interval"=number,
+        
+        #Text and loading spinner
+        "size"=number,
+        
+        # The below is for colours
+        "primary"=vec(),
+        "secondary"=vec(),
+        "light"=vec(),
+        "dark"=vec()
+        )
+    )
+
+ For colours that match, I recommend using https://colorhunt.co/
+
+ To access states of UI elements, use UI["Name", table]["value", number]
+ -> i.e Find if checkBox has been pressed
+
+]#
+
+# ==================== UI Functions ===================== #
+
+if(userInput()) { # Function to execute behaviour if UI elements are drawn
+    const Cursor = cursorArray(UI:keys())
+    const Function = UI[Cursor, table]["function", function]
+    if(Cursor) {
+        Function()
+    }
+}
+
+function table checkParams(Args:table) {
+    # Default values for optional parameters
+    const Defaults  = table(
+        "scale"     = 1,
+        "coords"    = vec2(256, 256),
+        "angle"     = 0,
+        "opacity"   = 255,
+        "primary"   = vec(82, 109, 130),
+        "secondary" = vec(157, 178, 191),
+        "light"     = vec(221, 230, 237),
+        "dark"      = vec(39, 55, 77),
+        "text"      = "Default",
+        "duration"  = 0.1,
+        "min"       = 10,
+        "max"       = 100,
+        "interval"  = 5,
+        "size"      = 10
+    )
+    
+    # Individual params
+    const Params = Defaults:merge(Args)
+    const Coords = Params["coords", vector2]
+    const Angle = Params["angle", number]
+    const Opacity = Params["opacity", number]
+    const Formatted = table(
+        "x"         = Coords:x(), 
+        "y"         = Coords:y(), 
+        "a"         = Opacity,
+        "angle"     = Angle
+    )
+    
+    return Formatted:merge(Params)
+}
+
+function table addParams(Original:table, Args:table) {
+    const Colour = Args["colour", vector]
+    return Original:merge(table("r"=Colour:x(), "g"=Colour:y(), "b"=Colour:z()):merge(Args))
+}
+
+function void changeColour(Name:string, Colour:vector) {
+    EGP:egpColor(Elements:get(Name), Colour)
+}
+
+# ==================== UI Components ==================== #
+
+function checkBox(Name:string, Args:table) {
+    const Params = checkParams(Args)
+    const Scale = Params["scale", number]
+    const W = Params["w", number] ? Params["w", number] : 50*Scale
+    const H = Params["h", number] ? Params["h", number] : 25*Scale
+    const CircleX = Params["x", number] + W/4
+    const CircleY = Params["y", number] + H/2
+    const Dur = Params["duration", number]
+    
+    # Colours
+    const Primary = Params["primary", vector]
+    const Secondary = Params["secondary", vector]
+    const Dark = Params["dark", vector]
+    const Light = Params["light", vector]
+    
+    box(Name, addParams(Params, table("w"=W, "h"=H, "colour"=Primary, "radius"=H)))
+    circle(Name+"_circle", addParams(Params, table("colour"=Light, "w"=H/2, "h"=H/2, "x"=CircleX, "y"=CircleY, "parent"=Name)))
+    box(addParams(Params, table("w"=W, "h"=H, "colour"=Secondary, "size"=2, "radius"=H, "fidelity"=50, "outline"=1, "parent"=Name)))
+      
+    # Function for userPress
+    UI[Name, table] = table()
+    UI[Name, table]["function", function] = function() {
+        UI[Name, table]["value", number] = !UI[Name, table]["value", number]
+        let State = UI[Name, table]["value", number]
+        let Colour = State ? Dark : Primary
+        moveTo(Name+"_circle", Dur, vec2(State ? W - W/4 : W/4, H/2))
+        changeColour(Name, Colour)
+    }
+}
+
+function dropDown(Name:string, Options:array, Args:table) {
+    const Params = checkParams(Args)
+    const Scale = Params["scale", number]
+    const Dur = Params["duration", number]
+    const W = Params["w", number] ? Params["w", number] : 100*Scale
+    const H = Params["h", number] ? Params["h", number] : 20*Scale
+    const X = Params["x", number]
+    const Y = Params["y", number]
+    const TextX = X + 5
+    const TextY = Y + H/2 - 5
+    
+    # Colours
+    const Primary = Params["primary", vector]
+    const Secondary = Params["secondary", vector]
+    const Dark = Params["dark", vector]
+    const Light = Params["light", vector]
+    
+    box(Name, addParams(Params, table("x"=X-2, "y"=Y-2, "w"=W+4, "h"=H+4, "colour"=Secondary)))
+    box(Name+"_bg", addParams(Params, table("w"=W, "h"=H, "colour"=Primary, "parent"=Name)))
+    text(Name+"_text", addParams(Params, table("colour"=Light, "x"=TextX, "y"=TextY, "size"=H/2, "parent"=Name)))
+    
+    text(addParams(Params, table("text"="v", "colour"=Light, "x"=TextX+W-W/8, "y"=TextY, "size"=H/2, "parent"=Name)))
+    box(Name+"_menu", addParams(Params, table("x"=X-2, "y"=Y+H+2, "w"=W+4, "h"=0, "colour"=Secondary, "parent"=Name)))
+    
+    let CursorArray = array(Name)
+    
+    foreach(I:number, Option:string = Options) {
+        text(Name+"_text"+I, addParams(Params, table("halign"=2, "w"=W-10, "a"=0,"text"=Option, "colour"=Light, "x"=TextX, "y"=TextY+I*H, "size"=H/2, "parent"=Name)))
+        box(Name+"_border"+I, addParams(Params, table("a"=0, "x"=X, "y"=TextY+I*H-5, "w"=W, "h"=1, "colour"=Primary, "parent"=Name)))
+        box(Name+"_"+I, addParams(Params, table("a"=0, "x"=X, "y"=Y+I*H, "w"=W, "h"=H, "colour"=Primary, "parent"=Name)))
+        CursorArray:pushString(Name+"_"+I)    
+    }
+    
+    let Function = function() {
+        const Cursor = cursorArray(CursorArray)
+        let ID = Cursor:explode("_")[2, string]:toNumber()
+        let Selected = Options[ID, string]
+         
+        UI[Name, table]["value", string] = Selected
+        let State = Cursor == Name ? 1 : 0
+        let Colour = State ? Dark : Primary
+        transform(Name+"_menu", Dur, State ? vec2(W+4, Options:count()*H) : vec2(W+4, 0))
+        changeColour(Name+"_bg", Colour)
+        if (State) {
+            timer(Dur, function() {
+                for (Count=1, Options:count()) {
+                    EGP:egpAlpha(Elements:get(Name+"_text"+Count), 255)
+                    EGP:egpAlpha(Elements:get(Name+"_border"+Count), 255)
+                }
+            })
+        }
+        else {
+            text(Name+"_text", addParams(Params, table("text"=Selected, "colour"=Light, "x"=TextX, "y"=TextY, "size"=H/2, "parent"=Name)))
+            
+            for (Count=1, Options:count()) {
+                EGP:egpAlpha(Elements:get(Name+"_text"+Count), 0)
+                EGP:egpAlpha(Elements:get(Name+"_border"+Count), 0)
+            }
+        }
+    }
+    
+    # Function for userPress
+    UI[Name, table] = table()
+    UI[Name+"_menu", table] = table()
+    UI[Name, table]["function", function] = Function
+    UI[Name+"_menu", table]["function", function] = Function
+}
+
+
+
+function slider(Name:string, Args:table) {
+    const Params = checkParams(Args)
+    const Scale = Params["scale", number]
+    const W = Params["w", number] ? Params["w", number] : 100*Scale
+    const H = Params["h", number] ? Params["h", number] : 10*Scale
+    const X = Params["x", number]
+    const Y = Params["y", number]
+    const Text = Params["text", string] == "Default" ? "" : (Params["text", string] + ": ")
+    const Min = Params["min", number]
+    const Max = Params["max", number]
+    const Interval = Params["interval", number]
+    const Radius = (H - H / 4) / 2  # Radius of the circle
+    const MinX = X + Radius         # Minimum X (left edge + radius)
+    const MaxX = X + W - Radius     # Maximum X (right edge - radius)
+    const CircleX = X + 5
+    const CircleY = Y + H/2
+    
+    # Colours
+    const Primary = Params["primary", vector]
+    const Light = Params["light", vector]
+
+    box(Name+"_bar", addParams(Params, table("radius"=H, "x"=X, "y"=Y, "w"=W, "h"=H, "colour"=Primary)))
+    const Value = text(addParams(Params, table("valign"=1, "halign"=1, "w"=W, "h"=H, "text"=Text, "colour"=Light, "x"=X, "y"=Y-H*2, "size"=H)))
+    const Button = circle(Name, addParams(Params, table("colour"=Light, "w"=H-H/8, "h"=H-H/8, "x"=CircleX, "y"=CircleY)))
+    
+    
+    # Function to calculate the slider value
+    let CalculateValue = function(CursorX:number) {
+        # Normalize CursorX to a range [0, 1] along the slider
+        let Normalized = (CursorX - MinX) / (MaxX - MinX)
+        
+        # Map the normalized value to the range [Min, Max], snapping to the nearest interval
+        let Value = Min + round(Normalized * (Max - Min) / Interval) * Interval
+        return Value
+    }
+                
+    let IsPressing = function() {}
+    IsPressing = function(Button:egpobject) {
+        if (CurrentUser:keyUse()) {
+            # Get cursor X position and constrain X to the slider bounds
+            const CursorX = clamp(EGP:egpCursor(CurrentUser):x(), MinX, MaxX)
+            Button["x", number] = CursorX
+            
+            # Calculate the slider value
+            let SliderValue = CalculateValue(CursorX)[number]
+            UI[Name, table]["value", number] = SliderValue
+            Value["text", string] = Text + toString(SliderValue)
+            
+            timer(0.1, function() {
+                IsPressing(Button)
+            })
+        }
+        else {
+            Button["h", number] = H-H/8
+            Button["w", number] = H-H/8
+        }
+    }
+    
+    UI[Name, table] = table()
+    UI[Name+"_bar", table] = table()
+    UI[Name+"_bar", table]["function", function] = function() {
+        Button["h", number] = Button["h", number]+1
+        Button["w", number] = Button["w", number]+1
+        IsPressing(Button)
+    }
+    UI[Name, table]["function", function] = function() {
+        Button["h", number] = Button["h", number]+1
+        Button["w", number] = Button["w", number]+1
+        IsPressing(Button)
+    }
+}
+
+function loadingSpinner(Name:string, Args:table) {
+    const Params = checkParams(Args)
+    const X = Params["x", number]
+    const Y = Params["y", number]
+    const BoxSize = Params["scale", number]*8
+    const BoxCount = Params["size", number]
+    const Duration = Params["duration", number] ? Params["duration", number] : 1
+    const Primary = Params["primary", vector]
+
+    # Total number of boxes
+    const AngleStep = 360 / BoxCount  # Angle increment for each box
+
+    # Store references to the boxes
+    let Boxes = array()
+    for (I = 1, BoxCount) {
+        # Create the box and store it
+        let Box = box(Name + "_box" + I, addParams(Params, table("a"=0, "radius"=BoxSize / 2, "x"=0, "y"=0, "w"=BoxSize, "h"=BoxSize*2, "colour"=Primary)))
+        EGP:egpAngle(Elements:get(Name + "_box" + I), vec2(X, Y),  vec2(-BoxSize/2, BoxSize*2), (I - 1) * AngleStep)
+        Boxes:pushEgpobject(Box)
+    }
+
+    # Animation logic
+    let CurrentIndex = 1
+    let Animation = function() {}
+    Animation = function() {
+        let PlayAnim = UI[Name, table]["animation", number]
+        # Set the alpha for the current box and fade others out
+        let Dur = Duration*10 / BoxCount
+        for (I = 1, BoxCount) {
+            # Highlight current box, dim others
+            let Alpha = (I == CurrentIndex) ? 255 : Boxes[I, egpobject]["a", number] - 255/BoxCount
+            Boxes[I, egpobject]["a", number] = Alpha
+        }
+
+        # Update to the next box
+        CurrentIndex = CurrentIndex % BoxCount + 1
+
+        # Schedule the next animation step
+        if (PlayAnim) {
+            timer(Dur, Animation)
+        }
+    }
+    
+    UI[Name, table] = table()
+    UI[Name, table]["value", number] = BoxCount
+    UI[Name, table]["duration", number] = Duration
+    UI[Name, table]["animation", number] = 1
+
+    # Start the animation
+    Animation()
+}
+
+function stopSpinner(Name:string) {                     
+    const Duration = UI[Name, table]["duration", number]
+    const BoxCount = UI[Name, table]["value", number]
+    const Decrement = 255/ BoxCount  # Calculate alpha decrement per step
+    const Interval = Duration / 10       # Timer interval for fading
+
+    let FadeStep = function() {}
+    FadeStep = function() {
+        let AllFaded = 1  # Track whether all boxes are fully faded
+
+        for (I = 1, BoxCount) {
+            local ID = Elements:get(Name + "_box" + I)
+            let CurrentAlpha = EGP:egpAlpha(ID)
+
+            if (CurrentAlpha > 0) {
+                AllFaded = 0
+                # Reduce alpha, ensuring it doesn't go below 0
+                EGP:egpAlpha(ID, max(0, CurrentAlpha - Decrement))
+            }
+        }
+
+        # Continue fading if any box is still visible
+        if (!AllFaded) {
+            timer(Interval, FadeStep)
+        }
+    }
+
+    # Start fading out
+    FadeStep()
+    UI:remove(Name)
+}
+
+

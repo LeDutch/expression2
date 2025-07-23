@@ -1,0 +1,63 @@
+@name Bomb Proof
+@inputs [NC1 NC2 NC3 NC4 NC5 NC6 NC7 NC8 NC9 NC10 NC11 NC12 NC13 NC14 NC15 NC16 NC17 NC18 NC19 NC20]:entity
+@outputs 
+@persist Items:array Items_Original:number
+@strict
+
+if (first() || dupefinished()) {
+    Items = array()
+    Items_Original = 0
+    
+    findInSphere(entity():pos(), 1000)
+    
+    foreach (_:number, V:entity = findToArray()) {
+        if (V:isValid()) {
+            if (V:owner() == owner()) {
+                Items:pushEntity(V)
+            }   
+        }
+    }
+    
+    Items_Original = Items:count()
+    
+    timer("SetMass", 0.1, 0, function() {
+        local Ent = Items[1, entity]
+        Items:shift()
+        
+        local ItemCount = Items:count()
+        try {    
+            Ent:setMass(3000)
+            if (Ent:getMaterial() == "models/props_combine/tprings_globe") {
+                Ent:setMaterial("vgui/screens/transparent")
+            }
+            print(Ent, " set mass -> 3000. " + ItemCount + "/" + Items_Original)
+        } catch(_) {}
+        
+        if (ItemCount <= 0) {
+            stoptimer("SetMass")
+        }
+    })
+}
+
+
+event chat(Player:entity, Message:string, Team:number) {
+    if (Player == owner() && Message == "!c"){
+        for(I=1, 20) {
+            let Entity = ioGetInputEntity("NC"+I)
+            if (Entity:isValid()) {
+                Entity:setMass(3000)
+                Entity:setCollisionGroup(_COLLISION_GROUP_WORLD)
+                print("Collision enabled")
+            }
+        }
+    }
+    elseif (Player == owner() && Message == "!cc"){
+        for(I=1, 20) {
+            let Entity = ioGetInputEntity("NC"+I)
+            if (Entity:isValid()) {
+                Entity:setCollisionGroup(0)
+                print("Collision disabled")
+            }
+        }
+    }
+}

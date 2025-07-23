@@ -1,0 +1,61 @@
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+
+function bg() {
+    EGP:clear()
+    box("Background", table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172bab86fa312ee96ff.png"))
+}
+
+function header() {
+    box("Headermask", table("x"=0.0, "y"=0.0, "w"=512.0, "h"=176.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b7364d70739d39578.png"))
+    box("Header", table("x"=-1.0, "y"=1.0, "w"=513.0, "h"=160.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b7364d7072c484424.png"))
+    text("HeaderText", table("text"="Bob Tomato\nWallet: $0\nPromo: $50000", "x"=212.0, "y"=34.0, "w"= 226.0, "h"=99.0, "r"=255, "g"=255, "b"=255, "size"=23, "halign"=0, "valign"=1))
+    box("Logo", table("x"=29.0, "y"=19.0, "w"=134.0, "h"=134.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42e7ec6a2.png"))
+}
+
+function mainMenu() {
+    bg()
+    # Gamebar section
+    let MenuFrame = box("MenuFrame", table("x"=0.0, "y"=180.0, "w"=512.0, "h"=400.0, "r" = 255, "g" = 255, "b" = 255, "a"=0))
+    
+    let Frame1 = box("Frame_1", table("x"=34.0, "y"=196.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    let Frame2 = box("Frame_2", table("x"=168.0, "y"=196.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    let Frame3 = box("Frame_3", table("x"=302.0, "y"=196.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    let Frame4 = box("Frame_4", table("x"=34.0, "y"=414.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    let Frame5 = box("Frame_5", table("x"=168.0, "y"=414.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    let Frame6 = box("Frame_6", table("x"=302.0, "y"=414.0, "w"=109.0, "h"=140.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172b9a0772321901bab8.png"))
+    
+    MenuFrame:giveChild(Frame1)
+    MenuFrame:giveChild(Frame2)
+    MenuFrame:giveChild(Frame3)
+    MenuFrame:giveChild(Frame4)
+    MenuFrame:giveChild(Frame5)
+    MenuFrame:giveChild(Frame6)
+    
+    text("Frame_1_text", table("parent"="MenuFrame", "text"="Limbo", "x"=34.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    text("Frame_2_text", table("parent"="MenuFrame", "text"="Dragontower", "x"=168.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    text("Frame_3_text", table("parent"="MenuFrame", "text"="Blackjack", "x"=302.0, "y"=336.0, "w"= 109.0, "h"=27.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=1, "valign"=1))
+    
+    scrollBar("Scrollbar", table(
+      "x"=470,
+      "y"=196,
+      "yoffset"=10,
+      "menu"="MenuFrame",
+      "h"=295,
+    		"w"=7, 
+    		"scale"=1.2, 
+      "radius"=0
+    ))
+    
+    header()
+    box("Settings", table("x"=438.0, "y"=41.0, "w"=40.0, "h"=40.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/edit.png"))
+}
+
+function settings() {
+    bg()
+    header()
+    checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
+    
+    box("MainMenu", table("x"=228.0, "y"=445.0, "w"=55.0, "h"=55.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/icon_back.png"))
+    
+}

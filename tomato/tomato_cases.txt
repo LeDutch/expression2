@@ -1,0 +1,450 @@
+@name Tomato Cases
+@inputs
+@outputs 
+@persist Player:entity 
+@persist KeyPrice KeyAmount Animation Spins HouseEdge Spread TopPrizeMultiplier MaxKeys IdleAnimation
+@persist [Gold Blue Purple Pink Colour]:vector
+@persist [Guns Percentages Payouts]:array
+@trigger
+
+###################################################
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+###################################################
+#include "library/tomato_lib"
+
+if(first() || ~EGP) {
+    #Colours
+    Dark = vec(34,40,49)
+    Primary = vec(57,62,70)
+    Secondary = vec(0,173,181)
+    Light = vec(238, 238, 238)
+    Green = vec(79,113,35)
+    Gold = vec(244,157,26)
+    Blue = vec(42, 57, 144)
+    Purple = vec(119,3,123)
+    Pink = vec(210,51,105)
+    
+    #Program specific variables
+    Guns = array("awp", "ak47", "m4a1", "p90", "aug", "scout","xm1014", 
+    "galil", "famas", "deserteagle", "elites", "glock18", "p228")
+    
+    KeyPrice = 30000
+    GunCounter = 0
+    Animation = 0
+    KeyAmount = 1
+    HouseEdge = 5 #Percent that you take home as profit
+    Spread = 10
+    Percentages = array(5,10,15,20,50)
+    TopPrizeMultiplier = 4
+    Prefix = "CASES"
+    MaxKeys = 10
+    Owner = owner()
+                    
+    #Program specific functions
+    function number gunOdds() {
+        local Rand = randint(1,100)
+        if (Rand < Percentages[1,number]) { #5% Gold
+            Colour = Gold
+            return 1
+            }
+        elseif (Rand < Percentages[2,number]) { #10% Red
+            Colour = Red
+            return randint(2,3)
+            }
+        elseif (Rand < Percentages[3,number]) { #15% Pink
+            Colour = Pink
+            return randint(4,6)
+            }
+        elseif (Rand < Percentages[4,number]) { #20% Purple
+            Colour = Purple
+            return randint(7,9)
+            }
+        Colour = Blue #50% Blue
+        return randint(10,13)
+    }
+    
+    function createGuns() {
+        for (Num = 1, 6) {
+            local Box = EGP:egpPos(Elements:get("PlayBox"))
+            local X = Num*150-200
+            local Y = Box:y()
+            local Rand = gunOdds()
+            local Texture = "vgui/gfx/vgui/"+Guns[Rand,string]
+            local Name = Guns[Rand,string]:upper()
+            createBox("Gun"+Num+"container", vec2(100,90), color(Light), vec2(X,Y+5))
+            createBox("Gun"+Num+"label",vec2(100,65), color(Colour), vec2(X,Y+5))
+            createMaterial("Gun"+Num, vec2(100,50), vec2(X,Y+5), Texture)
+            createText("Gun"+Num+"text",16,color(Dark),align(1), vec2(X+50,Y+75))
+            EGP:egpSetText(Elements:get("Gun"+Num+"text"), Name)
+        }
+    }
+    
+    function updateGun(Num, Speed) {
+        local Rand = gunOdds()
+        local Box = EGP:egpPos(Elements:get("PlayBox"))
+        local Texture = "vgui/gfx/vgui/"+Guns[Rand,string]
+        local Name = Guns[Rand,string]:upper()
+        local PriorGun = mod(Num, 6)
+        if (!PriorGun) {
+            Speed = 0
+        }
+        local X = ceil(EGP:egpPos(Elements:get("Gun"+(PriorGun+1))):x())-150+Speed
+        
+        EGP:egpSetText(Elements:get("Gun"+Num+"text"), Name)
+        EGP:egpColor(Elements:get("Gun"+Num+"label"), Colour)
+        EGP:egpPos(Elements:get("Gun"+Num), vec2(X, Box:y()+5))
+        EGP:egpMaterial(Elements:get("Gun"+Num), Texture)
+        soundPlay("buttons/lightswitch2.wav", 0.076, "buttons/lightswitch2.wav")
+    }
+    
+    function createModule() {
+        createBox("PlayBox",vec2(ScreenXY-60,100), color(Primary), vec2(30,60))
+        createGuns()
+        EGP:egpBoxOutline(Elements:get("Outline"),vec2(28,58),vec2(ScreenXY-60+4,104))
+        EGP:egpColor(Elements:get("Outline"), Secondary)
+        createBox("PlayBoxBar1",vec2(30,100), color(Dark), vec2(-2,60))
+        createBox("PlayBoxBar2",vec2(30,100), color(Dark), vec2(ScreenXY-28,60))
+    }
+    
+    function rotateAnimation(Speed) {
+        for (I=1,6) {
+            local Gun = Elements:get("Gun"+I)
+            local Container = Elements:get("Gun"+I+"container")
+            local Label = Elements:get("Gun"+I+"label")
+            local Text = Elements:get("Gun"+I+"text")
+            local Pos = EGP:egpPos(Gun)
+            local X = Pos:x()
+            local Y = Pos:y()
+            EGP:egpPos(Gun, vec2(X+Speed, Y))
+            EGP:egpPos(Container, vec2(X+Speed, Y))
+            EGP:egpPos(Label, vec2(X+Speed, Y))
+            EGP:egpPos(Text, vec2(X+Speed+50, Y+70))
+            if (X > 480) {
+                updateGun(I,Speed)
+            }   
+        }
+    }
+    
+    function array calculatePayout(KeyPrice, HouseEdge, Chances:array, TopPrizeMultiplier) {
+        local Payouts = array()
+        local ExpectedValue = (KeyPrice * (1-HouseEdge/100))/5
+        local TopPrize = KeyPrice * TopPrizeMultiplier
+        local Remaining = (ExpectedValue - (TopPrize * (Chances[1,number]/100)))/4
+        Payouts:pushNumber(TopPrize)
+        for (I = 1, 4) {
+            local Payout = 0
+            local WinningChance = Chances[I+1,number]/100
+            Payout = floor(((ExpectedValue + Remaining) / WinningChance))
+            Payouts:pushNumber(Payout)
+        }
+        return Payouts
+    }
+    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+    
+    function number findWinner() {
+        local WinningPos = ScreenXY
+        local WinningGun = 1
+        for (I=1,6) {
+            local Gun = Elements:get("Gun"+I)
+            local Pos = EGP:egpPos(Gun)
+            local Diff = abs(256 - (Pos:x()+50))
+            if (Diff < WinningPos) {
+                WinningPos = Diff
+                WinningGun = I
+            }
+        }
+        return WinningGun
+    }
+    
+    function number findPrice(Num,Negative) {
+        local Variance = Spread/100
+        if (Negative) {
+            return floor(Payouts[Num, number]*(1-Variance))
+        }
+        return floor(Payouts[Num, number]*(1+Variance))
+    }
+    
+    function drawInfo() {
+        #Rewards
+        createBox("TableBackground",vec2(ScreenXY-60,200), color(Primary), vec2(30,170))
+        createText("Prizes",25,color(Light),align(1), vec2(ScreenXY/2,175))
+        createBox("Row",vec2(ScreenXY-60,2), color(Light), vec2(30,205))
+        createBox("Column",vec2(1,164), color(Light), vec2(ScreenXY/2-0.5,206))
+        
+        createTextLayout("Blues", vec2(ScreenXY-60,ScreenXY), color(Secondary), align(0), vec2(40,220)) 
+        EGP:egpSetText(Elements:get("Blues"),"Blues: $" + findPrice(5,1) + " - $" + findPrice(5,0))
+        createTextLayout("Purples", vec2(ScreenXY-60,ScreenXY), color(Purple), align(0), vec2(40,250)) 
+        EGP:egpSetText(Elements:get("Purples"),"Purple: $" + findPrice(4,1) + " - $" + findPrice(4,0))
+        createTextLayout("Pinks", vec2(ScreenXY-60,ScreenXY), color(Pink), align(0), vec2(40,280)) 
+        EGP:egpSetText(Elements:get("Pinks"),"Pink: $" + findPrice(3,1) + " - $" + findPrice(3,0))
+        createTextLayout("Reds", vec2(ScreenXY-60,ScreenXY), color(Red), align(0), vec2(40,310)) 
+        EGP:egpSetText(Elements:get("Reds"),"Red: $" + findPrice(2,1) + " - $" + findPrice(2,0))
+        createTextLayout("Gold", vec2(ScreenXY-60,ScreenXY), color(Gold), align(0), vec2(40,340)) 
+        EGP:egpSetText(Elements:get("Gold"),"Gold: $" + findPrice(1,1) + " - $" + findPrice(1,0))
+        
+        createText("How to Play:",20,align(1),vec2(ScreenXY/2+115,210))
+        createTextLayout("Instructions", vec2(ScreenXY/2-40,200), color(Light), align(0), vec2(ScreenXY/2+20,235))
+        EGP:egpSetText(Elements:get("Instructions"),
+        "- Hold [E] on the slider to increase/decrease keys.
+        \n"+Percentages[1,number]+"% Gold     "+Percentages[4,number]+"% Purple \n"+Percentages[2,number]+"% Red    "+Percentages[5,number]+"% Blue\n"+Percentages[3,number]+"% Pink") 
+    }
+    
+    #Drawing initial board
+    function draw() {
+        EGP:egpClear()
+        #Generic
+        createBox("Background",vec2(ScreenXY,ScreenXY), color(Dark), vec2(0,0))
+        createText("Title",30,align(1),vec2(ScreenXY/2,10))
+        EGP:egpSetText(Elements:get("Title"), "CSGO Case Opener v2")
+        
+        #First Module
+        createModule()
+        
+        #Rewards
+        createBox("TableBackground",vec2(ScreenXY-60,200), color(Primary), vec2(30,170))
+        createText("Prizes",25,color(Light),align(1), vec2(ScreenXY/2,175))
+        createBox("Row",vec2(ScreenXY-60,2), color(Light), vec2(30,205))
+        createBox("Column",vec2(1,164), color(Light), vec2(ScreenXY/2-0.5,206))
+        
+        drawInfo()
+        
+        #User Options
+        createBox("BuyBox",vec2(ScreenXY-60,50), color(Green), vec2(30,380))
+        createText("BuyPrice",30,align(1),vec2(ScreenXY/2,390))
+        
+        createText("KeyMultiply",30,align(1),vec2(ScreenXY-60,390))
+        createText("Buy Key Amount",18,align(1), vec2(ScreenXY/2,440))
+        createSlider("KeyAmount", vec2(ScreenXY / 2, 20), vec2(ScreenXY / 4,460))
+        EGP:egpSetText(Elements:get("KeyMultiply"), "x1")
+        EGP:egpSetText(Elements:get("BuyPrice"), "Buy Key: $"+KeyPrice)
+    }
+    draw()
+}
+
+interval(100)
+
+if (EGP) {
+    
+    #Animations
+    if (Animation) {
+        Timer:reduceTime("Animations", 0.1)
+        local Time = Timer:getTime("Animations")
+        if (Time > 2) {
+            createIsosceles("Pointer", 10, color(Secondary), vec2(ScreenXY/2, 152))
+            rotateAnimation((Time-2)*20)
+        }
+        elseif (Time == 2) {
+            local Winner = findWinner()
+            local PrizeCategory = 0
+            local Colour = EGP:egpColor(Elements:get("Gun"+Winner+"label"))
+            
+            if (Colour == Gold) {
+                PrizeCategory = 1
+            }
+            elseif(Colour == Red) {
+                PrizeCategory = 2
+            }
+            elseif(Colour == Pink) {
+                PrizeCategory = 3
+            }
+            elseif(Colour == Purple) {
+                PrizeCategory = 4
+            }
+            else {
+                PrizeCategory = 5
+            }
+            
+            local Variance = 1+randint(-Spread/2,Spread/2)/100
+            Payout = Payouts[PrizeCategory, number]*Variance
+            if (Payout > KeyPrice) {
+                soundPlay(1,3,"pcasino/basicslotmachine/win_tune.wav")
+            }
+            else {
+                #soundPlay(1,3,"pcasino/basicslotmachine/fail_tune.wav")
+            }
+            Animation = 0
+            Player:msg("You just won a gun valued at: $" + Payout)
+            moneyGive(Player,Payout)
+        }
+        elseif (Time == 0) {
+            EGP:egpRemove(Elements:get("Pointer"))
+            Animation = 0
+        }
+    }
+    elseif(IdleAnimation) {
+        rotateAnimation(5)
+    }
+    
+    if (!Animation) {
+        #User Input
+        if (~User) {
+            local KeySlider = useSlider("KeyAmount", 1, MaxKeys, 1)
+            if (KeySlider) {
+                KeyAmount = KeySlider
+                EGP:egpSetText(Elements:get("KeyMultiply"), "x"+KeySlider)
+                EGP:egpSetText(Elements:get("BuyPrice"), "Buy Key: $"+KeyPrice*KeyAmount)
+            }
+            if(cursorPos(Elements:get("BuyBox"), User) & User:keyPressed("E")) {
+                Player = User
+                moneyRequest(Player,KeyPrice * KeyAmount)
+            }
+        }
+        
+        #Purchase
+        if (moneyClk()) {
+            Spins = KeyAmount
+        }
+        if (Spins) {
+            Spins--
+            Animation = 1
+            Timer:setTime("Animations", 10)
+            soundPlay(1,3,"bot/alright_lets_do_this.wav")
+        }
+    }
+}
+
+if(clk("animation")) {
+    EGP:egpRemove(Elements:get("Pointer"))
+}
+
+#Chat commands
+event chat(Player:entity, Said:string, _) {
+    if (Player == Owner) {
+        if(Said:index(1) == "!")  
+        {  
+            Arguments = Said:sub(2):explode(" ")
+            Command = Arguments:shiftString() 
+            if(Command == "edge")  
+            {                    
+                Number = Arguments[1,string]:toNumber()
+                if (inrange(Number, 1, 90)) {
+                    HouseEdge = Number
+                    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+                    drawInfo()
+                    Owner:msg("Profit changed to +"+HouseEdge + " (" + (HouseEdge + 50) + ") percent.")
+                    }
+                else {Owner:msg("Type in between 1-90 percentage profit (Default 5)")}
+            }
+            elseif(Command == "spread")  
+            {                    
+                Number = Arguments[1,string]:toNumber()
+                if (inrange(Number, 1, 50)) {
+                    Spread = Number
+                    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+                    drawInfo()
+                    Owner:msg("Spread (Variance) changed to "+Spread+" in payments.")
+                    }
+                else {Owner:msg("Type in between 1-50 percentage spread (variance) in payments.")}
+            }
+            elseif(Command == "topprize")  
+            {                    
+                Number = Arguments[1,string]:toNumber()
+                if (inrange(Number, 1, 18)) {
+                    TopPrizeMultiplier = Number
+                    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+                    drawInfo()
+                    Owner:msg("TopPrize changed to "+(KeyPrice*TopPrizeMultiplier)+".")
+                    }
+                else {Owner:msg("Type in between a 1-18 multiplier for the top prize (KeyPrice).")}
+            }
+            elseif(Command == "keyprice")  
+            {                    
+                Number = Arguments[1,string]:toNumber()
+                if (Number) {
+                    KeyPrice = Number
+                    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+                    drawInfo()
+                    EGP:egpSetText(Elements:get("BuyPrice"), "Buy Key: $"+KeyPrice*KeyAmount)
+                    Owner:msg("Price of a key changed to $"+KeyPrice+".")
+                    }
+                else {Owner:msg("Type in a number for the KeyPrice.")}
+            }
+            elseif(Command == "maxkeys")  
+            {                    
+                Number = Arguments[1,string]:toNumber()
+                if (Number) {
+                    MaxKeys = Number
+                    Owner:msg("Maximum number of keys changed to "+MaxKeys+".")
+                    }
+                else {Owner:msg("Type in a number for the KeyPrice.")}
+            }
+            elseif (Command == "percents")  
+            {
+                local Percent = array()
+                for(I = 1,Arguments:count()){
+                    local Num = Arguments[I,string]:toNumber()
+                    if (Num) {
+                        Percent:pushNumber(Arguments[I,string]:toNumber()) 
+                    }
+                }                  
+                if (Percent:sum() == 100) {
+                    Percentages = Percent
+                    Payouts = calculatePayout(KeyPrice, HouseEdge, Percentages, TopPrizeMultiplier)
+                    drawInfo()
+                    Owner:msg("Percentages changed.")
+                }
+                else {
+                    Owner:msg("The percents don't equal 100 ("+Percent:sum()+").")
+                }
+            }
+            elseif (Command == "idle")
+            {
+                IdleAnimation = !IdleAnimation
+                Owner:msg("Idle animation state changed.")
+            }
+            elseif (Command == "title")  
+            {
+                local Title = ""
+                for(I = 1,Arguments:count()){
+                    Title += Arguments[I,string] 
+                    Title += " " 
+                }                  
+                EGP:egpSetText(Elements:get("Title"),Title)
+                Owner:msg("Title changed.")
+            }
+            elseif (Command == "theme") {
+                local Text = Arguments[1,string]:toNumber()
+                if (!inrange(Text,1,3)) {
+                    Owner:msg("Please select a valid theme number (1-3).")
+                }
+                else {
+                    if (Text == 1) {
+                        Dark = vec(34,40,49)
+                        Primary = vec(57,62,70)
+                        Secondary = vec(0,173,181)
+                        Light = vec(238, 238, 238)
+                    }
+                    elseif (Text == 2) {
+                        Dark = vec(11,36,71)
+                        Primary = vec(25,55,109)
+                        Secondary = vec(87,108,188)
+                        Light = vec(165,215,232)
+                    }         
+                    elseif (Text == 3) {
+                        Dark = vec(36, 89, 83)
+                        Primary = vec(64, 142, 145)
+                        Secondary = vec(228, 147, 147)
+                        Light = vec(216, 216, 216)
+                    }  
+                    draw()
+                    Owner:msg("Theme changed.")  
+                }
+            }
+            elseif (Command == "help") {
+                local Array = array(
+                "!keyprice (number) change price of a key.",
+                "!edge (number) to change the house profit (Default 5%).",
+                "!spread (number) to change the variance in payment.",
+                "!topprize (multiplier) to set the top prize, other prices are calculated accordingly.",
+                "!percents (1 2 3 4 5) to change the spawn percentages (must add up to 100).",
+                "!idle will play an idle animation of guns rotating.",
+                "!maxkeys (number) change the max amount of keys.",
+                "!title (name) to change the E2's title.",
+                "!theme (1-3) to change board theme.")
+                for (I = 1, Array:count()){
+                    Owner:msg(""+Array[I,string])
+                }
+            }
+        }  
+    }
+}

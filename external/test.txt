@@ -1,0 +1,6 @@
+@name -car
+interval(2000)
+
+It = entity():owner():aimEntity()
+It:setMass(0.001)
+It:setSkin(11)

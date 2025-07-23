@@ -1,0 +1,69 @@
+@name Tomato Fonts
+@persist Fonts:table
+
+if (first() || dupefinished()) {
+    Fonts = table() # Initialize the parent Fonts table
+
+    # Define the "Glitch" font table with lowercase keys
+    Fonts["Spaced", table] = table(
+        "a" = 65345, 
+        "b" = 65346, 
+        "c" = 65347, 
+        "d" = 65348, 
+        "e" = 65349, 
+        "f" = 65350, 
+        "g" = 65351, 
+        "h" = 65352, 
+        "i" = 65353, 
+        "j" = 65354, 
+        "k" = 65355, 
+        "l" = 65356, 
+        "m" = 65357, 
+        "n" = 65358,
+        "o" = 65359, 
+        "p" = 65360, 
+        "q" = 65361, 
+        "r" = 65362, 
+        "s" = 65363, 
+        "t" = 65364,
+        "u" = 65365, 
+        "v" = 65366, 
+        "w" = 65367, 
+        "x" = 65368,
+        "y" = 65369, 
+        "z" = 65370  
+    )
+
+    print("Glitch font initialized in Fonts table")
+}
+
+# Function to convert a string into the Glitch font
+function string convertToFont(Message:string, FontName:string) {
+    if (!Fonts:exists(FontName)) {
+        print("Font '" + FontName + "' does not exist")
+    }
+    
+    const Text = Message:lower()
+    let FontTable = Fonts[FontName, table]
+    let ConvertedText = ""
+
+    for (I = 1, Text:length()) {
+        let Char = Text[I] # Get character and convert to lowercase
+        if (FontTable:exists(Char)) {
+            ConvertedText += toUnicodeChar(FontTable[Char, number]) # Replace with font character
+        } else {
+            ConvertedText += Char # Use original character if not in font
+        }
+    }
+
+    return ConvertedText
+}
+
+#[ Example Usage
+if (duped() || first()) {
+    let TestText = "Hello World"
+    let ConvertedText = convertToFont(TestText, "Glitch")
+    print("Original: " + TestText)
+    print("Converted: " + ConvertedText)
+}
+#]
