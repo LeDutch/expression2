@@ -1,0 +1,41 @@
+@name Hotel Graphics
+@persist [Dark Primary Secondary Light]:vector
+
+#include "lib/tomato/1.1/tomato_ui"
+
+function void theme(Colour:string) {
+    switch (Colour) {
+        case "1",
+            Dark = vec(39, 55, 77)
+            Primary = vec(82, 109, 130)
+            Secondary = vec(157, 178, 191)
+            Light = vec(221, 230, 237)
+        break
+        case "2",
+            Dark = vec(11,36,71)
+            Primary = vec(25,55,109)
+            Secondary = vec(87,108,188)
+            Light = vec(165,215,232)
+        break
+        case "3",
+            Dark = vec(36, 89, 83)
+            Primary = vec(64, 142, 145)
+            Secondary = vec(228, 147, 147)
+            Light = vec(216, 216, 216)
+        break
+        case "4",
+            Dark = vec(44,51,51)
+            Primary = vec(46,79,79)
+            Secondary = vec(14,131,136)
+            Light = vec(203, 228, 222)
+        break
+    }
+}
+
+function bg() {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    box(table("x"=0.0, "y"=0.0, "w"= 512.0, "h"=512.0, "r"=0, "g"=149, "b"=255, "size"=15, "halign"=0, "valign"=0))
+    box(table("x"=13.0, "y"=11.0, "w"=490.0, "h"=490.0, "r"=255, "g"=255, "b"=255, "radius"=15))
+}
+

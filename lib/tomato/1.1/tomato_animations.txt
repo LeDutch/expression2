@@ -23,6 +23,7 @@ function void startAnimation(Func:function, Dur:number) {
 function void fadeIn(Name:string, Dur:number) {
     let Object = EGP:egpobject(Elements:get(Name))
     let Repeats = repeats(Dur)
+    Object["a", number] = 0
     let Animation = function() {
         Object["a", number] = Object["a", number] + 255/Repeats
     }
@@ -32,6 +33,7 @@ function void fadeIn(Name:string, Dur:number) {
 function void fadeOut(Name:string, Dur:number) {
     let Object = EGP:egpobject(Elements:get(Name))
     let Repeats = repeats(Dur)
+    Object["a", number] = 255
     let Animation = function() {
         Object["a", number] = Object["a", number] - 255/Repeats
     }

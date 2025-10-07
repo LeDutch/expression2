@@ -1,19 +1,33 @@
 @name Tomato Poker Graphics
-@inputs 
-@outputs 
-@persist 
-@strict
+# Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
 
-#[
-    Documentation, instructions and examples are available at:
-    https://github.com/wiremod/wire/wiki/Expression-2
-    ^ There you can read about: ^
+#include "lib/tomato/1.1/tomato_egp"
 
-    - What is @strict and other directives (https://github.com/wiremod/wire/wiki/Expression-2-Directives)
-    - What are events (https://github.com/wiremod/wire/wiki/Expression-2-Events)
-    - What are lambdas (https://github.com/wiremod/wire/wiki/E2-Guide:-Lambdas)
+function void drawCommunityCards() {
+    # Community Cards Section
+    box("Flop1", table("x"=137.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Flop1_Border", table("x"=137.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=1, "outline"=1))
+    box("Flop2", table("x"=183.82, "y"=220.0, "w"=44.36, "h"=67.36, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Flop2_Border", table("x"=183.82, "y"=220.0, "w"=44.36, "h"=67.36, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=1, "outline"=1))
+    box("Flop3", table("x"=230.64, "y"=220.0, "w"=44.36, "h"=67.36, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Flop3_Border", table("x"=230.64, "y"=220.0, "w"=44.36, "h"=67.36, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=1, "outline"=1))
+    box("Turn", table("x"=277.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("Turn_Border", table("x"=277.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=1, "outline"=1))
+    box("River", table("x"=323.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=43, "g"=43, "b"=40, "radius"=4.0))
+    box("River_Border", table("x"=323.0, "y"=220.0, "w"=44.36, "h"=67.36, "r"=227, "g"=176, "b"=75, "radius"=4.0, "size"=1, "outline"=1))
+}
 
-    You can find our Discord here: https://discord.gg/H8UKY3Y
-    You can find our Reddit here:  https://www.reddit.com/r/wiremod
-    Please report any bugs here:   https://github.com/wiremod/wire/issues
-]#
+
+function void drawTable() {
+    box("BG_Border", table("x"=2086.0, "y"=108.0, "w"=512.0, "h"=512.0, "r"=227, "g"=176, "b"=75, "radius"=0))
+    box("BG", table("x"=4.0, "y"=4.0, "w"=504.0, "h"=504.0, "r"=106, "g"=23, "b"=23, "radius"=0))
+
+    # Logo Section
+    text("NoLimitsTexas", table("text"="No Limits Texas Hold ‘Em", "x"=199.0, "y"=277.0, "w"= 100.0, "h"=50.0, "r"=163, "g"=104, "b"=47, "size"=15, "halign"=1, "valign"=1))
+    box("Logo", table("x"=158.0, "y"=186.0, "w"= 190.0, "h"=83.0, "r"=255, "g"=255, "b"=255, "size"=15, "halign"=0, "valign"=0))
+}
+
+function void drawHexagon() {
+    box("BG", table("x"=10.0, "y"=10.0, "w"=490.0, "h"=490.0, "r"=255, "g"=255, "b"=255, "radius"=0, 
+    "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a461c83ea4.png"))
+}

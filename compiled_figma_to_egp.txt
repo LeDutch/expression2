@@ -37,7 +37,7 @@ function void drawUI() {
     		"scale"=2, 
     		"text"="Chance to Win (%)",
     		"min"=2,
-    		"max"=99,
+    		"max"=80,
     		"interval"=1,
       "primary"=vec(146,115,180),
       "value"=49

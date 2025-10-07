@@ -9,7 +9,7 @@
 ###################################################
 
 if (first() || dupefinished() || ~EGP) {
-    #include "lib/tomato_lib"
+    #include "library/tomato_lib"
     
     #Program Specific Functions
     #-------------------------------------------#

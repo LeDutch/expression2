@@ -1,30 +1,278 @@
-@name GIF Test
-@inputs 
-@outputs 
-@persist 
-@strict
+@name Tomato Core
+@persist Functions:table
 
-#include "lib/tomato/1.1/tomato_egp"
-#include "lib/tomato/1.1/tomato_ui"
-#include "lib/tomato/1.1/tomato_core"
-#include "lib/tomato/1.1/tomato_sprites"
-
-if (initial()) {
-    tauPrecacheMaterial("3099087")
-    let Animation = 50
-    timer(0.1, 0, function(){
-        spriteByIndex("ClockTower", table(
-            "x"=256-64, "y"=256-64, "w"=128, "h"=129,
-            "index"=Animation,
-            "uv_size"=vec2(128, 129),
-            "sheet_size"=vec2(640, 1806),
-            "material"="../data/tau/cache/files/1a2b6f5882d9172b9d6ab62bfc96921a.png"
-        ))
-        if (Animation == 68) {
-            Animation = 1
-        }
-        else {
-            Animation++
-        }
-    })
+if (first()) {
+    # Initialize variables
+    Prefix = "E2"
+    PrefixColour = "!#d4af37"
+    Functions = table()
+    if (PrefixColour) {}
+    
+    entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
+    entity():setSubMaterial(3, "zerochain/props_methlab/gasmask/zmlab2_gasmask_straps_diff")
+    entity():setColor(vec(255,0,0))
 }
+
+#[ =================== Messaging ========================= #
+ The below two functions are for a messaging system. 
+ You can modify the syntax depending on the server you are playing on.
+]#
+
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+}
+
+function void array:msgAll(Text:string) {
+    foreach (_:number, Player:entity = This) {
+        if (Player:isValid()) {
+            Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+        }
+    }
+}
+
+# ==================== Player functions ================== #
+
+function entity string:findPlayer() {
+    return This:sub(1, 5):upper() == "STEAM" ? findPlayerBySteamID(This) : findPlayerByName(This)
+}
+
+function number isPlayerNearby(Radius:number) {
+    if(findCanQuery()) {
+        findIncludeClass("player")
+        findInSphere(entity():pos(), Radius)
+        if (findToArray():count()) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number isPlayerNearby(Player:entity, Radius:number) {
+    return Player:pos():distance(entity():pos()) < Radius
+}
+
+function number isPlayerNearbyToEnt(Player:entity, Radius:number, Entity:entity) {
+    return Player:pos():distance(Entity:pos()) < Radius
+}
+
+# Function to get the names of a given array of players
+function array array:getPlayerNames() {
+    let Array = array()
+    for (I = 1, This:count()) {
+        Array:pushString(This[I,entity]:name())
+    }
+    return Array
+}
+
+# ==================== Number functions ================== #
+
+function string abbreviateNum(Number:number) {
+    if (Number >= 1000000) {
+        return round(Number / 1000000, 2) + "M"
+    }
+    if (Number >= 1000) {
+        return round(Number / 1000, 2) + "K"
+    }
+    return toString(round(Number))
+}
+
+function string formatTimeInHours(Number:number) {
+    if (Number >= 24) {
+        return round(Number / 24, 2) + " days"
+    }
+    if (Number >= 1) {
+        return round(Number, 2) + (Number > 1 ? " hrs" : " hr")
+    }
+    return round(Number * 60, 2) + (Number > 0.1 ? " mins" : " min")
+}
+
+function string formatTimeInSeconds(Number:number) {
+    if (Number > 60) {
+        return round(Number / 60, 2) + " mins"
+    }
+    if (Number == 60) {
+        return "1 min"
+    }
+    return Number + (Number == 1 ? " sec" : " secs")
+}
+
+# ==================== Time functions ================== #
+
+function toEpochUtc(T:table)
+{
+    local MonthDays = array(12)
+    MonthDays[1] = 31
+    MonthDays[2] = 28
+    MonthDays[3] = 31
+    MonthDays[4] = 30
+    MonthDays[5] = 31
+    MonthDays[6] = 30
+    MonthDays[7] = 31
+    MonthDays[8] = 31
+    MonthDays[9] = 30
+    MonthDays[10] = 31
+    MonthDays[11] = 30
+    MonthDays[12] = 31
+
+    local Y = T["year", number]
+    local M = T["month", number]
+    local D = T["day", number]
+    local H = T["hour", number]
+    local Min = T["min", number]
+    local S = T["sec", number]
+
+    local Days = (Y - 1) * 365 + floor((Y - 1) / 4) - floor((Y - 1) / 100) + floor((Y - 1) / 400)
+
+    local IsLeap = (Y % 4 == 0 & Y % 100 != 0) | (Y % 400 == 0)
+    if (IsLeap) { MonthDays[2] = 29 }
+
+    for(I = 1, M - 1) { Days += MonthDays[I, number] }
+
+    Days += D - 1
+
+    local Total = Days * 86400 + H * 3600 + Min * 60 + S
+    return Total
+}
+
+function hoursBetween(A:table, B:table)
+{
+    local Secs = toEpochUtc(B) - toEpochUtc(A)
+    return round(Secs / 3600, 2)
+}
+
+
+# ==================== String functions ================== #
+
+function number string:startsWith(String:string) {
+    return This:left(String:length()) == String
+}
+
+function number array:findString(E:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == E) {return I}
+    }
+    return 0
+}
+
+function number table:findString(E:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == E) {return I}
+    }
+    return 0
+}
+
+function string string:removeText(Text:string) {
+    if (Text == "") { return This } # Avoid infinite loop with empty substring
+
+    let Result = This
+    while (Result:find(Text) != -1) { # Continue until the substring is no longer found
+        let StartIndex = Result:find(Text) # Find the starting position of the substring
+        let Before = Result:sub(1, StartIndex - 1) # Part of the string before the substring
+        let After = Result:sub(StartIndex + Text:length()) # Part of the string after the substring
+        Result = Before + After # Concatenate the two parts
+    }
+    return Result
+}
+
+
+function string truncate(Text:string, Chars:number) {
+    if (Text:length() > Chars) {
+        Text = Text:sub(1, Chars-3) + "..."
+    }
+    return Text
+}
+
+function string getDate() {
+    let Date = dateUTC()
+    return toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])
+        
+}
+
+# ==================== Array functions =================== #
+
+function array array:reverse() {
+    let Temp = array()
+    for (I = This:count(), 1, -1) {
+        Temp:pushNumber(This[I, number])
+    }
+    return Temp
+}
+
+function number array:exists(A:string) {
+    for (I = 1, This:count()) {
+        if (This[I, string] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number array:exists(A:entity) {
+    for (I = 1, This:count()) {
+        if (This[I, entity] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function number array:numExists(A:number) {
+    # default func array:exists(num) is a dumb function that returns if any value exists
+    for (I = 1, This:count()) {
+        if (This[I, number] == A) {
+            return 1
+        }
+    }
+    return 0
+}
+
+function string array:implode(Delimiter:string) {
+    let Result = ""
+    for (I = 1, This:count()) {
+        Result += This[I, string]
+        if (I < This:count()) {
+            Result += Delimiter
+        }
+    }
+    return Result
+}
+
+# ==================== Chat functions ==================== #
+
+function chat(Command:string, Func:function, ...Players:array) {
+    Functions[Command, table] = table(
+        "Function" = Func,
+        "Players" = Players
+    )
+}
+
+function chat(Command:string, Description:string, Func:function, ...Players:array) {
+    Functions[Command, table] = table(
+        "Function" = Func,
+        "Description" = Description,
+        "Players" = Players
+    )
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Message[1] == "!") {
+        let Args = Message:sub(2):explode(" ")
+        let Command = Args:shiftString():lower()
+        if (Functions:exists(Command)) {
+            let Function = Functions[Command, table]
+            let Users = Function["Players", array]
+            if (Users:exists(Player) || !Users:count()) {
+                Function["Function", function](Player, Args)
+            }
+        }
+        elseif(Player == owner() && Command == "help") {
+            foreach(_:string, Function:table = Functions) {
+                let Description = Function["Description", string]
+                Player:msg(Description)
+            }
+        }
+    }
+}
+
+

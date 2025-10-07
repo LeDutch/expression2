@@ -1,0 +1,388 @@
+@name Blue Apple Bank (BaB)
+@persist [Racks TempRanks MembershipPrices Session Storage]:table Profile:entity Snapshot:number
+@inputs [FadingDoor]:wirelink [BottomProp]:entity
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: le.dutch
+ Graphics compiled on https://www.egpcompiler.com/
+]#
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_db"
+#include "tomato/bab/graphics"
+
+function void fadingDoor(State:number) {
+    if (->FadingDoor) {
+        FadingDoor["Fade", number] = State
+    }
+}
+
+function array scanItems() {
+    if (->BottomProp) {
+        if(findCanQuery()) {
+            let Min = BottomProp:aabbWorldMin()
+            let Max = BottomProp:aabbWorldMax() + vec(0,0,100)
+            findIncludeClass("printer")
+            findExcludeClass("player")
+            findInBox(Min, Max)
+            let Results = findToArray()
+            let Cleaned = array()
+            foreach(_:number, Result:entity = Results) {
+                let ID = toString(Result:id())
+                let Type = Result:type()
+                if(!Storage:exists(ID) && Result:isValid()) {
+                    if(timerExists("deposit")) {
+                        if (!Storage[CurrentUser:steamID(), table]) {
+                            Storage[CurrentUser:steamID(), table] = table()
+                        }
+                        Storage[CurrentUser:steamID(), table][ID, string] = Result:type()
+                    }
+                    elseif(timerExists("withdraw")) {
+                        Storage[CurrentUser:steamID(), table]:remove(ID)
+                    }
+                    Cleaned:pushString(Result:type())
+                }
+            }
+            return Cleaned
+        }
+    }
+    return array()
+}
+
+function string getMembership(Entity:entity) {
+    let TempRank = TempRanks[Entity:steamID(), string]
+    if (TempRank) {
+        return TempRank
+    }
+    else {
+        let Player = DB["Players", table][Entity:steamID64(), table]
+        return Player["Rank", string]
+    }
+    return ""
+}
+
+function number getHourlyRate() {
+    let SteamID = Profile:steamID()
+    let SessionProfit = Session[SteamID, table]["Profit", number]
+    let TotalTime = Session[SteamID, table]["SessionTenure", table]
+    let CurrentTime = dateUTC()
+    let HoursBetween = hoursBetween(TotalTime, CurrentTime)
+
+    if (HoursBetween <= 0) { return 0 }
+    return SessionProfit / HoursBetween
+}
+
+function number getTotalTime() {
+    let SteamID = Profile:steamID()
+    let TotalTime = Session[SteamID, table]["SessionTenure", table]
+    if (!TotalTime:count()) {
+        return 0
+    }
+    let CurrentTime = dateUTC()
+    return hoursBetween(TotalTime, CurrentTime)
+}
+
+function void checkRadius() {
+    if (!isPlayerNearby(Profile, 300)) {
+        stopSpinner("TheSpinner")
+        timer(1, function() {
+            initialScreen()
+        })
+        stoptimer("proximity")
+        if(timerExists("deposit")) {
+            stoptimer("deposit")
+        }
+        if(timerExists("withdraw")) {
+            stoptimer("withdraw")
+        }
+        Profile = noentity()
+        fadingDoor(0)
+    }
+}
+
+function number checkRack(Entity:entity) {
+    if (Entity:isValid()) {
+        let Class = Entity:keyvalues()["classname", string]
+        return Class:startsWith("printer_rack") || Class:startsWith("bitminer_tower")
+    }
+    return 0
+}
+
+function checkProfit(Player:entity, Customer:entity) {
+    let Amount = Player:money() - Snapshot
+    if (Amount > 200) {
+        let Steam = Customer:steamID64()
+        let Name = Customer:name()
+        let CustomerData = DB["Players", table][Steam, table]
+        let Rank = CustomerData["Rank",string]
+        let TempRank = TempRanks[Player:steamID(), string]
+        let Tax = (Rank == "Basic" ? 0.25 : Rank == "Gold" ? 0.15 : 0.05)*Amount
+        if (TempRank != "") {
+            Tax = (TempRank == "Gold (Session)" ? 0.15 : 0.05)*Amount
+        }
+        let Profit = Amount - Tax
+                            
+        Player:msg("You collected: {green $" + abbreviateNum(Tax) + "} in taxes.")
+        Customer:msg("Thanks for banking with us, {red " + truncate(Name, 15) + "}. You received: {green $" + abbreviateNum(Profit) + "}")
+        moneyGive(Customer, Profit)
+                    
+        DB["Players", table][Steam,table]["Profit",number] = DB["Players", table][Steam,table]["Profit",number] + Profit
+        
+        Session[Customer:steamID(), table]["Profit", number] = Session[Customer:steamID(), table]["Profit", number] + Profit
+        
+        saveDB(10)
+        Snapshot = 0
+    }
+}
+
+function checkCollection(Player:entity) {
+    let AimEntity = Player:aimEntity()
+    if (checkRack(AimEntity)) {
+        let RackId = AimEntity:id():toString()
+        let Customer = Racks[RackId, entity]
+        let SaveSnapshot = function() {
+            Player:msg(Customer:name() + "'s rack ready for collection")
+            Snapshot = Player:money()
+        }
+        
+        if (Racks:exists(RackId)) {
+            local Customer = Racks[RackId, entity]
+            if (!Snapshot) {
+                SaveSnapshot()
+            }
+            else {
+                checkProfit(Player, Customer)
+            }
+        }
+    }
+    else {
+        Snapshot = 0
+    }
+}
+
+# Initialize variables
+if (initial()) {
+    loadDB("BlueAppleBank")
+    if (!DB["Settings", table]["Ranks", array]:count()) {
+        DB["Settings", table]["Ranks", array] = array("Basic", "Gold", "Platinum")
+        saveDB()
+    }
+    DB["Structure", function] = function(PlayerToSave:entity) {
+        const Player = table(
+            "Steam" = PlayerToSave:steamID64(),
+            "Name" = PlayerToSave:name(),
+            "Rank" = "Basic",
+            "Tenure"=getDate(),
+            "Profit"=0
+        )
+        return Player
+    }
+    DB["OnResponse", function] = function() {
+        stopSpinner("TheSpinner")
+        timer(0.7, function() {
+            tosScreen()
+        })
+    }
+    
+    
+    tauPrecacheMaterial("9799648")
+    MembershipPrices = table(
+        "Gold" = 2000000,
+        "Platinum" = 4000000
+    )
+    Profits = table()
+    Racks = table()
+    TempRanks = table()
+    Session = table()
+    Storage = table()
+    Profile = noentity()
+    Snapshot = 0
+    
+    Prefix = "Blue Apple Bank"
+    PrefixColour = "cyan"
+    
+    chat("track", "!track (name) - look at a printer rack and track the player", 
+        function(_:entity, Args:array) {
+            let Player = owner()
+            let AimEntity = Player:aimEntity()
+            if (!checkRack(AimEntity)) { 
+                    Player:msg("This isn't a printer rack!")
+                    return 
+                }
+                let Name = Args[1,string]
+                let User = Name:findPlayer()
+                if (User:isValid() & Name:length()) {
+                    let RackId = AimEntity:id():toString()
+                    if(!Racks:exists(RackId)) {
+                        let Steam = User:steamID64()
+                        if (DB["Players", table]:exists(Steam)) {
+                            Racks[RackId, entity] = User
+                            Session[User:steamID(), table] = table()
+                            Session[User:steamID(), table]["SessionTenure", table] = dateUTC()
+                            Session[User:steamID(), table]["Profit", number] = 0
+                            Player:msg("Rack successfully added to " + User:name() +".")
+                        }
+                        else {
+                            Player:msg("Adding user as a customer, type !track again")
+                            loadPlayer(User)
+                        }
+                    } else {
+                        Player:msg("This rack is already being tracked!")
+                    }
+                }
+                else {
+                    Player:msg("Please specify a valid playerID.")
+            }
+        },
+    owner())
+    chat("untrack", "!untrack - type this to untrack a printer rack",
+        function(_:entity, _:array) {
+            let Player = owner()
+            let AimEntity = Player:aimEntity()
+            if (!checkRack(AimEntity)) { return }
+            local RackId = AimEntity:id():toString()
+            if(Racks:exists(RackId)) {
+                Racks:remove(RackId)
+                Player:msg("Rack successfully removed!")
+            } else {
+                Player:msg("Are you looking at a printer rack?")
+            }
+        },
+    owner())
+    
+    timer(1, 0, function() {
+        checkCollection(owner())
+    })
+    
+    initialScreen()
+}
+
+if(moneyClk()) {
+    let Player = moneyClkPlayer()
+    let Amount = moneyClkAmount()
+    let PlayerData = DB["Players", table][Player:steamID64(), table]
+    foreach(Rank:string, Price:number = MembershipPrices) {
+        if (Amount == Price) {
+            PlayerData["Rank", string] = Rank
+            saveDB()
+        }
+        elseif(Amount == Price/10) {
+            TempRanks[Profile:steamID(), string] = Rank
+        }
+    }
+    Player:msg("Thank you for your purchase!")
+    menuScreen()
+}
+
+if (userInput()) {
+    if (Profile == noentity()) {
+        Profile = CurrentUser
+        loadPlayer(Profile)
+        timer("proximity", 1, 0, function() {
+            checkRadius()
+        })
+        loadingSpinner("TheSpinner", table("coords"=vec2(256,370), "size"=12))
+        EGP:del("PressE")
+    }
+    else {
+        let Cursor = cursorObj()
+        switch (Cursor) {
+            case "Return",
+            case "Accept",
+                menuScreen()
+            break
+            case "Membership",
+                let Duration = TempRanks[Profile:steamID(), string] ? " (Session)" : ""
+                membershipScreen(getMembership(Profile), Duration, MembershipPrices)
+            break 
+            case "Statistics", 
+                let SessionProfit = Session[Profile:steamID(), table]["Profit", number]
+                let TotalProfit = DB["Players", table][Profile:steamID64(), table]["Profit", number]
+                let HourlyRate = getHourlyRate()
+                let TotalTime = getTotalTime()
+                let Duration = TempRanks[Profile:steamID(), string] ? " (Session)" : ""
+                statisticsScreen(getMembership(Profile), Duration, SessionProfit, TotalProfit, HourlyRate, TotalTime)
+            break
+            case "Storage",
+                storageScreen(Storage[CurrentUser:steamID(), table])
+            break
+            case "Deposit",
+                depositScreen(scanItems())
+                timer("deposit", 1, 0, function() {
+                    depositScreen(scanItems())
+                })
+                loadingSpinner("TheSpinner", table("coords"=vec2(256,350), "size"=12))
+                fadingDoor(1)
+            break
+            case "Withdraw",
+                withdrawScreen(scanItems())
+                timer("withdraw", 1, 0, function() {
+                    withdrawScreen(scanItems())
+                })
+                loadingSpinner("TheSpinner", table("coords"=vec2(256,350), "size"=12))
+                fadingDoor(1)
+            break
+            case "RequestHelp",
+                if (timerExists("RequestSpam")) {
+                    Profile:msg("Please do not spam this button")
+                }
+                else {
+                    owner():msg(CurrentUser:name() + " is requesting help.")
+                    Profile:msg("A staff member will be with you shortly.")
+                    timer("RequestSpam", 5, function() {
+                    })
+                }
+            break
+            case "DWR",
+                stopSpinner("TheSpinner")
+                fadingDoor(0)
+                timer(1.2, function() {
+                    menuScreen()
+                    if(timerExists("deposit")) {
+                        stoptimer("deposit")
+                    }
+                    if(timerExists("withdraw")) {
+                        stoptimer("withdraw")
+                    }
+                })
+            break,
+            default,
+                if (Cursor:startsWith("Purchase")) {
+                    let Membership = getMembership(Profile)
+                    switch (Cursor:sub(9)) {
+                        case "GoldTemp",
+                            if (Membership == "Basic") {
+                                moneyRequest(Profile, MembershipPrices["Gold", number]/10)
+                            }
+                            else {
+                                Profile:msg("You are already " + Membership + ".")
+                            }
+                        break
+                        case "GoldPerm",
+                            if (Membership != "Platinum") {
+                                moneyRequest(Profile, MembershipPrices["Gold", number])
+                            }
+                            else {
+                                Profile:msg("You are already " + Membership + ".")
+                            }
+                        break
+                        case "PlatinumTemp",
+                            if (Membership != "Platinum") {
+                                moneyRequest(Profile, MembershipPrices["Platinum", number]/10)
+                            }
+                            else {
+                                Profile:msg("You are already " + Membership + ".")
+                            }
+                        break
+                        case "PlatinumPerm",
+                            moneyRequest(Profile, MembershipPrices["Platinum", number])
+                        break
+                    }
+                }
+            break
+        }
+    }
+}

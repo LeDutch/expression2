@@ -248,6 +248,9 @@ if (clk("changed")) {
     elseif(Screen == 2) {
         drawLoading()
         broadcastRemoteEvent(table())
+        timer(1, function() {
+            changeScreen(3)
+        })
     }
     elseif(Screen == 3) {
         AutoCollect = 0

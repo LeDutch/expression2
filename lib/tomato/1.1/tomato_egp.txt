@@ -1,4 +1,4 @@
-@name Tomato EGP
+@name Tomato EGP 1.1
 @persist Elements:table CurrentUser:entity
 @inputs EGP:wirelink User:entity
 @strict
@@ -6,7 +6,7 @@
 #[ =================== G'day ============================ #
  Coded by Bob Tomato, feel free to add me :) 
  Steam: https://steamcommunity.com/id/iamthedutchman/
- Discord: dutch99
+ Discord: le.dutch
  To compile graphics: https://www.egpcompiler.com/
 ]#
 
@@ -90,11 +90,15 @@ function void wirelink:clear() {
     Elements:clear()
 }
 
+function void wirelink:del(Element:string) {
+    This:egpRemove(Elements:get(Element))
+}
+
 function egpobject text(Name:string, Args:table) {
-    const ID = (Name != "") ? Elements:get(Name) : Elements:get()
+    const ID = (Name) ? Elements:get(Name) : Elements:get()
     const Object = EGP:egpTextLayout(ID, Args)
     const Parent = Args["parent", string]
-    if (Parent != "") {
+    if (Parent) {
         Elements:get(Parent):giveChild(Object)
     }
     return Object
@@ -104,11 +108,11 @@ function egpobject text(Args:table) {
 }
 
 function egpobject circle(Name:string, Args:table) {
-    const ID = (Name != "") ? Elements:get(Name) : Elements:get()
-    const Object = Args["outline", number] ? EGP:egpCircleOutline(ID, Args) : EGP:egpCircle(ID, Args)
+    const ID = Elements:get(Name)
     const Parent = Args["parent", string]
-    if (Parent != "") {
-        ID:giveChild(Object)
+    const Object = Args["outline", number] ? EGP:egpCircleOutline(ID, Args) : EGP:egpCircle(ID, Args)
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
     }
     return Object
 }
@@ -117,26 +121,16 @@ function egpobject circle(Args:table) {
 }
 
 function egpobject box(Name:string, Args:table) {
-    const ID = (Name != "") ? Elements:get(Name) : Elements:get()
-    const Outline = Args["outline", number]
-    const Radius = Args["radius", number]
+    const ID = Elements:get(Name)
     const Parent = Args["parent", string]
+    const Object = Args["outline", number] & Args["radius", number] ? EGP:egpRoundedBoxOutline(ID, Args) 
+        : Args["outline", number] ? EGP:egpBoxOutline(ID, Args) 
+        : Args["radius", number] ? EGP:egpRoundedBox(ID, Args:add(table("fidelity"=50))) # Radius sometimes glitches
+        : EGP:egpBox(ID, Args)
 
-    let Object = noegpobject()
-    if (Outline & Radius) {
-        Object = EGP:egpRoundedBoxOutline(ID, Args)
-    } elseif (Outline) {
-        Object = EGP:egpBoxOutline(ID, Args)
-    } elseif (Radius) {
-        Object = EGP:egpRoundedBox(ID, Args:add(table("fidelity"=50)))
-    } else {
-        Object = EGP:egpBox(ID, Args)
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
     }
-
-    if (Parent != "") {
-        ID:giveChild(Object)
-    }
-
     return Object
 }
 
@@ -145,13 +139,13 @@ function egpobject box(Args:table) {
 }
 
 function egpobject poly(Name:string, Args:table) {
-    const ID = (Name != "") ? Elements:get(Name) : Elements:get()
+    const ID = (Name) ? Elements:get(Name) : Elements:get()
     const Parent = Args["parent", string]
     const Verts = Args["vertices", array]
     
     let Object = EGP:egpPoly(ID, Args)
     Object:setVertices(Verts)
-    if (Parent != "") {
+    if (Parent) {
         ID:giveChild(Object)
     }
     return Object

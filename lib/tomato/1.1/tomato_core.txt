@@ -20,19 +20,13 @@ if (first()) {
 
 function void entity:msg(Text:string) {
     if (!This:isValid()) {return}
-    #ifdef This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
-    #else
-        print(Text)
-    #endif
+    This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
 }
 
 function void array:msgAll(Text:string) {
     foreach (_:number, Player:entity = This) {
         if (Player:isValid()) {
-            #ifdef Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
-            #else
-                print(Text)
-            #endif
+            Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
         }
     }
 }
@@ -55,43 +49,11 @@ function number isPlayerNearby(Radius:number) {
 }
 
 function number isPlayerNearby(Player:entity, Radius:number) {
-    if(findCanQuery()) {
-        findIncludeClass("player")
-        findInSphere(entity():pos(), Radius)
-        let Array = findToArray()
-        let Find = function() {
-            foreach(_:number, Ent:entity = Array) {
-                if (Ent == Player) {
-                    return 1
-                }
-            }
-            return 0
-        }
-        if (Find()[number]) {
-            return 1
-        }
-    }
-    return isPlayerNearby(Player, Radius)
+    return Player:pos():distance(entity():pos()) < Radius
 }
 
 function number isPlayerNearbyToEnt(Player:entity, Radius:number, Entity:entity) {
-    if(findCanQuery()) {
-        findIncludeClass("player")
-        findInSphere(Entity:pos(), Radius)
-        let Array = findToArray()
-        let Find = function() {
-            foreach(_:number, Ent:entity = Array) {
-                if (Ent == Player) {
-                    return 1
-                }
-            }
-            return 0
-        }
-        if (Find()[number]) {
-            return 1
-        }
-    }
-    return isPlayerNearbyToEnt(Player, Radius, Entity)
+    return Player:pos():distance(Entity:pos()) < Radius
 }
 
 # Function to get the names of a given array of players
@@ -133,6 +95,50 @@ function string formatTimeInSeconds(Number:number) {
         return "1 min"
     }
     return Number + (Number == 1 ? " sec" : " secs")
+}
+
+# ==================== Time functions ================== #
+
+function toEpochUtc(T:table)
+{
+    local MonthDays = array(12)
+    MonthDays[1] = 31
+    MonthDays[2] = 28
+    MonthDays[3] = 31
+    MonthDays[4] = 30
+    MonthDays[5] = 31
+    MonthDays[6] = 30
+    MonthDays[7] = 31
+    MonthDays[8] = 31
+    MonthDays[9] = 30
+    MonthDays[10] = 31
+    MonthDays[11] = 30
+    MonthDays[12] = 31
+
+    local Y = T["year", number]
+    local M = T["month", number]
+    local D = T["day", number]
+    local H = T["hour", number]
+    local Min = T["min", number]
+    local S = T["sec", number]
+
+    local Days = (Y - 1) * 365 + floor((Y - 1) / 4) - floor((Y - 1) / 100) + floor((Y - 1) / 400)
+
+    local IsLeap = (Y % 4 == 0 & Y % 100 != 0) | (Y % 400 == 0)
+    if (IsLeap) { MonthDays[2] = 29 }
+
+    for(I = 1, M - 1) { Days += MonthDays[I, number] }
+
+    Days += D - 1
+
+    local Total = Days * 86400 + H * 3600 + Min * 60 + S
+    return Total
+}
+
+function hoursBetween(A:table, B:table)
+{
+    local Secs = toEpochUtc(B) - toEpochUtc(A)
+    return round(Secs / 3600, 2)
 }
 
 

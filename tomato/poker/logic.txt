@@ -1,5 +1,7 @@
 @name Tomato Poker Logic
 
+#include "lib/tomato/1.1/tomato_ui"
+
 # =================== Poker Core Functions ================= #
 
 # Function to create the Deck
@@ -49,9 +51,11 @@ function table deckCreate() {
         let Cards = Deck["Cards", table]
         let Count = Cards:count()
         if (Count > 0) {
-            let LastCard = Cards[Count, table] # Get the last card
-            Deck["Cards", table]:pop()
-            return LastCard
+            timer(0.1, function() { # Delayed to ensure proper card draw timing
+                let LastCard = Cards[Count, table] # Get the last card
+                Deck["Cards", table]:pop()
+                return LastCard
+            })
         }
         return table() # Deck is empty
     }

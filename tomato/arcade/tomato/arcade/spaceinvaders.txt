@@ -1,0 +1,61 @@
+@name Space Invaders
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_sprites"
+
+# ../data/tau/cache/files/1a2b6f5882d9172b9d6ab62bc2f6615f.png
+# 3914717
+
+
+function spaceMenu() {
+    # Game Section
+    
+    box("GameBG", table("x"=34.0, "y"=67.0, "w"=445.0, "h"=433.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    text("SCORE", table("text"="SCORE", "x"=54.0, "y"=79.0, "w"= 68.0, "h"=29.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=0, "valign"=1))
+    text("LIVES", table("text"="LIVES", "x"=294.0, "y"=79.0, "w"= 68.0, "h"=29.0, "r"=255, "g"=255, "b"=255, "size"=19, "halign"=0, "valign"=1))
+    text("0", table("text"="0", "x"=122.0, "y"=79.0, "w"= 68.0, "h"=29.0, "r"=51, "g"=255, "b"=0, "size"=19, "halign"=0, "valign"=1))
+
+    # Player Section
+    box("Rectangle462", table("x"=238.0, "y"=473.0, "w"=35.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Rectangle464", table("x"=253.0, "y"=466.0, "w"=6.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Rectangle463", table("x"=238.0, "y"=478.0, "w"=35.0, "h"=7.0, "r"=51, "g"=255, "b"=0, "radius"=0))
+
+    # Life 1 Section
+    box("Life1_1", table("x"=423.0, "y"=87.0, "w"=35.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life1_2", table("x"=438.0, "y"=80.0, "w"=6.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life1_3", table("x"=423.0, "y"=92.0, "w"=35.0, "h"=7.0, "r"=51, "g"=255, "b"=0, "radius"=0))
+
+    # Life 2 Section
+    box("Life2_1", table("x"=385.0, "y"=87.0, "w"=35.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life2_2", table("x"=400.0, "y"=80.0, "w"=6.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life2_3", table("x"=385.0, "y"=92.0, "w"=35.0, "h"=7.0, "r"=51, "g"=255, "b"=0, "radius"=0))
+
+    # Life 3 Section
+    box("Life3_1", table("x"=347.0, "y"=87.0, "w"=35.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life3_2", table("x"=362.0, "y"=80.0, "w"=6.0, "h"=12.0, "r"=51, "g"=255, "b"=0, "radius"=4.0))
+    box("Life3_3", table("x"=347.0, "y"=92.0, "w"=35.0, "h"=7.0, "r"=51, "g"=255, "b"=0, "radius"=0))
+    
+    let Sprites1 = sprite(table(
+        "x"=91.0, "y"=146.0, "w"=324.0, "h"=137.0, 
+        "uv_start"=vec2(163, 14), 
+        "uv_end"=vec2(408, 167), 
+        "sheet_size"=vec2(617, 320),
+        "material"="../data/tau/cache/files/1a2b6f5882d9172b9d6ab62bc2f6615f.png"
+    ))
+
+}
+
+function spaceInvaders(ParentElement:string) {
+    tauPrecacheMaterial("3914717")
+    
+    box("GameMask", table("a"=0, "x"=34.0, "y"=67.0, "w"=445.0, "h"=433.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    timer(1, function() {
+        fadeIn("GameMask", 0.5)
+    })
+    timer(1.5, function() {
+        spaceMenu()
+        box("GameMask2", table("x"=34.0, "y"=67.0, "w"=445.0, "h"=433.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+        fadeOut("GameMask2", 1)
+    })
+}

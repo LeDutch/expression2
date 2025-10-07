@@ -10,13 +10,12 @@
  Graphics compiled on https://www.egpcompiler.com/
 ]#
 
-#include "lib/tomato/1.0/tomato_core"
-#include "lib/tomato/1.0/tomato_ui"
+#include "lib/tomato/1.1/tomato_core"
 #include "tomato/poker/graphics"
-#include "tomato/poker/logic"
+##include "tomato/poker/logic"
 
 # Initialize variables
-if (first() || dupefinished()) {
+if (initial()) {
     InputUser = noentity()
     Players = table()
     Deck = table()
@@ -25,5 +24,9 @@ if (first() || dupefinished()) {
     
     Prefix = "Tomato Poker"
     PrefixColour = "#d4af37"
+    
+    tauPrecacheMaterial("6285338")
+    
+    drawHexagon()
 }
 

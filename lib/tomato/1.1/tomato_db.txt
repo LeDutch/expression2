@@ -6,7 +6,7 @@
 @trigger 
 @strict 
 
-#include "lib/tomato_core"
+#include "lib/tomato/1.1/tomato_core"
 
 #[
     How to initialize:
@@ -21,7 +21,7 @@
     })
 ]#
 
-if (first()) {
+if (first() || dupefinished()) {
     DB = table(
         "Settings" = table(),
         "Players" = table(),
@@ -98,7 +98,7 @@ event fileLoaded(FilePath:string, Data:string) {
         switch (FileName) {
             case "base",
                 DB["Settings", table] = jsonDecode(Data):merge(DB["Settings", table])
-                print("Loaded database: " + ProjectPath:sub(8))
+                #print("Loaded database: " + ProjectPath:sub(8))
             break
             default,
                 let Steam = FileName:sub(9)
@@ -126,17 +126,18 @@ event fileErrored(FilePath:string, Status:number) {
         let FileName = FilePath:sub(ProjectPath:length() + 2, FilePath:length() - 4)
         switch (FileName) {
             case "base",
-                print("Creating new database for " + ProjectPath:sub(8))
+                owner():msg("Creating new database...")
                 saveDB()
             break
             default,
                 let Steam = FileName:sub(9)
-                let PlayerData = DB["Structure", function](findPlayerBySteamID64(Steam))[table]
+                let Player = findPlayerBySteamID64(Steam)
+                let PlayerData = DB["Structure", function](Player)[table]
                 FileSaveQueue:pushTable(PlayerData)
                 DB["Players",table][Steam, table] = PlayerData
                 DB["Response", table] = PlayerData
                 DB["OnResponse", function]()
-                print("yes")
+                owner():msg("Welcoming new player " + Player:name()  +" to " + ProjectPath:sub(8))
             break
         }
     }

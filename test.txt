@@ -12,27 +12,27 @@ if (initial()) {
     # Background
     box(table("x"=0.0, "y"=0.0, "w"=515.0, "h"=515.0, "r"=106, "g"=23, "b"=23)) 
     
-    #box("Menu", table("x"=150.0, "y"=200.0, "w"=100.0, "h"=250.0, "r"=255, "g"=255, "b"=255)) 
+    box("Menu", table("x"=400.0, "y"=200.0, "w"=100.0, "h"=250.0, "r"=255, "g"=255, "b"=255)) 
         
-    #[let Parent = box("TheBox", table("x"=100, "y"=100, "w"=20, "h"=20, "r"=163, "g"=104, "b"=47))
-    let Child = box("TheMiniBox", table("x"=100, "y"=160, "w"=20, "h"=20, "r"=255, "g"=255, "b"=255))
+    let Parent = box("TheBox", table("x"=10, "y"=10, "w"=20, "h"=20, "r"=163, "g"=104, "b"=47))
+    let Child = box("TheMiniBox", table("x"=100, "y"=100, "w"=20, "h"=20, "r"=255, "g"=255, "b"=255))
     
     Parent:giveChild(Child)
     
     Child:giveParent(Parent)
     
-    #Child:giveParent(Parent)
     
-    
-    Elements:get("TheBox"):giveChild(Elements:get("TheMiniBox"))
+    #Elements:get("TheBox"):giveChild(Elements:get("TheMiniBox"))
     
     checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
+    
     
     dropDown("TheDropDown", 
     		array("This is an option", "2awdsad", "3asds", "4asdq"), 
     		table(
     		"coords"=vec2(50,350), 
-    		"text"="Testing"
+    		"text"="Testing",
+      "scale"=1.5
     	))
     
     slider("TheSlider", table(
@@ -44,11 +44,9 @@ if (initial()) {
     		"max"=150,
     		"interval"=10
     ))
-    ]#
-    
-    #[
+     
     scrollBar("Scrollbar", table(
-      "x"=260,
+      "x"=360,
       "y"=200,
       "yoffset"=10,
       "menu"="Menu",
@@ -60,13 +58,13 @@ if (initial()) {
     		"interval"=10,
       "radius"=0
     ))
-    ]#
+    
     
     checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
     
     
     
-    #circle("Fade", table("x"=340.0, "y"=185.0, "w"=28.0, "h"=28.0, "r"=217, "g"=217, "b"=217))
+    circle("Fade", table("x"=340.0, "y"=85.0, "w"=16.0, "h"=28.0, "r"=217, "g"=217, "b"=217))
 }
 
 if (userInput()) {

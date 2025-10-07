@@ -10,7 +10,7 @@
 #[ =================== G'day ============================ #
  Coded by Bob Tomato, feel free to add me :) 
  Steam: https://steamcommunity.com/id/iamthedutchman/
- Discord: dutch99
+ Discord: le.dutch
  Graphics compiled on https://www.egpcompiler.com/
 ]#
 

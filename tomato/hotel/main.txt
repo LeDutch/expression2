@@ -1,0 +1,44 @@
+@name Tomato Hotel
+@persist Profile:entity Profits:table Racks:table Snapshot:number
+@inputs FadingDoor:wirelink
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: le.dutch
+ Graphics compiled on https://www.egpcompiler.com/
+]#
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "tomato/hotel/graphics"
+
+# Initialize variables
+if (initial()) {
+    tauPrecacheMaterial("9799648")
+    Profits = table()
+    Racks = table()
+    Snapshot = 0
+    
+    Prefix = "Blue Apple Bank"
+    PrefixColour = "cyan"
+    
+    initialScreen()
+}
+
+if (userInput()) {
+    let Cursor = cursorObj()
+    switch (Cursor) {
+        case "Initial",
+            Profile = CurrentUser
+            tosScreen()
+        break
+        case "Accept",
+            menuScreen()
+        break
+        case "Deposit",
+        break
+        case "Withdraw",
+        break
+    }
+}
