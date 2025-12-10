@@ -1,0 +1,481 @@
+@name Davo's
+@inputs [S1 S2 S3 S4 S5 S6 S7 S8 S9 S10]:wirelink
+@inputs EGP:wirelink User:entity
+@persist [EID COLOURS CART WEAPONS USERS Discounts]:table LUPOS:vector2 [GLOBAL_DISCOUNT TIME Profit Tax SENDING WireTransfer AnimStart ThankYouEnd]:number [LU]:entity [Specials]:string
+@outputs Specials:string
+@strict
+runOnChat(1)
+
+# --- CONFIGURATION ---
+TITLE = "PAPA'S SINGLES"
+FONT = "Roboto"
+# ---------------------
+
+if (first() | duped()) {
+    Discounts = table()
+    
+    # PALETTE
+    COLOURS = table(
+        "Screen" = vec(15, 20, 25),
+        "CardBg" = vec(25, 30, 35),
+        "Border" = vec(255, 140, 0),
+        "Text" = vec(220, 230, 240),
+        "TextDim" = vec(100, 110, 120),
+        "Highlight" = vec(0, 180, 255),
+        "BtnAdd" = vec(255, 140, 0),
+        "BtnRem" = vec(60, 20, 20),
+        "Success" = vec(0, 200, 100),
+        "LoadBar" = vec(50, 255, 50)
+    )
+    
+    function vector gc(Name:string) {
+        if(COLOURS:exists(Name)) { return COLOURS[Name,vector] }
+        return vec(255,255,255)
+    }
+
+    function number table:new(Name:string) {
+        if (This:exists(Name)) { return -1 }
+        local FreeID = This:flip():ncount()+1
+        This[Name, number] = FreeID
+        return FreeID
+    }
+
+    function number table:get(Name:string) {
+        if (!This:exists(Name)) { return This:new(Name) }
+        return This[Name, number]
+    }
+
+    function void resetUserTo(NewUser:entity) {
+        LU = NewUser
+        CART = table()
+        SENDING = 0
+    }
+    
+    function void resetUser() {
+        resetUserTo(entity(-1))
+    }
+
+    function void refreshUsers() {
+        USERS:clear()
+        USERS = table("S1" = S1, "S2" = S2, "S3" = S3, "S4" = S4, "S5" = S5, "S6" = S6, "S7" = S7,"S8" = S8, "S9" = S9, "S10" = S10)
+    }
+    refreshUsers()
+    
+    Profit = 0.45
+    Tax = 0
+
+    resetUser()
+    AnimStart = 0
+    ThankYouEnd = 0
+    
+    timer("update", 500)
+    timer("update_stock", 0)
+}
+
+function number rrp(Shipment:entity, UseDiscount:number) {
+    if(!Shipment:isValid()) { return 0 }
+    
+    Cost = Shipment:shipmentPrice()/Shipment:shipmentSize()
+    local NAME = Shipment:shipmentName()
+    Cost = Cost/(1-Tax)
+    Cost = Cost/(1-Profit)
+    if (UseDiscount) {
+        local Dis = 0
+        if (Discounts:exists(NAME:replace(" ", "_"))) {
+            Dis = Cost - Cost * Discounts[NAME:replace(" ", "_"), number]    
+        }
+        if (Dis == 0 && GLOBAL_DISCOUNT > 0) {
+            Dis = Cost - Cost * GLOBAL_DISCOUNT
+        }
+        return Dis > 0 ? round(Dis) : round(Cost)
+    }
+    return round(Cost) 
+}
+
+function number rrp(Shipment:entity) { return rrp(Shipment, 0) }
+
+EGP:egpDrawTopLeft(1)
+
+function vector2 textManual(M:string, Loc:vector2, W:number, H:number, What:string, Font:string, Size, Col:vector, Align:number) {
+    local I = 0
+    if (M == "") { I = EID:get(Loc:toString()+Size:toString()+Col:toString()+What) } else { I = EID:get(M) }
+    
+    local YPos = Loc[2] + (H/2)
+    local XPos = Loc[1]
+    
+    if(Align == 1) { XPos = Loc[1] + (W/2) } elseif (Align == 2) { XPos = Loc[1] + W - 10 } else { XPos = Loc[1] + 10 }
+    
+    EGP:egpText(I, What, vec2(XPos, YPos))
+    EGP:egpFont(I, Font, Size)
+    EGP:egpColor(I, Col)
+    EGP:egpAlign(I, Align, 1)
+    return Loc + vec2(0, Size)
+}
+
+function vector2 butManual(M:string, Loc:vector2, Size:vector2, Col:vector) {
+    local I = 0
+    if (M == "") { I = EID:get(Loc:toString()+Size:toString()+Col:toString()) } else { I = EID:get(M) }
+    EGP:egpDrawTopLeft(1)
+    EGP:egpBox(I, Loc, Size)
+    EGP:egpColor(I, Col)
+    return Loc
+}
+
+function number isPressed(Name:string) {
+    local Index = EID:get(Name)
+    HP = EGP:egpCursor(User)
+    return inrange(HP, EGP:egpPos(Index), EGP:egpPos(Index) + EGP:egpSize(Index))
+}
+
+function void getWeapons() {
+    local OLD = WEAPONS:count()
+    WEAPONS:clear()
+    foreach(K:string, V:wirelink = USERS) {
+        local RangerEnt = V:entity()
+        if(!RangerEnt:isValid()) { continue }
+        
+        local Ranger = rangerOffset(50, RangerEnt:toWorld(RangerEnt:up() * 4.5), RangerEnt:up())
+        local Ent = Ranger:entity()
+        
+        if (!Ent:isValid()) { continue }
+        if (!Ent:isShipment()) { continue }
+        WEAPONS[Ent:shipmentName(), entity] = Ent
+    }
+    if (WEAPONS:count() != OLD) {
+        CART = table()
+    }
+}
+
+function number getCartAmount(ID:string) { return CART[ID, number] }
+
+function number getCartCost() {
+    local Total = 0
+    foreach (K:string, V:number = CART) { 
+        if(WEAPONS[K,entity]:isValid()) {
+            Total += rrp(WEAPONS[K, entity], 1)*V 
+        }
+    }
+    return Total
+}
+
+function void dispenseWeapon(WeaponName:string) {
+    foreach(K:string, V:wirelink = USERS) {
+        local RangerEnt = V:entity()
+        if(!RangerEnt:isValid()) { continue }
+        
+        local Ranger = rangerOffset(50, RangerEnt:toWorld(RangerEnt:up() * 4.5), RangerEnt:up())
+        local Ent = Ranger:entity()
+        
+        if (Ent:isValid() && Ent:isShipment() && Ent:shipmentName() == WeaponName) {
+            V["Fire", number] = 1
+            timer(K, 100)
+        }
+    }
+}
+
+function void drawEGP() {
+    EGP:egpClear()
+    local W = 512
+    local H = 512
+    
+    local BG = EID:get("Background")
+    EGP:egpBox(BG, vec2(0,0), vec2(W,H))
+    EGP:egpColor(BG, gc("Screen"))
+    
+    if (!LU:isValid()) {
+        # === IDLE SCREEN ===
+        EGP:egpBoxOutline(EID:get("WelcomeBox"), vec2(20, 150), vec2(W-30, 200))
+        EGP:egpColor(EID:get("WelcomeBox"), gc("Border"))
+        
+        textManual("", vec2(0, 160), W, 50, "WELCOME TO", FONT, 30, gc("TextDim"), 1)
+        textManual("", vec2(0, 210), W, 60, "PAPA'S GUNSTORE", FONT, 60, gc("Text"), 1)
+        textManual("", vec2(0, 270), W, 40, "AUTHORIZED PERSONNEL ONLY", FONT, 25, gc("Highlight"), 1)
+        textManual("", vec2(0, 300), W, 50, "PRESS [E] TO BEGIN", FONT, 15, gc("TextDim"), 1)
+        
+        local Blink = (time() % 2 > 1) ? gc("Border") : gc("Screen")
+        textManual("PressUse", vec2(0, 400), W, 40, "[ PRESS USE TO ACCESS ]", FONT, 30, Blink, 1)
+
+    } else {
+        
+        # === THANK YOU POPUP (3 SECONDS) ===
+        if (time() < ThankYouEnd) {
+             # Popup Background
+             local PopW = 400
+             local PopH = 200
+             local PopX = (W - PopW) / 2
+             local PopY = (H - PopH) / 2
+             
+             # Draw Box
+             EGP:egpBox(EID:get("ThanksBG"), vec2(PopX, PopY), vec2(PopW, PopH))
+             EGP:egpColor(EID:get("ThanksBG"), gc("CardBg"))
+             EGP:egpBoxOutline(EID:get("ThanksOut"), vec2(PopX, PopY), vec2(PopW, PopH))
+             EGP:egpColor(EID:get("ThanksOut"), gc("Success"))
+             
+             # Draw Text
+             textManual("Tx1", vec2(0, PopY + 30), W, 40, "PAYMENT ACCEPTED", FONT, 35, gc("Success"), 1)
+             textManual("Tx2", vec2(0, PopY + 90), W, 30, "DISPENSING ITEMS...", FONT, 25, gc("Text"), 1)
+             textManual("Tx3", vec2(0, PopY + 140), W, 30, "THANK YOU!", FONT, 25, gc("Highlight"), 1)
+             
+             # Stop drawing the rest of the shop
+             return
+        }
+
+        # === ANIMATION CHECK ===
+        local AnimDuration = 2.5
+        local Progress = clamp((time() - AnimStart) / AnimDuration, 0, 1)
+        
+        if (Progress < 1) {
+            # === LOADING ANIMATION ===
+            stoptimer("update")
+            timer("update", 33) 
+            
+            local BarW = 300
+            local BarH = 20
+            local BarX = (W - BarW) / 2
+            local BarY = H/2
+            
+            EGP:egpBoxOutline(EID:get("LoadOut"), vec2(BarX, BarY), vec2(BarW, BarH))
+            EGP:egpColor(EID:get("LoadOut"), gc("TextDim"))
+            
+            local SmoothProgress = 1 - (1 - Progress) ^ 3
+            
+            local FillW = BarW * SmoothProgress
+            EGP:egpBox(EID:get("LoadFill"), vec2(BarX, BarY), vec2(FillW, BarH))
+            EGP:egpColor(EID:get("LoadFill"), gc("LoadBar"))
+            
+            local Percent = round(SmoothProgress * 100)
+            textManual("LoadTxt", vec2(0, BarY - 40), W, 30, "ACCESSING DATABASE... " + Percent + "%", FONT, 25, gc("Text"), 1)
+            
+            return 
+        }
+        
+        # === SHOP INTERFACE (Animation Done) ===
+        stoptimer("update")
+        timer("update", 500)
+        
+        local FrameL = EID:get("FrameL")
+        EGP:egpBox(FrameL, vec2(0,0), vec2(5, H)) 
+        EGP:egpColor(FrameL, gc("Border"))
+        
+        local FrameR = EID:get("FrameR")
+        EGP:egpBox(FrameR, vec2(W-5,0), vec2(5, H))
+        EGP:egpColor(FrameR, gc("Border"))
+        
+        local HeaderH = 70
+        butManual("HeaderLine", vec2(0,0), vec2(W, 10), gc("Border"))
+        textManual("", vec2(0, 10), W, HeaderH, ":: " + TITLE + " ::", FONT, 45, gc("Border"), 1)
+        butManual("HeaderDiv", vec2(20, HeaderH-5), vec2(W-40, 2), gc("TextDim"))
+    
+        local Y = HeaderH + 10
+        local RowH = 55
+        local Spacing = 5
+        local CardW = W - 30
+        local X = 15
+        
+        if (WEAPONS:count() == 0) {
+              textManual("Err", vec2(0, H/2), W, 50, "NO SHIPMENTS DETECTED", FONT, 30, gc("BtnRem"), 1)
+              textManual("Err2", vec2(0, H/2+30), W, 50, "CHECK S1-S10 WIRE LINKS", FONT, 20, gc("TextDim"), 1)
+        }
+        
+        foreach(K:string, Ent:entity = WEAPONS) {
+            if (!Ent:isShipment()) { continue }
+            
+            local NAME = Ent:shipmentName():upper()
+            local EntRRP = rrp(Ent)
+            local Dis = rrp(Ent, 1)
+            
+            butManual("", vec2(X, Y), vec2(CardW, RowH), gc("CardBg"))
+            textManual("", vec2(X+10, Y), CardW, RowH, NAME, FONT, 22, gc("Text"), 0)
+            
+            local PriceCol = gc("Highlight")
+            local PriceTxt = "$ " + EntRRP
+            if (Dis != EntRRP) { PriceCol = gc("Border") PriceTxt = "SALE: " + Dis }
+            textManual("", vec2(X+10, Y+15), CardW, RowH, PriceTxt, FONT, 18, PriceCol, 0)
+            
+            local BtnSize = 40
+            local BtnY = Y + (RowH - BtnSize)/2
+            local RightEdge = X + CardW - 10
+            
+            butManual("add_" + K, vec2(RightEdge - BtnSize, BtnY), vec2(BtnSize, BtnSize), gc("BtnAdd"))
+            textManual("", vec2(RightEdge - BtnSize, BtnY), BtnSize, BtnSize, "+", FONT, 30, gc("Screen"), 1)
+            
+            local Count = getCartAmount(K)
+            local CCol = (Count > 0) ? gc("Text") : gc("TextDim")
+            textManual("", vec2(RightEdge - BtnSize - 40, Y), 40, RowH, Count:toString(), FONT, 25, CCol, 1)
+            
+            butManual("rem_" + K, vec2(RightEdge - BtnSize - 40 - BtnSize, BtnY), vec2(BtnSize, BtnSize), gc("BtnRem"))
+            textManual("", vec2(RightEdge - BtnSize - 40 - BtnSize, BtnY), BtnSize, BtnSize, "-", FONT, 30, gc("TextDim"), 1)
+            
+            Y = Y + RowH + Spacing
+        }
+        
+        if (WireTransfer > 0) {
+            butManual("WIRETRANSFER", vec2(15, H-70), vec2(W-30, 60), gc("Highlight"))
+            textManual("", vec2(15, H-70), W-30, 60, "INITIATE WIRE: " + WireTransfer, FONT, 30, gc("Screen"), 1)
+        }
+        elseif (getCartCost() > 0) {
+            butManual("PAY", vec2(15, H-70), vec2(W-30, 60), gc("Success"))
+            EGP:egpBoxOutline(EID:get("PayBord"), vec2(15, H-70), vec2(W-30, 60))
+            EGP:egpColor(EID:get("PayBord"), gc("Text"))
+            textManual("", vec2(15, H-70), W-30, 60, "CONFIRM [ $" + getCartCost() + " ]", FONT, 30, gc("Text"), 1)
+        } 
+        else {
+            textManual("", vec2(0, H-40), W, 30, "WELCOME " + LU:name():upper(), FONT, 20, gc("TextDim"), 1)
+            butManual("BotBar", vec2(0, H-10), vec2(W, 10), gc("Border"))
+        }
+
+        EGP:egpBox(300,vec2(5,5),vec2(25,25))
+        EGP:egpParentToCursor(300)
+        EGP:egpMaterial(300, "vgui/cursors/arrow")
+    }
+}
+
+# --- TIMERS & INPUTS ---
+
+if(moneyClk()) {
+    TITLE_M = moneyClkTitle()
+    AMOUNT = moneyClkAmount()
+    PLY = moneyClkPlayer()
+    if (TITLE_M == "Wire Payment to Dog's Armoury") {
+        WireTransfer = 0
+        timer("update", 100)
+    } else {
+        SENDING = 1
+        timer("dispense_cart", 0)
+        
+        # --- THANK YOU POPUP SETUP ---
+        ThankYouEnd = time() + 3    # Set message to expire in 3 seconds
+        timer("update", 50)         # Force immediate redraw to show message
+        timer("refresh_view", 3000) # Force update in 3s to hide message
+        # -----------------------------
+    }
+}
+
+if (User & ~User & User:isValid()) {
+    if (LU == User) {
+        # Already logged in - Interaction logic
+        stoptimer("check")
+        timer("check", 1000)
+        
+        if (!SENDING) {
+            foreach(K:string, V:entity = WEAPONS) {
+                if (isPressed("add_" + K)) {
+                    if (CART[K, number] < V:shipmentAmount()) {
+                        CART[K, number] = CART[K, number] + 1
+                    }
+                } elseif (isPressed("rem_" + K)) {
+                    if (CART[K,number] > 0) {
+                        CART[K, number] = CART[K,number] - 1
+                    }
+                }
+            }
+        }
+        if (isPressed("PAY")) { moneyRequest(LU, getCartCost(), "Dog's Armoury Payment") }
+        if (isPressed("WIRETRANSFER")) { moneyRequest(LU, WireTransfer, "Wire Payment to Dog's Armoury") }
+        
+        # Force redraw on click
+        timer("update", 0)
+        
+    } elseif (!LU:isValid()) {
+        # LOGIN EVENT
+        resetUserTo(User)
+        AnimStart = time() 
+        getWeapons() 
+        
+        timer("check", 1000)
+        # Force Immediate Update to start anim
+        stoptimer("update")
+        timer("update", 10)
+    }
+}
+
+CLK = clkName()
+if(CLK) {
+    switch(CLK) {
+        case "update",
+            drawEGP()
+        break
+        
+        case "refresh_view",
+            drawEGP()
+        break
+        
+        case "dispense_cart",
+            if (CART:keys():count() == 0) { SENDING = 0 resetUser() break }
+            local KEYS = CART:keys()
+            local GunName = KEYS:popString()
+            local Amount = CART[GunName, number]
+            if (Amount > 0) { dispenseWeapon(GunName) CART[GunName, number] = Amount - 1 }
+            if (CART[GunName, number] <= 0) { CART:remove(GunName) }
+            timer("dispense_cart", 2000)
+        break
+        
+        case "update_stock",
+            getWeapons()
+            timer("update_stock", 2000)
+        break
+        
+        case "check",
+            if (SENDING) { break }
+            if (!LU:isValid()) { break }
+            if (!LU:isPlayer()) { break }
+            if (LU:pos():distance(EGP:entity():pos()) > 230) { 
+                resetUser() 
+                timer("update", 0)
+                break 
+            }
+            timer("check", 1000)
+        break
+        
+        default,
+            local Wire = ioGetInputWirelink(CLK)
+            Wire["Fire", number] = 0
+        break
+    }
+}
+
+# --- CHAT COMMANDS ---
+if(chatClk(owner())) {
+    local MSG = lastSaid()
+    local MSG_EXPLODE = MSG:explode("")
+    local PREFIX = MSG_EXPLODE[1,string]
+    MSG_EXPLODE:remove(1)
+    MSG = MSG_EXPLODE:concat("")
+    local ARGS = MSG:explode(" ")
+    local CMD = ARGS[1,string]
+    ARGS:remove(1)
+    
+    if (PREFIX == ";") {
+        hideChat(1)
+        switch (CMD:lower()) {
+            case "tax",
+                local ChangeTax = ARGS[1,string]:toNumber()/100
+                if (ChangeTax >= 1) { ChangeTax = 0.9999 }
+                Tax = ChangeTax
+                print("Changed Tax to " + Tax*100 + "%")
+            break
+            case "prof",
+                local ChangeProfit = ARGS[1,string]:toNumber()/100
+                if (ChangeProfit >= 1) { ChangeProfit = 0.9999 }
+                Profit = ChangeProfit
+                print("Changed Profit to " + Profit*100 + "%")
+            break
+            case "wire",
+                local ChangeWire = ARGS[1,string]:toNumber()
+                if (ChangeWire == -1) { ChangeWire = 0 }
+                WireTransfer = ChangeWire
+            break
+            case "discount",
+                local Gunname = ARGS[1, string]
+                local Discount = ARGS[2, string]:toNumber()/100
+                if (Gunname:toNumber() > 0) {
+                    if (Gunname:toNumber() == 100) { GLOBAL_DISCOUNT = 0 print("REMOVED GLOBAL DISCOUNT!") } 
+                    else { GLOBAL_DISCOUNT = Gunname:toNumber()/100 print("Set Global Discount to " + GLOBAL_DISCOUNT*100 + "%") }
+                } else {
+                    if (Discount == 0) { Discounts:remove(Gunname) print("Removed discounts for " + Gunname) } 
+                    else { print("Set Discount of " + Gunname + " to " + Discount*100 + "%") Discounts[Gunname,number] = Discount }
+                }
+            break
+        }
+    }
+}

@@ -1,0 +1,327 @@
+@name Krypta Gunstore - Graphics
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_fonts"
+
+function string addJapan(Length:number) {
+    let Unicode = array(
+        12353,12354,12355,12356,12357,12358,12359,12360,12361,12362,
+        12363,12364,12365,12366,12367,12368,12369,12370,12371,12372,
+        12373,12374,12375,12376,12377,12378,12379,12380,12381,12382,
+        12383,12384,12385,12386,12387,12388,12389,12390,12391,12392,
+        12393,12394,12395,12396,12397,12398,12399,12400,12401,12402,
+        12403,12404,12405,12406,12407,12408,12409,12410,12411,12412,
+        12413,12414,12415,12416,12417,12418,12419,12420,12421,12422,
+        12423,12424,12425,12426,12427,12428,12429,12430,12431,12432,
+        12433,12434,12435,12436,12437,12438,
+        12448,12449,12450,12451,12452,12453,12454,12455,12456,12457,12458,
+        12459,12460,12461,12462,12463,12464,12465,12466,12467,12468,12469,
+        12470,12471,12472,12473,12474,12475,12476,12477,12478,12479,12480,
+        12481,12482,12483,12484,12485,12486,12487,12488,12489,12490,12491,
+        12492,12493,12494,12495,12496,12497,12498,12499,12500,12501,12502,
+        12503,12504,12505,12506,12507,12508,12509,12510,12511,12512,12513,
+        12514,12515,12516,12517,12518,12519,12520,12521,12522,12523,12524,
+        12525,12526,12527,12528,12529,12530,12531,12532,12533,12534,12535,
+        12536,12537,12538,12539,12540,12541,12542,12543,
+        19968,20108,19977,19978,19979,20013,20154,26085,26376,28779,27700,  
+        26408,37329,22303,23665, 24029,23398,26657,29983,26178,22269,26412,
+        22823,23567,20808,21517,25163
+    )
+    let String = ""
+    for(I=1, Length) {
+        String += toUnicodeChar(Unicode[randint(I, Unicode:count()), number])
+    }
+    return String
+}
+
+function void bg(...Var:array) {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    Elements = table()
+    
+    let Red = Var[1, number]
+    
+    box("BG", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Border", table("x"=12.0, "y"=13.0, "w"=486.0, "h"=486.0, "r"=Red ? 255 : 0, "g"=Red ? 0 : 255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+    
+}
+
+function void logo() {
+    let Vars = table(
+        array(33, 35, 123), array(33, 51, 123), array(211, 51, 83), array(72, 67, 45), array(72, 83, 45), array(72, 99, 45), array(72, 115, 45),
+        array(72, 131, 45), array(72, 147, 45), array(177, 131, 38), array(170, 147, 38), array(294, 147, 38), array(286, 131, 38),
+        array(267, 83, 38), array(196, 83, 38), array(189, 99, 38), array(275, 99, 38), array(184, 115, 38), array(281, 115, 38),
+        array(262, 67, 38), array(202, 67, 38), array(222, 35, 59), array(352, 35, 39), array(352, 67, 39), array(352, 83, 39), 
+        array(352, 99, 39), array(352, 115, 39), array(372, 147, 83), array(361, 131, 39), array(439, 115, 39), array(430, 131, 39),
+        array(352, 51, 39), array(439, 35, 39), array(439, 67, 39), array(439, 83, 39), array(439, 99, 39), array(439, 51, 39)
+    )
+
+    for (I = 1, Vars:count()) {
+        let V = Vars[I, array]
+        box("Logo"+I, table(
+            "x" = V[1, number],
+            "y" = V[2, number],
+            "w" = V[3, number],
+            "h" = 8,
+            "r" = 0, "g" = 255, "b" = 0,
+            "radius" = 0,
+            "a"= 255
+        ))
+    }
+}
+
+
+function void screenStart() {
+    bg()
+    stoptimer("proximity")
+    
+    let Title = font("ARMS REQUISITION TERMINAL 7.0", "MonoFW")
+    let Subtitle = addJapan(12)
+    
+    text("Title", table("text"=Title, "x"=93.0, "y"=255.0, "w"= 325.0, "h"=90.0, "r"=0, "g"=170, "b"=0, "size"=27, "halign"=1, "valign"=1))
+    text("Subtitle", table("text"="", "x"=93.0, "y"=310.0, "w"= 325.0, "h"=90.0, "r"=0, "g"=170, "b"=0, "size"=18, "halign"=1, "valign"=1))
+    
+    
+    box(table("x"=190.0, "y"=392.0, "w"=130.0, "h"=42.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box(table("x"=190.0, "y"=392.0, "w"=130.0, "h"=42.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+
+    # Button Section
+    box(table("x"=200.0, "y"=399.0, "w"=109.92, "h"=28.0, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=200.22, "y"=399.55, "w"=108.7, "h"=27.45, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=200.41, "y"=399.55, "w"=109.11, "h"=26.9, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text(table("text"="LOGIN!", "x"=200.0, "y"=399.0, "w"= 110.0, "h"=28.0, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    
+    logo()
+    
+    box(table("angle"=180, "x"=486.0, "y"=229.0, "w"=464.0, "h"=64.0, "r" = 0, "g" = 255, "b" = 0, "radius"=0, 
+    "material"="materials/zerochain/zerolib/ui/hud_infopointer.png"))
+    
+    text("Branding", table("text"="THE AUSTRALIAN UNDERGROUND", "x"=28.0, "y"=139.0, "w"= 281.0, "h"=76.0, "r"=0, "g"=170, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    text("Serial", table("text"="* SERIAL NUMBER " +randint(1000000000, 2000000000), "x"=16.0, "y"=181.0, "w"= 270.0, "h"=34.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    text(table("text"="(C) Copyright Krypta, Tomato TAU-Corp Systems 1983", "x"=-5.0, "y"=479.0, "w"= 508.0, "h"=16.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    
+    glitchText("Branding", 0.5)
+    glitchText("Serial", 0.7)
+    typeOut("Subtitle", Subtitle) 
+    
+    timer("startAnim", 0.1, 0, function() {
+        let O = 50
+        let Random = randint(0,O)
+        if (Random == O) {
+            for(I=1, 37) {
+                let Name = "Logo"+I
+                let Obj = EGP:egpobject(Elements:get(Name))
+                Obj["x", number] = Obj["x", number] + (randint(0,1) ? 1 : -1) * randint(5,15)
+                Obj["a", number] = randint(1,255)
+            }
+            timer(0.1, function() {
+                logo()
+                timer(0.4, function() {
+                    if (!timerExists("Title_glitch")) {
+                        glitchText("Title", 0.6)
+                    }
+                })
+            })
+        }
+    })
+}
+
+function screenMenu(Items:table) {
+    bg()
+    
+    let Title = "SHOPPINGCART - " + addJapan(5)
+    let ShoppingIcon = toUnicodeChar(9654)
+    
+    text("Title", table("text"=Title, "x"=40.0, "y"=16.0, "w"= 287.0, "h"=44.0, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=0, "valign"=1))
+    box(table("x"=24.0, "y"=23.0, "w"=460.0, "h"=30.0, "r"=0, "g"=170, "b"=0, "radius"=0))
+   
+
+    text("Total", table("text"="$ 0.00", "x"=149.0, "y"=448.0, "w"= 180.0, "h"=38.0, "r"=0, "g"=170, "b"=0, "size"=27, "halign"=1, "valign"=1))
+    text("TaxTitle", table("text"="Tax Display", "x"=13.0, "y"=411.0, "w"= 160.0, "h"=38.0, "r"=0, "g"=170, "b"=0, "size"=16, "halign"=1, "valign"=1))
+    text("TotalTitle", table("text"="TOTAL", "x"=175.0, "y"=427.0, "w"= 44.0, "h"=33.0, "r"=0, "g"=170, "b"=0, "size"=13, "halign"=1, "valign"=1))
+    text(table("text"=addJapan(2), "x"=154.0, "y"=411.0, "w"= 65.0, "h"=32.0, "r"=0, "g"=170, "b"=0, "size"=14, "halign"=1, "valign"=1))
+    
+    
+    # Cart Buttons
+    let CartX = 24
+    let CartY = 69
+    let CartW = 137
+    let CartH = 332
+    let Padding = 2
+    
+    let CartMenu = box("CartBackground", table("x"=CartX, "y"=CartY, "w"=CartW, "h"=CartH, "r"=0, "g"=0, "b"=0, "radius"=0))
+    
+    let Count = Items:count()
+    if (!Count) { return }
+    
+    # 1 column if < 6, otherwise 2 columns
+    let Cols = Count < 6 ? 1 : 2
+    let Rows = (Count + Cols - 1) / Cols  # ceil(Count / Cols)
+    
+    let W = (CartW - Padding * (Cols + 1)) / Cols
+    let H = (CartH - Padding * (Rows + 1)) / Rows
+    
+    foreach (I:number, Item:table = Items) {
+        let ItemName = Item["Name",string] + " " + ShoppingIcon
+        # 0-based column/row indices
+        let Col = (Cols == 1) ? 0 : ((I - 1) % Cols)
+        let Row = (I - 1) / Cols
+    
+        # Position inside CartBackground (local coords)
+        let X = Padding + Col * (W + Padding)
+        let Y = Padding + Row * (H + Padding)
+    
+        let Clickable = box("CartItem" + I,  table(
+            "x" = 2 + X, "y" = 2 + Y,
+            "w" = W, "h" = H,
+            "r" = 255, "g" = 255, "b" = 255
+        ))
+        Clickable:parentTo(CartMenu)
+    
+        box("CartBG1" + I, table(
+            "x" = 3.52 + X, "y" = 3.51 + Y,
+            "w" = W, "h" = H,
+            "r" = 34, "g" = 36, "b" = 11
+        )):parentTo(CartMenu)
+    
+        box("CartBG2" + I, table(
+            "x" = 2.51 + X, "y" = 3.51 + Y,
+            "w" = W, "h" = H,
+            "r" = 189, "g" = 189, "b" = 189
+        )):parentTo(CartMenu)
+        
+        text("CartName"+I, table("text"=ItemName, "x"=0, "y"=0, "w"=W, "h"=H, 
+        "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1)):parentTo(Clickable)
+
+    }
+    
+    # Button Section
+    box("Rectangle1", table("x"=24.0, "y"=69.0, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box("Rectangle3", table("x"=25.52, "y"=70.51, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box("Rectangle2", table("x"=24.51, "y"=70.51, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("HEAVYARMOUR", table("text"="HEAVY ARMOUR", "x"=24.0, "y"=69.0, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=24.15, "y"=157.9, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.67, "y"=159.41, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.65, "y"=159.41, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("C4EXPLOSIVE", table("text"="C4 EXPLOSIVE", "x"=24.15, "y"=157.9, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=24.0, "y"=243.95, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.52, "y"=245.47, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.51, "y"=245.47, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("HKRIFLE", table("text"="HK RIFLE", "x"=24.0, "y"=243.95, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Button Section
+    box(table("x"=24.15, "y"=332.85, "w"=136.85, "h"=77.15, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=25.67, "y"=334.36, "w"=135.33, "h"=75.64, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=24.65, "y"=334.36, "w"=135.84, "h"=74.12, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("PRODUCT4", table("text"="PRODUCT 4", "x"=24.15, "y"=332.85, "w"= 136.85, "h"=77.15, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+
+    # Checkout
+    box(table("x"=347.0, "y"=374.0, "w"=133.91, "h"=32.66, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=348.49, "y"=374.64, "w"=132.42, "h"=32.02, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=347.5, "y"=374.64, "w"=132.91, "h"=31.38, "r"=189, "g"=189, "b"=189, "radius"=0))
+    text("CHECKOUT", table("text"="CHECKOUT", "x"=347.0, "y"=374.0, "w"= 134.0, "h"=32.66, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+
+    # Clear Cart
+    box(table("x"=173.0, "y"=375.0, "w"=160.66, "h"=30.66, "r"=255, "g"=255, "b"=255, "radius"=0))
+    box(table("x"=174.78, "y"=375.6, "w"=158.87, "h"=30.06, "r"=34, "g"=36, "b"=11, "radius"=0))
+    box(table("x"=173.59, "y"=375.6, "w"=159.47, "h"=29.46, "r"=209, "g"=65, "b"=40, "radius"=0))
+    text("CLEAR", table("text"="CLEAR", "x"=173.0, "y"=375.0, "w"= 160.77, "h"=30.66, "r"=0, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    box("Rectangle8", table("x"=173.0, "y"=69.0, "w"=306.0, "h"=291.0, "r"=0, "g"=0, "b"=0, "radius"=0))
+    box("Rectangle8_Border", table("x"=173.0, "y"=69.0, "w"=306.0, "h"=291.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=4, "outline"=1))
+
+}
+
+function screenError() {
+    bg(1)
+    
+    let Title = "ERROR - " + addJapan(9)
+    
+    let Error = 
+        "// * Could not parse input: Where am I? // * Could not parse input: How did I get here?!
+        \n// </critical> /// class 
+        \n// * The electric sheep are not sheep at all\n" + addJapan(20)
+
+    text(table("text"=Title, "x"=-31.0, "y"=9.0, "w"= 287.0, "h"=44.0, "r"=170, "g"=0, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    
+    timer(0.2, function() {
+        text("Base", table("text"="/// <critical> 
+        /// class / 
+        // </summary> 
+        /// <param name=\"unresolved\"> 
+        /// (in) 
+        /// </param> internal KnownPointData()
+        { this.CoordInst = new Point3D(); 
+            //  this.HeightInstrument = 0.0; //  this.AngleBS = 0.0; 
+            //  this.CoordBS = new Point3D()
+            ; //  this.HeightTarget = 0.0; 
+            //  this.InstrumentHeightWay = InstrumentHeightWay.Calcuration; 
+            //  this.BackSightWay = BackSightWay.Coordinate; }/// </summary> 
+            /// <param name=\"unresolved\"> /// (in) /// </param> internal KnownPointData(){ this.CoordInst = new Point3D(); 
+            //  this.HeightInstrument = 0.0; //  this.AngleBS = 0.0; //  this.CoordBS = new Point3D(); //  this.HeightTarget = 0.0; 
+            //  this.InstrumentHeightWay = InstrumentHeightWay.Calcuration; //  this.BackSightWay = BackSightWay.Coordinate; }", 
+        "x"=40.0, "y"=44.0, "w"=468.0, "h"=455.0, "r"=103, "g"=0, "b"=0, "size"=13, "halign"=0, "valign"=0))
+        
+        typeOut("ErrorMsg", Error)
+        timer(8, function() {
+            screenStart()
+        })
+    })
+    
+    text("ErrorMsg", table("text"="", 
+    "x"=40.0, "y"=310.0, "w"= 468.0, "h"=455.0, "r"=103, "g"=0, "b"=0, "size"=13, "halign"=0, "valign"=0))
+}
+
+function screenDenied() {
+    box("DenyBG", table("x"=256-105, "y"=256-105, "w"=210, "h"=210, "r"=0, "g"=0, "b"=0))
+    box("DenyBG_Border", table("x"=256-105, "y"=256-105, "w"=210, "h"=210, "r"=255, "g"=0, "b"=0,"radius"=0, "size"=7, "outline"=1))
+    
+    box("DenyCross1", table("angle"=45,  "x"=256-100, "y"=256+100, "w"=280, "h"=8, "r"=255, "g"=0, "b"=0))
+    box("DenyCross2", table("angle"=-45, "x"=256-100, "y"=256-100, "w"=280, "h"=8, "r"=255, "g"=0, "b"=0))
+    
+    box("DenyBox_Border", table("x"=256.0-136.0/2, "y"=250.0-31/2, "w"=136.0, "h"=31.0, "r"=255, "g"=0, "b"=0))
+    let Box = box("DenyBox", table("x"=256-136.0/2+2, "y"=250.0-31/2+2, "w"=132.0, "h"=27.0, "r"=0, "g"=0, "b"=0))
+
+    text("DenyText", table("text"="DENIED", "x"=0, "y"=0, "w"= 136.0, 
+    "h"=31.0, "r"=0, "g"=255, "b"=0, "size"=23, "halign"=1, "valign"=1)):parentTo(Box)
+    
+    timer(0.5, function() {
+        EGP:delete(
+            "DenyBG",
+            "DenyBG_Border",
+            "DenyBox", 
+            "DenyBox_Border",
+            "DenyCross1",
+            "DenyCross2",
+            "DenyText"
+        )
+    })
+    
+}
+
+function screenLoading() {
+    bg()
+    
+    box(table("x"=50.0, "y"=260.0, "w"=409.0, "h"=65.0, "r"=0, "g"=255, "b"=0))
+    box(table("x"=52.0, "y"=262.0, "w"=405.0, "h"=61.0, "r"=0, "g"=0, "b"=0))
+    
+    box(table("x"=181.0, "y"=174.0, "w"=147.0, "h"=56.0, "r"=0, "g"=255, "b"=0))
+    box(table("x"=183.0, "y"=176.0, "w"=143.0, "h"=52.0, "r"=0, "g"=0, "b"=0))
+    
+    text("LOADING...", table("text"="LOADING...", "x"=117.0, "y"=150.0, "w"= 282.0, "h"=103.0, "r"=0, "g"=170, "b"=0, "size"=15, "halign"=1, "valign"=1))
+    
+    for(I=1, 10) {
+        let X = 60 + (I-1)*40
+        if (I==1) {
+            box("Load"+I, table("x"=X, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0)) 
+        }
+        else {
+            box("Load"+I, table("x"=X, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=1, "outline"=1))
+        }
+    }
+}

@@ -1,0 +1,36 @@
+@name Poly for Poker Table Prop
+
+#include "lib/tomato/1.1/tomato_animations"
+
+function array polyVectors(Size:number, Sides:number, Offset:number) {
+    let V = array()
+    let Step = 360 / Sides
+
+    # Offset for starting angle
+    for (I = 0, Sides - 1) {
+        local Ang = (Offset + I * Step)
+        local X = 256 + cos(Ang) * Size
+        local Y = 256 - sin(Ang) * Size
+        V:pushVector2(vec2(X, Y))
+    }
+    return V
+}
+
+function void animatePolyBilinear(Name:string, Dur:number, From:number, To:number, Sides:number, Offset:number, R:number, G:number, B:number, A:number) {
+    let Steps = repeats(Dur)
+    let Step = 0
+    let Dist = To - From
+
+    let Function = function() {
+        Step++
+        local T = clamp(Step / Steps, 0, 1)
+        local K = easeBilinear(T)
+        local Size = From + Dist * K
+        poly(Name, table(
+            "vertices" = polyVectors(Size, Sides, Offset),
+            "r" = R, "g" = G, "b" = B, "a" = A
+        ))
+    }
+
+    startAnimation(Name, Function, Dur)
+}

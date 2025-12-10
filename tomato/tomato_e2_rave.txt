@@ -1,0 +1,64 @@
+@name Tomato E2 Rave
+@persist [Lead Bass Kick Top Noise]:table BeatDur:number
+@strict
+@model models/bull/various/speaker.mdl
+
+function table table:seq(...Notes:array) {
+    if (!This["Notes", table]) {
+        This["Notes", table] = table()
+    }
+    foreach(_:number, Note:number = Notes) {
+        This["Notes", table]:pushNumber(Note)
+    }
+    return This
+}
+
+function table table:path(Path:string) {
+    This["Path", string] = Path
+    return This
+}
+
+function array array:trans(Amount:number) {
+    foreach(I:number, Note:number = This) {
+        Note = Note + Amount
+    }
+    return This
+}
+
+function void note(Name:string, Channel:table, Level:number) {
+    let Index = Channel["Index", number]
+    let Note = Channel["Notes", table][Index, number]
+    
+    if (Note) {
+        soundPlay(Name, BeatDur, Channel["Path", string])
+        soundPitch(Name, 10)
+        soundLevel(Name, Level)
+    }
+    
+    Channel["Index", number] = Index % Channel["Notes", table]:count() + 1
+}
+
+function void play(Level:number) {
+    note("Lead", Lead, Level)
+    note("Bass", Bass, Level)
+    note("Kick", Kick, Level)
+    note("Top", Top, Level)
+}
+
+if (first()) {
+    
+    BeatDur = 0.1
+    
+    let Bpm = 138
+    let BeatInterval = 60 / Bpm / 4
+    
+    let Level = 50
+    
+    Lead = Lead:seq(0.1, 0.4, 0.1, 0.9, 0.7):path("synth/saw.wav")
+    print(Lead:toString())
+    
+    
+    timer("BeatTimer", BeatInterval, 0, function() {
+        play(Level)
+    })
+}

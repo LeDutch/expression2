@@ -1,11 +1,12 @@
 @name Tomato Core
-@persist Functions:table
+@persist Functions:table 
 
 if (first()) {
     # Initialize variables
     Prefix = "E2"
     PrefixColour = "!#d4af37"
     Functions = table()
+    if (Prefix) {}
     if (PrefixColour) {}
     
     entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
@@ -20,13 +21,26 @@ if (first()) {
 
 function void entity:msg(Text:string) {
     if (!This:isValid()) {return}
-    This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+    #ifdef e:tauSendChatMsg(s)
+        This:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+    #else
+        print(Text)
+    #endif
+}
+
+function void entity:advert(Text:string) {
+    if (!This:isValid()) {return}
+    concmd("say /advert {" + PrefixColour + " " + Prefix + "}: " + Text)
 }
 
 function void array:msgAll(Text:string) {
     foreach (_:number, Player:entity = This) {
         if (Player:isValid()) {
-            Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+            #ifdef e:tauSendChatMsg(s)
+                Player:tauSendChatMsg("{" + PrefixColour + " " + Prefix + "}: " + Text)
+            #else
+                print(Text)
+            #endif
         }
     }
 }
@@ -77,70 +91,6 @@ function string abbreviateNum(Number:number) {
     return toString(round(Number))
 }
 
-function string formatTimeInHours(Number:number) {
-    if (Number >= 24) {
-        return round(Number / 24, 2) + " days"
-    }
-    if (Number >= 1) {
-        return round(Number, 2) + (Number > 1 ? " hrs" : " hr")
-    }
-    return round(Number * 60, 2) + (Number > 0.1 ? " mins" : " min")
-}
-
-function string formatTimeInSeconds(Number:number) {
-    if (Number > 60) {
-        return round(Number / 60, 2) + " mins"
-    }
-    if (Number == 60) {
-        return "1 min"
-    }
-    return Number + (Number == 1 ? " sec" : " secs")
-}
-
-# ==================== Time functions ================== #
-
-function toEpochUtc(T:table)
-{
-    local MonthDays = array(12)
-    MonthDays[1] = 31
-    MonthDays[2] = 28
-    MonthDays[3] = 31
-    MonthDays[4] = 30
-    MonthDays[5] = 31
-    MonthDays[6] = 30
-    MonthDays[7] = 31
-    MonthDays[8] = 31
-    MonthDays[9] = 30
-    MonthDays[10] = 31
-    MonthDays[11] = 30
-    MonthDays[12] = 31
-
-    local Y = T["year", number]
-    local M = T["month", number]
-    local D = T["day", number]
-    local H = T["hour", number]
-    local Min = T["min", number]
-    local S = T["sec", number]
-
-    local Days = (Y - 1) * 365 + floor((Y - 1) / 4) - floor((Y - 1) / 100) + floor((Y - 1) / 400)
-
-    local IsLeap = (Y % 4 == 0 & Y % 100 != 0) | (Y % 400 == 0)
-    if (IsLeap) { MonthDays[2] = 29 }
-
-    for(I = 1, M - 1) { Days += MonthDays[I, number] }
-
-    Days += D - 1
-
-    local Total = Days * 86400 + H * 3600 + Min * 60 + S
-    return Total
-}
-
-function hoursBetween(A:table, B:table)
-{
-    local Secs = toEpochUtc(B) - toEpochUtc(A)
-    return round(Secs / 3600, 2)
-}
-
 
 # ==================== String functions ================== #
 
@@ -183,10 +133,149 @@ function string truncate(Text:string, Chars:number) {
     return Text
 }
 
+# ==================== Time functions ==================== #
+
+function number isLeap(Y:number) {
+    if (Y % 400 == 0) { return 1 }
+    if (Y % 100 == 0) { return 0 }
+    return (Y % 4 == 0)
+}
+
+# Add a delta (weeks/days/hours/minutes/seconds) to a dateUTC() table
+function table dateAdd(Date:table, Delta:table) {
+    # copy fields we care about
+    let R = table(
+        "year" = Date["year", number],
+        "month" = Date["month", number],
+        "day" = Date["day", number],
+        "hour" = Date["hour", number],
+        "min" = Date["min", number],
+        "sec" = Date["sec", number]
+    )
+
+    # read delta components (missing keys default to 0)
+    let DSec  = Delta["seconds", number]
+    let DMin  = Delta["minutes", number]
+    let DHour = Delta["hours", number]
+    let DDay  = Delta["days", number]
+    let DWeek = Delta["weeks", number]
+
+    # convert everything to seconds
+    let AddSec = DSec
+        + DMin  * 60
+        + DHour * 3600
+        + DDay  * 86400
+        + DWeek * 604800
+
+    # apply seconds
+    R["sec", number] = R["sec", number] + AddSec
+
+    # normalize sec → min
+    R["min", number] = R["min", number] + floor(R["sec", number] / 60)
+    R["sec", number] = R["sec", number] % 60
+
+    # normalize min → hour
+    R["hour", number] = R["hour", number] + floor(R["min", number] / 60)
+    R["min", number] = R["min", number] % 60
+
+    # normalize hour → day
+    R["day", number] = R["day", number] + floor(R["hour", number] / 24)
+    R["hour", number] = R["hour", number] % 24
+
+    # month lengths
+    let MonthDays = array(
+        0,
+        31,
+        28 + isLeap(R["year", number]),
+        31,30,31,30,
+        31,31,30,31,30,31
+    )
+
+    # normalize day → month/year
+    while (R["day", number] > MonthDays[R["month", number], number]) {
+        R["day", number] = R["day", number] - MonthDays[R["month", number], number]
+        R["month", number] = R["month", number] + 1
+        if (R["month", number] > 12) {
+            R["month", number] = 1
+            R["year", number] = R["year", number] + 1
+            MonthDays[2, number] = 28 + isLeap(R["year", number])
+        }
+    }
+
+    return R
+}
+
+# Convenience: add to "now" (UTC)
+function table dateNowAdd(Delta:table) {
+    return dateAdd(dateUTC(), Delta)
+}
+
 function string getDate() {
     let Date = dateUTC()
     return toString(Date["day", number])+"/"+toString(Date["month", number])+"/"+toString(Date["year", number])
         
+}
+
+function toEpochUtc(T:table)
+{
+    local MonthDays = array(12)
+    MonthDays[1] = 31
+    MonthDays[2] = 28
+    MonthDays[3] = 31
+    MonthDays[4] = 30
+    MonthDays[5] = 31
+    MonthDays[6] = 30
+    MonthDays[7] = 31
+    MonthDays[8] = 31
+    MonthDays[9] = 30
+    MonthDays[10] = 31
+    MonthDays[11] = 30
+    MonthDays[12] = 31
+
+    local Y = T["year", number]
+    local M = T["month", number]
+    local D = T["day", number]
+    local H = T["hour", number]
+    local Min = T["min", number]
+    local S = T["sec", number]
+
+    local Days = (Y - 1) * 365 + floor((Y - 1) / 4) - floor((Y - 1) / 100) + floor((Y - 1) / 400)
+
+    local IsLeap = (Y % 4 == 0 & Y % 100 != 0) | (Y % 400 == 0)
+    if (IsLeap) { MonthDays[2] = 29 }
+
+    for(I = 1, M - 1) { Days += MonthDays[I, number] }
+
+    Days += D - 1
+
+    local Total = Days * 86400 + H * 3600 + Min * 60 + S
+    return Total
+}
+
+function string formatTimeInHours(Number:number) {
+    if (Number >= 24) {
+        return round(Number / 24, 2) + " days"
+    }
+    if (Number >= 1) {
+        return round(Number, 2) + (Number > 1 ? " hrs" : " hr")
+    }
+    return round(Number * 60, 2) + (Number > 0.1 ? " mins" : " min")
+}
+
+function string formatTimeInSeconds(Number:number) {
+    if (Number > 60) {
+        return round(Number / 60, 2) + " mins"
+    }
+    if (Number == 60) {
+        return "1 min"
+    }
+    return Number + (Number == 1 ? " sec" : " secs")
+}
+
+function hoursBetween(A:table, B:table)
+{
+    local Secs = toEpochUtc(B) - toEpochUtc(A)
+    return round(Secs / 3600, 2)
 }
 
 # ==================== Array functions =================== #

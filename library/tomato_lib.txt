@@ -152,19 +152,10 @@ if (first()) {
         return findInBox(Min, Max)
     }
     function number proximityCheck(Player:entity, Radius:number) {
-        findIncludeClass("player")
-        findInSphere(entity():pos(), Radius)
-        let Array = findToArray()
-        if (Array:find(Player)) {
-            return 1
-        }
-        return 0
+        return Player:pos():distance(entity():pos()) < Radius
     }
     function number proximityCheck(Player:entity, Entity:entity, Radius:number) {
-        let Min = Entity:aabbWorldMin() - vec(Radius, Radius, Radius)
-        let Max = Entity:aabbWorldMax() + vec(Radius, Radius, Radius)
-        findIncludeEntity(Player)
-        return findInBox(Min, Max)
+        return Player:pos():distance(Entity:pos()) < Radius
     }
     
     #Format Funcs

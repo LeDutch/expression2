@@ -1,0 +1,92 @@
+@name Tomato Chess
+@persist SelectFrom:string
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_db"
+#include "tomato/chess/graphics"
+#include "tomato/chess/logic"
+
+function void syncFromLogic(Pos:table) {
+    let F = array("A","B","C","D","E","F","G","H")
+    for(I=0,63) {
+        let P = Pos["PieceAt", function](I)[number]
+        if (!P) { continue }
+        let Id = squareId(I)
+        let C = P<=6 ? "w" : "b"
+        let T = array("", "P","N","B","R","Q","K")[( ( (P-1)%6 ) +1 ), string]
+        piece(C+T+Id, Id)
+    }
+}
+
+function void setupGame(X0:number, Y0:number, S:number) {
+    board(X0, Y0, S)
+    timer(1, function() {
+        placePieces()
+    })
+}
+
+function void moveGraphics(From:string, To:string) {
+    let Ids = Pieces:keys()
+    for(I=1, Ids:count()) {
+        let Pid = Ids[I, string]
+        if (!Pid) { continue }
+        if (Pieces[Pid, table]["Pos", string]==From) {
+            let Obj = Pieces[Pid, egpobject]
+            Obj:parentTo(Squares[To, egpobject])
+            Pieces[Pid, table]["Pos"] = To
+            return
+        }
+    }
+}
+
+function table movesFrom(SquareID:string) {
+    let Out = table()
+    let All = table()
+    generateLegal(All)
+    let FromI = squareIndex(SquareID)
+    for(I=1, All:count()) {
+        let M = All[I, table]
+        if (M["From", number]==FromI) { Out:pushNumber(M["To", number]) }
+    }
+    return Out
+}
+
+
+function void onClick(SquareID:string) {
+    if (SelectFrom=="") {
+        if (pieceAt(SquareID)>0) { SelectFrom = SquareID }
+        return
+    }
+    let Moves = table()
+    generateLegal(Moves)
+    let FromI = squareIndex(SelectFrom)
+    let ToI = squareIndex(SquareID)
+    for(I=1, Moves:count()) {
+        let M = Moves[I, table]
+        if (M["From", number]==FromI && M["To", number]==ToI) {
+            make(M)
+            moveGraphics(SelectFrom, SquareID)
+            SelectFrom = ""
+            return
+        }
+    }
+    SelectFrom = ""
+}
+
+
+if (initial()) {
+    # Graphics ---------- \
+    bg() # Background
+    board(16,50,48)
+    
+    KnightMoves = buildLeaper(17,15,10,6,-6,-10,-15,-17)
+    KingMoves   = buildLeaper(1,-1,8,-8,9,-9,7,-7)
+    syncFromLogic(Pos)
+    
+}
+
+if(userInput()) {
+    let Cursor = cursorObj()
+    onClick(Cursor)
+}

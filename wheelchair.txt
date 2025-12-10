@@ -1,0 +1,62 @@
+@model models/props_unique/wheelchair01.mdl
+@persist E:entity Pos:vector Angle:angle Mul Filter:vector
+@inputs Freezer:wirelink
+
+# - raccooncat :3
+
+Pos = entity():toWorld(vec(0, 0, 0))
+Angle = ang()
+E = entity()
+Mul = 1
+
+E:setMass(_INF)
+E:bone(0):boneGravity(0)
+
+Filter = vec(1, 1, 0)
+
+
+event tick() {
+    local Driver = _NO_ENTITY
+    
+    foreach (_:number, V:entity = entity():children()) {
+        if (V:isVehicle() && V:driver():isPlayer()) {
+            Driver = V:driver()
+            break    
+        }
+    }
+    
+    rangerFilter(players())
+    rangerFilter(entity())
+    rangerFilter(Driver:vehicle())
+    local Ranger = rangerOffset(100, entity():pos(), -entity():up())
+    
+    if (Ranger:hit()) {
+        Pos = Ranger:pos()    
+    }
+    
+    local Vel = vec()
+    if (Driver:isValid()) {
+        local WS = Driver:keyForward() ? 1 : -Driver:keyBack()
+        local AD = Driver:keyRight() ? 1 : -Driver:keyLeft()
+        
+        Vel = (Driver:eye() * WS + entity():right() * AD) * 25 * Filter
+        
+    }
+    
+    local Dot = E:vel():dot(E:forward())
+    if (Dot > -5 && E:vel():length2() > 5) {
+        Angle = (E:vel():normalized() * Filter):toAngle()
+    }
+    
+    local TargetVel = (Pos-E:pos())*Mul-E:vel()
+    TargetVel *= _VECTOR_UP
+    TargetVel += Vel
+    
+    local Drag = -E:vel() * 0.1
+    TargetVel += Drag
+    
+    E:applyForce(TargetVel*E:mass())
+    E:applyAngForce((E:toLocal(Angle)*200 - E:angVel()*20)*shiftL(ang(E:inertia())))
+    
+    Freezer["Activate", number] = 0
+}

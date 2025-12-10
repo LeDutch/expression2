@@ -1,0 +1,18 @@
+@name Materials Test
+@persist Profile:entity
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+
+if (initial()) {
+    
+    # see through material "phoenix_storms/scrnspace"
+    # big distort "models/props_combine/stasisshield_sheet"
+    
+    let GlitchBox = box(table("a"=255, "x"=0, "y"=0, "w"=512.0, "h"=512, "r"=255, "g"=255, "b"=255, 
+    "radius"=0, "material"="phoenix_storms/scrnspace"))
+    timer(0.1, 0, function() {
+        GlitchBox["a", number] = randint(0,20) < 1 ? 255 : 0
+        GlitchBox:draw()
+    })
+}

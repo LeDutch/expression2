@@ -1,0 +1,65 @@
+@name Smooth Vec V2
+@inputs Signal:number [E1 E2 E3 E4]:wirelink 
+
+#[ 
+    Adjust the 'Es'if u want to add more props
+    (you will need to add more colours and targets)
+    
+    Also use a toggle button.
+    
+    I recommend going to this website for cool colours: https://colorhunt.co/
+]#
+
+@persist [Colours Targets]:array
+@persist TickInterval
+
+function void smoothTransition(Index:number, Duration:number, Targets:array) {
+    let Steps = ceil(Duration / TickInterval)
+    let Step = 0
+    let Input = wirelink():inputs()[Index+1, string]
+    let Entity = ioInputEntity(Input)
+    let CurrentColour = Entity:getColor()
+
+    timer(TickInterval, Steps, function() {
+        let T = clamp(Step / Steps, 0, 1)
+        CurrentColour = CurrentColour + (Targets[Index, vector] - CurrentColour) * T
+        Step++
+
+        # Assign to outputs
+        if(Entity:isValid()) {
+            Entity:setColor(CurrentColour)
+        }
+    })
+}
+
+function void changeColours(Signal:number) {
+    foreach(Index:number, Colour:vector = Targets) {
+        smoothTransition(Index, 1, Signal ? Colours : Targets) # 1 is the duration for the transition
+    }
+}
+
+if (first() || dupefinished()) {
+    TickInterval = 0.05 # How fast it is changing (0.05 is ~event tick())
+
+    Colours = array()
+    Targets = array()
+
+    # Initial colours - If you are adding colours, make sure to adjust [E1 E2 E3 E4]:wirelink accordingly
+    Colours[1, vector] = vec(255, 0, 0)
+    Colours[2, vector] = vec(0, 255, 0)
+    Colours[3, vector] = vec(0, 0, 255)
+    Colours[4, vector] = vec(255, 255, 255)
+    
+    # Target colours
+    Targets[1, vector] = vec(0, 255, 0)
+    Targets[2, vector] = vec(0, 0, 255)
+    Targets[3, vector] = vec(255, 0, 0)
+    Targets[4, vector] = vec(0, 0, 0)
+    
+    changeColours(0)
+}
+
+if (~Signal) {
+    stopAllTimers()
+    changeColours(Signal)
+}

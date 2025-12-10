@@ -1,0 +1,398 @@
+@name Chess Logic
+@persist Core:table Pos:table KnightMoves:table KingMoves:table
+
+# ---------- Leaper target precompute -----------
+function table buildLeaper(Offset1:number, Offset2:number, Offset3:number, Offset4:number, Offset5:number, Offset6:number, Offset7:number, Offset8:number) {
+    let Targets = table()
+    for(S=1,64) {
+        let L = array()
+        let F = S%8
+        let R = floor(S/8)
+
+        let Try = function(D:number) {
+            let T = S + D
+            if (T<0 || T>=64) { return }
+            let F2 = T%8
+            let R2 = floor(T/8)
+            if (abs(F2-F)<=2 && abs(R2-R)<=2) { L:pushNumber(T) }
+        }
+
+        Try(Offset1) Try(Offset2) Try(Offset3) Try(Offset4)
+        Try(Offset5) Try(Offset6) Try(Offset7) Try(Offset8)
+
+        Targets[S, array] = L
+    }
+    return Targets
+}
+
+# ---------- Core  ----------
+function table coreCreate() {
+    let Core = table()
+
+    let Files = array("A","B","C","D","E","F","G","H")
+    let FileIndex = function(C:string) {
+        for(I=1,8) { if (Files[I,string]==C) { return I-1 } }
+        return -1
+    }
+    Core["SquareIndex"] = function(Id:string) {
+        let F = FileIndex(Id[1])[number]
+        let R = Id[2]:toNumber()-1
+        return R*8 + F
+    }
+    Core["SquareId"] = function(I:number) {
+        let F = Files[(I%8)+1,string]
+        let R = floor(I/8)+1
+        return F + R
+    }
+
+    # piece codes
+    let Empty=0, WP=1, WN=2, WB=3, WR=4, WQ=5, WK=6, BP=7, BN=8, BB=9, BR=10, BQ=11, BK=12
+    let IsWhite = function(P:number) { return P>0 && P<=WK }
+    let IsBlack = function(P:number) { return P>=BP }
+    let PieceType = function(P:number) { return P==0 ? 0 : ((P-1)%6)+1 }
+    let ColorOf = function(P:number) { return P>=BP }
+
+    # flags
+    const FLAG_EP = 1
+    const FLAG_CASTLE = 2
+    const FLAG_DBL = 4
+
+    # move encoding: [0..5]=from, [6..11]=to, [12..14]=promo (piece code), [15..]=flags
+    let EncodeMove = function(From:number, To:number, Promo:number, Flags:number) {
+        return (From) | (To<<6) | (Promo<<12) | (Flags<<15)
+    }
+    let MFrom = function(M:number) { return M & 63 }
+    let MTo   = function(M:number) { return (M>>6) & 63 }
+    let MProm = function(M:number) { return (M>>12) & 7 }
+    let MFlg  = function(M:number) { return (M>>15) }
+
+    # reused promotion arrays
+    let WProm = array(WQ, WR, WB, WN)
+    let BProm = array(BQ, BR, BB, BN)
+
+    Core["NewPosition"] = function() {
+        let Pos = table()
+        Pos["Board"] = array(64)
+        for(I=0,63) { Pos["Board", array][I+1] = 0 }
+        Pos["SideToMove"] = 0
+        Pos["Castling"] = 0b1111
+        Pos["EPSquare"] = -1
+        Pos["Halfmove"] = 0
+        Pos["Fullmove"] = 1
+        Pos["KingSquare"] = array(-1,-1)
+        Pos["History"] = table()
+
+        Pos["SetStart"] = function() {
+            let B = Pos["Board", array]
+            for(I=0,63) { B[I+1]=0 }
+            for(F=0,7) { B[(1*8+F)+1]=WP B[(6*8+F)+1]=BP }
+            B[0+1]=WR B[7+1]=WR B[56+1]=BR B[63+1]=BR
+            B[1+1]=WN B[6+1]=WN B[57+1]=BN B[62+1]=BN
+            B[2+1]=WB B[5+1]=WB B[58+1]=BB B[61+1]=BB
+            B[3+1]=WQ B[59+1]=BQ
+            B[4+1]=WK B[60+1]=BK
+            Pos["KingSquare", array][1]=4
+            Pos["KingSquare", array][2]=60
+            Pos["SideToMove"]=0
+            Pos["EPSquare"]=-1
+            Pos["Halfmove"]=0
+            Pos["Fullmove"]=1
+        }
+
+        Pos["PieceAt"] = function(S:number) { return Pos["Board", array][S+1, number] }
+        Pos["PutPiece"] = function(S:number, P:number) {
+            Pos["Board", array][S+1] = P
+            if (P==WK) { Pos["KingSquare", array][1]=S }
+            if (P==BK) { Pos["KingSquare", array][2]=S }
+        }
+
+        # OP-light attack test (uses precomputed leapers, simple rays)
+        Pos["IsSquareAttacked"] = function(S:number, ByColor:number) {
+            let B = Pos["Board", array]
+
+            # pawns
+            let Dir = ByColor==0 ? -8 : 8
+            let L = S + Dir - 1
+            let R = S + Dir + 1
+            if (L>=0 && L<64 && abs((L%8)-((S)%8))==1) {
+                let P = B[L+1, number]
+                if ((ByColor==0 && P==WP) || (ByColor==1 && P==BP)) { return 1 }
+            }
+            if (R>=0 && R<64 && abs((R%8)-((S)%8))==1) {
+                let P = B[R+1, number]
+                if ((ByColor==0 && P==WP) || (ByColor==1 && P==BP)) { return 1 }
+            }
+
+            # knights
+            let KN = KnightMoves[S+1, array]
+            for(I=1, KN:count()) {
+                let T = KN[I, number]
+                let P = B[T+1, number]
+                if ((ByColor==0 && P==WN) || (ByColor==1 && P==BN)) { return 1 }
+            }
+
+            # bishops/queens
+            foreach(_:number, D:number = array(9,-9,7,-7)) {
+                let T = S + D
+                while(T>=0 && T<64) {
+                    # file wrap guard
+                    let F0 = (T-D)%8
+                    let F1 = T%8
+                    if (abs(F1-F0)!=1 && abs(D)==7 || abs(F1-F0)!=1 && abs(D)==9) { break }
+                    let Q = B[T+1, number]
+                    if (Q!=0) {
+                        if (ByColor==0 && (Q==WB || Q==WQ)) { return 1 }
+                        if (ByColor==1 && (Q==BB || Q==BQ)) { return 1 }
+                        break
+                    }
+                    T += D
+                }
+            }
+
+            # rooks/queens
+            foreach(_:number, D:number = array(1,-1,8,-8)) {
+                let T = S + D
+                while(T>=0 && T<64) {
+                    # file wrap guard for horizontal
+                    if ((D==1 || D==-1) && floor(T/8)!=floor((T-D)/8)) { break }
+                    let Q = B[T+1, number]
+                    if (Q!=0) {
+                        if (ByColor==0 && (Q==WR || Q==WQ)) { return 1 }
+                        if (ByColor==1 && (Q==BR || Q==BQ)) { return 1 }
+                        break
+                    }
+                    T += D
+                }
+            }
+
+            # king
+            let KM = KingMoves[S+1, array]
+            for(I=1, KM:count()) {
+                let T = KM[I, number]
+                let P = B[T+1, number]
+                if ((ByColor==0 && P==WK) || (ByColor==1 && P==BK)) { return 1 }
+            }
+
+            return 0
+        }
+
+        # ---------- Make/Unmake with numeric moves ----------
+        Pos["MakeMove"] = function(M:number) {
+            let B = Pos["Board", array]
+            let From = MFrom(M)[number]
+            let To   = MTo(M)[number]
+            let Promo= MProm(M)[number]
+            let Flg  = MFlg(M)[number]
+            let P    = B[From+1, number]
+            let Undo = table()
+            Undo["From"]=From
+            Undo["To"]=To
+            Undo["Piece"]=P
+            Undo["Capture"]=B[To+1, number]
+            Undo["EP"]=Pos["EPSquare", number]
+            Undo["Castling"]=Pos["Castling", number]
+            Undo["Halfmove"]=Pos["Halfmove", number]
+            Undo["Fullmove"]=Pos["Fullmove", number]
+            Pos["History", table]:pushTable(Undo)
+
+            B[From+1]=0
+            B[To+1]=P
+            if (P==WK) { Pos["KingSquare", array][1]=To }
+            if (P==BK) { Pos["KingSquare", array][2]=To }
+
+            if (Promo>0) { B[To+1]=Promo }
+
+            Pos["EPSquare"]=-1
+            if (P==WP && floor(From/8)==1 && To-From==16) { Pos["EPSquare"]=From+8 }
+            if (P==BP && floor(From/8)==6 && From-To==16) { Pos["EPSquare"]=From-8 }
+
+            if (Flg & FLAG_EP) {
+                let CapSq = Pos["SideToMove", number]==0 ? To-8 : To+8
+                B[CapSq+1]=0
+            }
+
+            if (Flg & FLAG_CASTLE) {
+                if (To==6)  { B[7+1]=0  B[5+1]=WR }
+                if (To==2)  { B[0+1]=0  B[3+1]=WR }
+                if (To==62) { B[63+1]=0 B[61+1]=BR }
+                if (To==58) { B[56+1]=0 B[59+1]=BR }
+            }
+
+            Pos["Halfmove"] = (P==WP || P==BP || Undo["Capture", number]>0) ? 0 : Pos["Halfmove", number]+1
+            if (Pos["SideToMove", number]==1) { Pos["Fullmove"]=Pos["Fullmove", number]+1 }
+            Pos["SideToMove"]=1-Pos["SideToMove", number]
+        }
+
+        Pos["UnmakeMove"] = function() {
+            let B = Pos["Board", array]
+            let H = Pos["History", table]
+            let N = H:count()
+            if (N==0) { return }
+            let U = H[N, table]
+            H:pop()
+            Pos["SideToMove"]=1-Pos["SideToMove", number]
+            let From=U["From", number]
+            let To  =U["To", number]
+            let P   =U["Piece", number]
+            let C   =U["Capture", number]
+            B[From+1]=P
+            B[To+1]=C
+            Pos["EPSquare"]=U["EP", number]
+            Pos["Castling"]=U["Castling", number]
+            Pos["Halfmove"]=U["Halfmove", number]
+            Pos["Fullmove"]=U["Fullmove", number]
+            if (P==WK) { Pos["KingSquare", array][1]=From }
+            if (P==BK) { Pos["KingSquare", array][2]=From }
+        }
+
+        # ---------- AddMove (push number) ----------
+        Pos["AddMove"] = function(Out:array, From:number, To:number, Promo:number, Flags:number) {
+            Out:pushNumber(EncodeMove(From,To,Promo,Flags)[number])
+        }
+
+        # ---------- Pseudo-legal generation (no StepOK) ----------
+        Pos["GeneratePseudo"] = function(Out:array) {
+            let B = Pos["Board", array]
+            let Side = Pos["SideToMove", number]
+            for(S=0,63) {
+                let P = B[S+1, number]
+                if (P==0) { continue }
+                if ((Side==0 && !IsWhite(P)[number]) || (Side==1 && !IsBlack(P)[number])) { continue }
+                let T = PieceType(P)[number]
+
+                if (T==1) { # pawns
+                    let Dir = Side==0 ? 8 : -8
+                    let One = S + Dir
+                    if (One>=0 && One<64 && B[One+1, number]==0) {
+                        if (floor(One/8)==(Side==0 ? 7 : 0)) {
+                            let PP = Side==0 ? WProm : BProm
+                            for(I=1,4) { Pos["AddMove", function](Out,S,One,PP[I, number],0) }
+                        } else {
+                            Pos["AddMove", function](Out,S,One,0,0)
+                            let Start = Side==0 ? 1 : 6
+                            if (floor(S/8)==Start) {
+                                let Two = S + Dir*2
+                                if (B[Two+1, number]==0) { Pos["AddMove", function](Out,S,Two,0,FLAG_DBL) }
+                            }
+                        }
+                    }
+                    let CapL = S + Dir - 1
+                    if (CapL>=0 && CapL<64 && abs((CapL%8)-(S%8))==1) {
+                        let Q = B[CapL+1, number]
+                        if (Q!=0 && ColorOf(Q)[number]!=Side) {
+                            if (floor(CapL/8)==(Side==0 ? 7 : 0)) {
+                                let PP = Side==0 ? WProm : BProm
+                                for(I=1,4) { Pos["AddMove", function](Out,S,CapL,PP[I, number],0) }
+                            } else {
+                                Pos["AddMove", function](Out,S,CapL,0,0)
+                            }
+                        }
+                        if (Pos["EPSquare", number]==CapL) { Pos["AddMove", function](Out,S,CapL,0,FLAG_EP) }
+                    }
+                    let CapR = S + Dir + 1
+                    if (CapR>=0 && CapR<64 && abs((CapR%8)-(S%8))==1) {
+                        let Q = B[CapR+1, number]
+                        if (Q!=0 && ColorOf(Q)[number]!=Side) {
+                            if (floor(CapR/8)==(Side==0? 7 : 0)) {
+                                let PP = Side==0 ? WProm : BProm
+                                for(I=1,4) { Pos["AddMove", function](Out,S,CapR,PP[I, number],0) }
+                            } else {
+                                Pos["AddMove", function](Out,S,CapR,0,0)
+                            }
+                        }
+                        if (Pos["EPSquare", number]==CapR) { Pos["AddMove", function](Out,S,CapR,0,FLAG_EP) }
+                    }
+
+                } elseif (T==2) { # knights
+                    let KN = KnightMoves[S+1, array]
+                    for(I=1, KN:count()) {
+                        let To = KN[I, number]
+                        let Q = B[To+1, number]
+                        if (Q==0 || ColorOf(Q)[number]!=Side) { Pos["AddMove", function](Out,S,To,0,0) }
+                    }
+
+                } elseif (T==3 || T==4 || T==5) { # sliders
+                    # bishop-like
+                    if (T!=4) {
+                        foreach (_:number, D:number = array(9,-9,7,-7)) {
+                            let To = S + D
+                            while(To>=0 && To<64) {
+                                # diagonal wrap guard
+                                let F0=(To-D)%8, F1=To%8
+                                if ((abs(D)==7 || abs(D)==9) && abs(F1-F0)!=1) { break }
+                                let Q = B[To+1, number]
+                                if (Q==0) { Pos["AddMove", function](Out,S,To,0,0) }
+                                else { if (ColorOf(Q)[number]!=Side) { Pos["AddMove", function](Out,S,To,0,0) } break }
+                                To += D
+                            }
+                        }
+                    }
+                    # rook-like
+                    if (T!=3) {
+                        foreach (_:number, D:number = array(1,-1,8,-8)) {
+                            let To = S + D
+                            while(To>=0 && To<64) {
+                                if ((D==1 || D==-1) && floor(To/8)!=floor((To-D)/8)) { break }
+                                let Q = B[To+1, number]
+                                if (Q==0) { Pos["AddMove", function](Out,S,To,0,0) }
+                                else { if (ColorOf(Q)[number]!=Side) { Pos["AddMove", function](Out,S,To,0,0) } break }
+                                To += D
+                            }
+                        }
+                    }
+
+                } else { # king
+                    let KM = KingMoves[S+1, array]
+                    for(I=1, KM:count()) {
+                        let To = KM[I, number]
+                        let Q = B[To+1, number]
+                        if (Q==0 || ColorOf(Q)[number]!=Side) { Pos["AddMove", function](Out,S,To,0,0) }
+                    }
+                }
+            }
+        }
+
+        # ---------- Legal (filter by check) ----------
+        Pos["GenerateLegal"] = function(Out:table) {
+            let Tmp = array()
+            Pos["GeneratePseudo", function](Tmp)
+            for(I=1, Tmp:count()) {
+                let M = Tmp[I, number]
+                Pos["MakeMove", function](M)
+                let KingIdx = Pos["KingSquare", array][(Pos["SideToMove", number]==1)+1, number]
+                if (!Pos["IsSquareAttacked", function](KingIdx, 1-Pos["SideToMove", number])[number]) {
+                    Out:pushNumber(M)
+                }
+                Pos["UnmakeMove", function]()
+            }
+            return Out
+        }
+
+        # expose enc/dec for UI
+        Pos["EncodeMove"] = EncodeMove
+        Pos["MFrom"] = MFrom
+        Pos["MTo"] = MTo
+        Pos["MProm"] = MProm
+        Pos["MFlg"] = MFlg
+
+        return Pos
+    }
+
+    return Core
+}
+
+# ---------- Init ----------
+if (first() || dupefinished()) {
+    Core = coreCreate()
+    Pos  = Core["NewPosition", function]()[table]
+    Pos["SetStart", function]()
+}
+
+# ---------- Thin wrappers for UI ----------
+function number squareIndex(Id:string) { return Core["SquareIndex", function](Id)[number] }
+function string squareId(I:number) { return Core["SquareId", function](I)[string] }
+function number pieceAt(Id:string) { return Pos["PieceAt", function](squareIndex(Id))[number]}
+
+function table generateLegal(Out:table) { return Pos["GenerateLegal", function](Out)[table] }
+function void make(Mv:table) { Pos["MakeMove", function](Mv) }
+function void unmake() { Pos["UnmakeMove", function]() }

@@ -1,0 +1,95 @@
+@name Chess Graphics
+@persist [Squares Pieces]:table
+
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_core"
+
+# Background
+function void bg() {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    box(table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r"=48, "g"=46, "b"=43))
+    text(table("text"="Tomato Chess Engine", "x"=0, "y"=0, "w"=512, "size"=32, 
+    "font"="times new roman", "h"=50, "halign"=1, "valign"=1, "r"=255, "g"=255, "b"=255))
+}
+
+# Setup the board
+function void board(X0:number, Y0:number, S:number) {
+    # Squares
+    let L = array("A","B","C","D","E","F","G","H")
+    for(R=1,8) {
+        for(F=1,8) {
+            let ID = L[F,string] + R
+            let X = X0 + (F-1)*S
+            let Y = Y0 + (8-R)*S
+            let Dark = (F+R)%2==1
+            
+            Squares[ID, egpobject] = box(ID, table("x"=X +(F==1)*1, "y"=Y, "w"=S, "h"=S, 
+            "r"=Dark ? 144 : 110, 
+            "g"=Dark ? 143 : 109, 
+            "b"=Dark ? 141 : 107))
+        }
+    }
+    
+    # Letters and numbers
+    for (I=8, 1, -1) {
+        # Letters
+        let ID_L = "A" + I
+        let LeftDark = ((1+I)%2)==0
+        let Letter = text(table("text"=I:toString(), 
+            "x"=S/8, "y"=S/8, "w"=S, "h"=S, "size"=S/4, "halign"=0, "valign"=0, "h"=S, 
+            "r"=LeftDark ? 144 : 110,
+            "g"=LeftDark ? 143 : 109,
+            "b"=LeftDark ? 141 : 107))
+        Letter:parentTo(Squares[ID_L, egpobject])
+        
+        # Numbers
+        let ID_N = L[I, string] + "1"
+        let BotDark = ((I+1)%2)==0
+        let Number = text(table("text"=L[I, string]:lower(), 
+            "x"=S-S/6, "y"=S-S/4-2, "w"=S, "h"=S, "size"=S/4, "halign"=0, "valign"=0, "h"=S, 
+            "r"=BotDark ? 144 : 110,
+            "g"=BotDark ? 143 : 109,
+            "b"=BotDark ? 141 : 107))
+        Number:parentTo(Squares[ID_N, egpobject])
+    }
+}
+
+# Convert from unicode to character - wikipedia.org/wiki/Chess_symbols_in_Unicode
+function number pieceUnicode(Colour:number, Piece:string) {
+    let ID = table("K"=0, "Q"=1, "R"=2, "B"=3, "N"=4, "P"=5)
+    return 9812 + ID[Piece, number] + (Colour)*6
+}
+
+# Place a piece on a square
+function void piece(PieceID:string, SquareID:string) {
+    let Square = Squares[SquareID, egpobject]
+    let S = Square["w", number]
+    let Colour = PieceID[1] == "b" ? 1 : 0
+    let Glyph  = toUnicodeChar(pieceUnicode(Colour, PieceID[2]))
+    let Piece = Pieces[PieceID, table] = text(PieceID, table(
+        "text"=Glyph,"x"=0, "y"=0,"size"=S,"halign"=1, "valign"=1,"h"=S,"w"=S,
+        "r"=Colour ? 0 : 255, 
+        "g"=Colour ? 0 : 255, 
+        "b"=Colour ? 0 : 255
+    ))
+    Pieces["Pos", string] = SquareID
+    Piece:parentTo(Square)
+}
+
+function void placePieces() {
+    let F = array("A","B","C","D","E","F","G","H")
+    let Back = array("R","N","B","Q","K","B","N","R")
+    for(I=1,8) { 
+        piece("wP"+F[I,string], F[I,string]+"2")
+        piece("bP"+F[I,string], F[I,string]+"7")
+        piece("w"+Back[I,string]+F[I,string], F[I,string]+"1")
+        piece("b"+Back[I,string]+F[I,string], F[I,string]+"8") 
+    }
+}
+
+function void selectPiece(PieceID:string) {
+    let Piece = Pieces[PieceID, egpobject]
+    let S = Piece["h", number]
+    Piece["y", number] = Piece["y", number] + S/4
+}

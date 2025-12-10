@@ -1,5 +1,5 @@
 @name Tomato EGP 1.1
-@persist Elements:table CurrentUser:entity
+@persist Elements:table CurrentUser:entity Precached:array
 @inputs EGP:wirelink User:entity
 @strict
 
@@ -18,7 +18,8 @@
 if (first()) {
     # Initialize variables
     Elements = table()
-    CurrentUser = noentity()
+    Precached = array()
+    CurrentUser = _NO_ENTITY
     if(CurrentUser) {}
 }
 
@@ -90,8 +91,10 @@ function void wirelink:clear() {
     Elements:clear()
 }
 
-function void wirelink:del(Element:string) {
-    This:egpRemove(Elements:get(Element))
+function void wirelink:delete(...Arr:array) {
+    foreach(_:number, Item:string = Arr) {
+        This:egpRemove(Elements:get(Item))
+    }
 }
 
 function egpobject text(Name:string, Args:table) {
@@ -104,6 +107,19 @@ function egpobject text(Name:string, Args:table) {
     return Object
 }
 function egpobject text(Args:table) {
+    return text("", Args)
+}
+
+function egpobject stext(Name:string, Args:table) {
+    const ID = (Name) ? Elements:get(Name) : Elements:get()
+    const Object = EGP:egpText(ID, Args)
+    const Parent = Args["parent", string]
+    if (Parent) {
+        Elements:get(Parent):giveChild(Object)
+    }
+    return Object
+}
+function egpobject stext(Args:table) {
     return text("", Args)
 }
 
@@ -121,15 +137,27 @@ function egpobject circle(Args:table) {
 }
 
 function egpobject box(Name:string, Args:table) {
-    const ID = Elements:get(Name)
-    const Parent = Args["parent", string]
-    const Object = Args["outline", number] & Args["radius", number] ? EGP:egpRoundedBoxOutline(ID, Args) 
-        : Args["outline", number] ? EGP:egpBoxOutline(ID, Args) 
-        : Args["radius", number] ? EGP:egpRoundedBox(ID, Args:add(table("fidelity"=50))) # Radius sometimes glitches
-        : EGP:egpBox(ID, Args)
+    let ID = Elements:get(Name)
+    let Parent = Args["parent", string]
+    let Outline = Args["outline", number]
+    let Radius  = Args["radius", number]
+    let Material = Args["material", string]
+    
+    let Object = noegpobject()
 
-    if (Parent) {
-        Elements:get(Parent):giveChild(Object)
+    if (!Outline & !Radius) {
+        Object = EGP:egpBox(ID, Args)
+    } elseif (Outline & Radius) {
+        Object = EGP:egpRoundedBoxOutline(ID, Args)
+    } elseif (Outline) {
+        Object = EGP:egpBoxOutline(ID, Args)
+    } else {
+        Object = EGP:egpRoundedBox(ID, Args:add(table("fidelity"=50)))
+    }
+
+    if (Parent) { Elements:get(Parent):giveChild(Object) }
+    if (Material:sub(1, 7) == "../data") {
+        Precached:pushString(Name)
     }
     return Object
 }
@@ -142,8 +170,9 @@ function egpobject poly(Name:string, Args:table) {
     const ID = (Name) ? Elements:get(Name) : Elements:get()
     const Parent = Args["parent", string]
     const Verts = Args["vertices", array]
+    const Outline = Args["outline", number]
     
-    let Object = EGP:egpPoly(ID, Args)
+    let Object = Outline ? EGP:egpPolyOutline(ID, Args) : EGP:egpPoly(ID, Args)
     Object:setVertices(Verts)
     if (Parent) {
         ID:giveChild(Object)
@@ -173,7 +202,7 @@ function number userInput(Player:entity) { # Check for specific player input
 }
 
 # Check all egp objects on screen - checks in reverse to reduce lag but will require ops if many objects
-function string cursorObjParent() {
+function string cursorObj() {
     const Cursor = EGP:egpCursor(User)
     const Objects = EGP:egpObjectIndexes()
     const Names = Elements:flip()
@@ -206,30 +235,6 @@ function string cursorObjParent() {
     return ""
 }
 
-function string cursorObj() {
-    const Cursor = EGP:egpCursor(User)
-    const Objects = EGP:egpObjectIndexes()
-    const Names = Elements:flip()
-
-    # Iterate through objects in reverse order
-    for (I = Objects:count(), 1, -1) {
-        const ID = Objects[I, number]
-        
-        # Skip 'blank' numeric names
-        if (Names[ID, number] > 1) {
-            continue
-        }
-
-        # Check if the object contains the cursor
-        const Object = EGP:egpobject(ID)
-        if (Object:containsPoint(Cursor)) {
-            return Elements:flip()[ID, string]
-        }
-    }
-
-    return ""
-}
-
 # Checks an array of ONLY given object names - more efficient but doesn't check parents.
 
 function string cursorObj(Names:array) {
@@ -246,22 +251,28 @@ function string cursorObj(Names:array) {
     return ""
 }
 
-# Same function but takes an array (for use in UI)
-function string cursorArray(Names:array) {
-    const Cursor = EGP:egpCursor(User)
-    # Iterate through objects
-    for (I = 1, Names:count()) {
-        const ID = Elements:get(Names[I, string])
-        const Object = EGP:egpobject(ID)
-        if (Object:containsPoint(Cursor)) {
-            return Names[I, string]
-        }
-    }
-
-    return ""
-}
-
 if (initial()) {
     EGP:egpClear()
     EGP:egpDrawTopLeft(1)
+}
+
+# Webmats
+function void preCache(String:string) {
+    #ifdef tauPrecacheMaterial(String)
+        tauPrecacheMaterial(String)
+    #else
+        print("This E2 uses a webmat on TAU which has not been loaded")
+        print(String)
+    #endif
+}
+
+event playerSpawn(Player:entity) { 
+    if(Player:deaths() == 0){
+        foreach(_:number, Name:string = Precached) {
+            let ID = Elements:get(Name)
+            let Obj = EGP:egpobject(ID)
+            let Material = Obj["material", string]
+            EGP:egpMaterial(ID, Material)
+        }
+    }
 }

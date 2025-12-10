@@ -1,0 +1,176 @@
+@name Tomato Eftpos
+@inputs 
+@outputs 
+@persist InputAmount:string ReqAmount:number
+@strict
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+
+if (first()) {
+    InputAmount = ""
+    ReqAmount = 0
+}
+
+function bg() {
+    EGP:egpClear()
+    Elements = table()
+    stopAllTimers()
+    EGP:egpDrawTopLeft(1)
+    
+    box(table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=27, "g"=60, "b"=83))
+    box(table("x"=17+106, "y"=17, "w"=300-30, "h"=512-30, "r"=11, "g"=33, "b"=48, "radius"=15))
+    box(table("x"=16+106, "y"=16, "w"=300-30, "h"=512-30, "r"=50, "g"=50, "b"=50, "radius"=15))
+    box(table("x"=15+106, "y"=15, "w"=300-30, "h"=512-30, "r"=227, "g"=227, "b"=227, "radius"=15))
+}
+
+function menu() {
+    bg()
+    
+    box(table("x"=170, "y"=200, "w"=180, "h"=3, "r"=27, "g"=60, "b"=83))
+    
+    text(table("halign"=1, "valign"=1, "text"="Enter Amount", "size"=30, "x"=0, "y"=0, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
+    
+    preCache("6843241")
+    
+    box("Logo", table("material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
+    "a"=40, "x"=256-40, "y"=80, "w"=100, "h"=100, 
+    "r"=69, "g"=104, "b"=130))
+
+    let StartX = 173
+    let StartY = 240
+    let Spacing = 60
+    let Size = 50
+    let Cols = 3
+    let Rows = 4
+
+    for (J = 1, Rows) {
+        for (I = 1, Cols) {
+            let Index = (J - 1) * Cols + I
+    
+            let X = StartX + (I - 1) * Spacing
+            let Y = StartY + (J - 1) * Spacing
+            
+            let Button = box("Button" + Index, table(
+                "x"=X, "y"=Y,
+                "w"=Size, "h"=Size,
+                "r"=69, "g"=104, "b"=130,
+                "radius"=8
+            ))
+            
+            if (Index == 12 || Index == 10) {
+                box("Delete"+Index, table(
+                    "x"=X+5, "y"=Y+5,
+                    "w"=Size-10, "h"=Size-10,
+                    "r"=255, "g"=255, "b"=255,
+                    "radius"=8,
+                    "material"=Index == 12 ? "materials/zerochain/zerolib/ui/icon_back.png" : Index == 10 ? "materials/zerochain/zerolib/ui/delete.png" : ""
+                ))
+            }
+            
+            let Text = Index == 12 ? "" : Index == 11 ? "0" : Index == 10 ? "" : toString(Index)
+            text(table(
+                "halign"=1, "valign"=1,
+                "text"=Text, "size"=15,
+                "x"=0, "y"=0,
+                "w"=Size, "h"=Size,
+                "r"=255, "g"=255, "b"=255
+            )):parentTo(Button)
+            
+            hoverColour("Button" + Index, 0.2, vec(35, 76, 106))
+        }
+    }
+    
+    box("Req", table("material"="materials/underground/consoles/arrow.png", "x"=370-30, "y"=300, "w"=100, "h"=100, 
+    "r"=69, "g"=104, "b"=130))
+    
+    hoverColour("Req", 0.2, vec(35, 76, 106))
+    
+    InputAmount = ""
+}
+
+function loading() {
+    bg()
+    
+    box("Logo", table("material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
+    "a"=40, "x"=256-40, "y"=80, "w"=100, "h"=100, 
+    "r"=69, "g"=104, "b"=130))
+    
+    text(table("halign"=1, "valign"=1, "text"="Pay Screen", "size"=30, "x"=0, "y"=0, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
+    
+    text(table("halign"=1, "valign"=1, "text"="$"+abbreviateNum(ReqAmount), "size"=30, "x"=0, "y"=40, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
+    
+    loadingSpinner("TheSpinner", table("coords"=vec2(256,400), "size"=6))
+    
+    box(table("x"=170, "y"=200, "w"=180, "h"=3, "r"=27, "g"=60, "b"=83))
+    box("TheBox", table("x"=170, "y"=201, "w"=180, "h"=3, "r"=27, "g"=60, "b"=83))
+    
+    text("FadeText", table("a"=0, "halign"=1, "valign"=1, "text"="Touch to pay", "size"=15, "x"=170, "y"=200, "w"=180.0, "h"=100.0, "r"=255, "g"=255, "b"=255))
+    
+    transform("TheBox", 1, vec2(180, 100))
+    timer(1, function() {
+        fadeIn("FadeText", 0.5)
+    })
+    
+    box("Pay", table("a"=0, "x"=0, "y"=0, "w"=512.0, "h"=512.0, "r"=0, "g"=0, "b"=0))
+    box("Back", table("material"="materials/underground/consoles/arrow.png", "x"=70+30, "y"=300, "w"=100, "h"=100, "r"=69, "g"=104, "b"=130))
+    EGP:egpAngle(Elements:get("Back"), vec2(100, 300), vec2(-75,-100), 180)
+    
+    
+}
+
+if (initial()) {
+    menu()
+}
+
+if(moneyClk()) {
+    fadeOut("FadeText", 0.3)
+    timer(1, function() {
+        let Obj = EGP:egpobject(Elements:get("FadeText"))
+        Obj["text", string] = ""
+        Obj["a", number] = 255
+        typeOut("FadeText", "Thank You")
+    })
+    timer(2, function() {
+        menu()
+    })
+}
+
+if (userInput()) {
+    let Cursor = cursorObj()
+    if (Cursor:startsWith("Button")) {
+        let Number = Cursor:sub(7):toNumber()
+        if (Number >= 1 && Number <= 9) {
+            InputAmount += toString(Number)
+        }
+        elseif(Number == 11) {
+             InputAmount += toString(0)
+        }
+        let Text = "$" + abbreviateNum(InputAmount:toNumber())
+        text("Input", table("halign"=1, "valign"=1, "text"=Text, "size"=30, "x"=0, "y"=40, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
+    }
+    elseif(Cursor:startsWith("Delete")) {
+        let Number = Cursor:sub(7):toNumber()
+        if(Number == 10) {
+            InputAmount = ""
+        }
+        elseif(Number == 12) { # Delete button
+            let Length = InputAmount:length()
+            InputAmount = InputAmount:sub(1, Length-1)
+        }
+        let Text = "$" + abbreviateNum(InputAmount:toNumber())
+        text("Input", table("halign"=1, "valign"=1, "text"=Text, "size"=30, "x"=0, "y"=40, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
+    
+    }
+    elseif(Cursor == "Req") {
+        ReqAmount = InputAmount:toNumber()
+        loading()
+    }
+    elseif(Cursor == "Back") {
+        menu()
+    }
+    elseif(Cursor == "Pay") {
+        moneyRequest(User, ReqAmount)
+    }
+}

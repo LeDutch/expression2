@@ -1,23 +1,33 @@
 @name Tomato Animations
-@persist FPS:number
+@persist FPS:number HoverElements:table
 
 #include "lib/tomato/1.1/tomato_egp"
 
 if (first()) {
     FPS = 30 # Frames per second
+    HoverElements = table()
 }
 
 # ==================== Animation Core ==================== #
+
+function number easeBilinear(T:number) {
+    T = clamp(T, 0, 1)
+    return (T < 0.5) ? (2 * T * T) : (1 - 2 * (1 - T) * (1 - T))
+}
 
 function number repeats(Dur:number) {
     return Dur * FPS
 }
 
-function void startAnimation(Func:function, Dur:number) {
+function void startAnimation(Name:string, Func:function, Dur:number) {
     Func() # Start immediately
-    timer(1/FPS, repeats(Dur)-1, function() {
+    timer(Name, 1/FPS, repeats(Dur)-1, function() {
         Func()
     })
+}
+
+function void stopAnimation(Name:string) {
+    stoptimer(Name)
 }
 
 function void fadeIn(Name:string, Dur:number) {
@@ -27,7 +37,7 @@ function void fadeIn(Name:string, Dur:number) {
     let Animation = function() {
         Object["a", number] = Object["a", number] + 255/Repeats
     }
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_fadein", Animation, Dur)
 }
 
 function void fadeOut(Name:string, Dur:number) {
@@ -37,7 +47,7 @@ function void fadeOut(Name:string, Dur:number) {
     let Animation = function() {
         Object["a", number] = Object["a", number] - 255/Repeats
     }
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_fadeout", Animation, Dur)
 }
 
 function void moveTo(Name:string, Dur:number, Target:vector2) {
@@ -51,7 +61,7 @@ function void moveTo(Name:string, Dur:number, Target:vector2) {
         Object["x", number] = Object["x", number] + Direction:x()*Distance/Repeats
         Object["y", number] = Object["y", number] + Direction:y()*Distance/Repeats
     }
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_move", Animation, Dur)
 }
 
 function void rotateTo(Name:string, Dur:number, Angle:number) {
@@ -62,7 +72,7 @@ function void rotateTo(Name:string, Dur:number, Angle:number) {
     let Animation = function() {
         Object["angle", number] = Object["angle", number] + Step
     }
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_rotate", Animation, Dur)
 }
 
 function void transform(Name:string, Dur:number, TargetSize:vector2) {
@@ -76,50 +86,137 @@ function void transform(Name:string, Dur:number, TargetSize:vector2) {
         Object["w", number] = Object["w", number] + WDist/Repeats
         Object["h", number] = Object["h", number] + HDist/Repeats
     }
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_transform", Animation, Dur)
 }
 
 function void typeOut(Name:string, Word:string) {
     let Object = EGP:egpobject(Elements:get(Name))
-    let Index = 1
-    let Count = 1
     let Length = Word:length()
     
+    let Index = 1
+    
     let Animation = function() {
-        if (Count > repeats(Length)) {
+        if (Index <= Length) {
             Object["text", string] = Object["text", string] + Word[Index]
             Index++
-            Count = 0
         }
         else {
-            Count++
+            stopAnimation(Name+"_type")
         }
     }
 
-    startAnimation(Animation, Length)
+    startAnimation(Name+"_type", Animation, Length)
 }
 
-function void glitchText(Name:string, Text:string, Dur:number) {
+function void colourTo(Name:string, Dur:number, Target:vector) {
+    let Object = EGP:egpobject(Elements:get(Name))
+    let R = Object["r", number]
+    let G = Object["g", number]
+    let B = Object["b", number]
+    
+    let RGB = vec(R,G,B) 
+    let Steps = repeats(Dur)
+    let Step = 0
+    
+    let Animation = function() {
+        let T = clamp(Step / Steps, 0, 1)
+        RGB += (Target - RGB) * T
+        Step++
+
+        Object["r", number] = RGB:x()
+        Object["g", number] = RGB:y()
+        Object["b", number] = RGB:z()
+    }
+    startAnimation(Name+"_colourTo", Animation, Dur)
+}
+
+function void hoverColour(Name:string, Dur:number, Colour:vector) {
+    if (!HoverElements[Name, table]) {
+        let ID = Elements:get(Name)
+        let Object = EGP:egpobject(ID)
+        let Params = EGP:egpCopy(Elements:get(), Object)
+        Params["a", number] = 0
+        Params["x", number] = -512
+        Params["y", number] = -512
+        HoverElements[Name, table] = 
+            table(
+                "ID" = ID,
+                "Name" = Name,
+                "Object" = Object,
+                "Params" = Params
+            )
+    }
+    HoverElements[Name, table]["TargetColour", vector] = Colour
+    if (!timerExists("hoverCheck")) {
+        timer("hoverCheck", 0.1, 0, function() {
+            let Cursor = EGP:egpCursor(CurrentUser)
+            foreach(_:string, Element:table = HoverElements) {
+                let Name = Element["Name", string]
+                let Object = Element["Object", egpobject]
+                if (Object:containsPoint(Cursor)) {
+                    let R = Object["r", number]
+                    let G = Object["g", number]
+                    let B = Object["b", number]
+                    
+                    let RGB = vec(R,G,B)
+                    let Target = HoverElements[Name, table]["TargetColour", vector]
+                    if (RGB != Target && !timerExists(Name+"_colourTo") && !timerExists(Name+"_colourToPause")) {  
+                        colourTo(Name, Dur, Target)
+                        timer(Name+"_colourToPause", 9999, function() { 
+                            # Do Nothing
+                        })
+                    }
+                    break
+                }
+                elseif(timerExists(Name+"_colourToPause")) {
+                    stoptimer(Name+"_colourToPause")
+                    
+                    let Params = Element["Params", egpobject]
+                    let R = Params["r", number]
+                    let G = Params["g", number]
+                    let B = Params["b", number]
+                    
+                    let RGB = vec(R,G,B)
+                    
+                    if (timerExists(Name+"_colourTo")) {
+                        stoptimer(Name+"_colourTo")
+                    }
+                    colourTo(Name, Dur, RGB)
+                    
+                }
+            }
+        })
+    }
+}
+
+function void glitchText(Name:string, Dur:number) {
     let ID = Elements:get(Name)
     let Object = EGP:egpobject(ID)
     let Charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/\\"
-    let Length = Text:length()
-    let Final = Text
+    let Final = Object["text", string]
     let Current = ""
+    let Max = repeats(Dur)
+    let Count = 0
 
     let Animation = function() {
         Current = ""
-        for (I = 1, Length) {
-            if (randint(0, 1)) {
-                Current += Charset[randint(1, Charset:length())]
-            } else {
-                Current += Final[I]
+        Count++
+        if (Count == Max) {
+            Current = Final
+        }
+        else {
+            for (I = 1, Final:length()) {
+                if (randint(0, 1)) {
+                    Current += Charset[randint(1, Charset:length())]
+                } else {
+                    Current += Final[I]
+                }
             }
         }
         Object["text", string] = Current
     }
 
-    startAnimation(Animation, Dur)
+    startAnimation(Name+"_glitch", Animation, Dur)
 }
 
 

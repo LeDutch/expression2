@@ -1,0 +1,183 @@
+@name Krypta Gunstore
+@persist Profile:entity DB:table
+@inputs [U1 U2 U3 U4 U5 U6 U7 U8 U9 U10 U11 U12]:wirelink
+
+#include "lib/tomato/1.1/tomato_egp"
+#include "tomato/krypta/graphics"
+
+function entity wirelink:getShipment() {
+    return This["Entity", entity]
+}
+
+function array getUsers() {
+    let Array = array()
+    for (I = 1, 12) {
+        const Wirelink = ioGetInputWirelink("U" + I)
+        const Entity = Wirelink:entity()
+        Array:pushWirelink(Wirelink)
+        if (Entity:isValid()) {
+            Entity:setColor(vec(0,255,0))
+        }
+    }
+    return Array
+}
+    
+function wirelink entity:getWirelink(Users:array) {
+    foreach (_:number, V:wirelink = Users) {
+        if (This == V:entity()) {
+            return V
+        }
+    }
+    return nowirelink()
+}
+
+function void wirelink:fire() {
+    This["Fire", number] = 1
+    timer(0.1, function() {
+        This["Fire", number] = 0
+    })
+}
+
+function entity wirelink:getEntity() {
+    let Length = 100
+    let UserEntity = This:entity()
+    if(!UserEntity:isValid()) {
+        return _NO_ENTITY
+    }
+    
+    rangerReset()
+    rangerFlags("IE")
+    rangerFilter(UserEntity)
+    local Ranger = rangerOffset(Length, UserEntity:toWorld(UserEntity:up()), UserEntity:up())
+    
+    return Ranger:entity()
+}
+
+function table getShipments(DB:table) {
+    Shipments = table()
+    let Users = getUsers()
+    for (I = 1, 20) {
+        let Scan = Users[I, wirelink]:getEntity()
+        if (Scan:isValid() && Scan:isShipment()) {
+            let Name = Scan:shipmentName()
+            let Cost = Scan:shipmentPrice()
+            let Size = Scan:shipmentSize() 
+            let Profit = DB["Profit", number]
+                
+            Shipments[Name, table] = table(
+                "Name" = Name,
+                "Size" = Size,
+                "Stock" = Scan:shipmentAmount(),
+                "Price" = Cost/Size*(Profit/100+1),
+                "User" = Users[I, wirelink],
+                "Cart" = 1
+            )
+        }
+    }
+    return Shipments
+}
+
+if (initial()) {
+    # Global vars
+    Prefix = "Krypta's Gunstore"
+    DB = table(
+        "Banned" = table(),
+        "Profit" = 40
+        )
+    Profile = _NO_ENTITY
+    
+    chat("gunstoreban", "!ban (name) (reason) - ban a player from the store: optional (reason)", 
+        function(_:entity, Args:array) {
+            let Name = Args[1,string]
+            let Reason = Args[2, string]
+            let User = Name:findPlayer()
+            if (User:isValid() & Name:length()) {
+                DB["Banned", table][User:steamID(), table] = 
+                table(
+                    "Name" = User:name(),
+                    "Date" = getDate(),
+                    "Reason" = Reason
+                    )
+                owner():msg("Banned " + User:name())
+                User:msg("You have been banned. " + Reason)
+            }
+            else {
+                owner():msg("!ban (name) (reason) - ban a player from the store: optional (reason)")
+            }
+        },
+    owner())
+    chat("gunstoreunban", "!unban (name) - unban a player", 
+        function(_:entity, Args:array) {
+            let Name = Args[1,string]
+            let User = Name:findPlayer()
+            if (User:isValid() & Name:length()) {
+                DB["Banned", table]:removeTable(User:steamID()) 
+                owner():msg("Unbanned " + User:name())
+                User:msg("You have been unbanned. ")
+            }
+            else {
+                owner():msg("!unban (name) - unban a player")
+            }
+        },
+    owner())
+    
+    screenStart()
+}
+
+if (userInput()) {
+    stoptimer("startAnim")
+    if(DB["Banned", table]:exists(User:steamID())) {
+        screenDenied()
+    }
+    elseif (Profile == _NO_ENTITY) {
+        Profile = User
+        screenLoading()
+        let RandEven = function(Min:number, Max:number) {
+            if (Min > Max) { let T = Min, Min = Max, Max = T } # swap if out of order
+            if (Min % 2) { Min++ } 
+            if (Max % 2) { Max-- } 
+            if (Min > Max) { return 0 } 
+            return Min + 2 * floor(randint(0, ((Max - Min) / 2)))
+        }
+        
+        let I = 1
+        let C = RandEven(4, 8)[number]
+        timer("loading", 0.4, C, function() {
+            if(I%2) { 
+                box("Load1", table("x"=60, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0, "radius"=0, "size"=1, "outline"=1))
+            } else {
+                box("Load1", table("x"=60, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0))
+            }
+            I++
+            if (I==C) {
+                timer(1, function() {
+                    let J = 1
+                    timer(0.1, 10, function() {
+                        if (J==10) {
+                            if (Profile != _NO_ENTITY) {
+                                screenMenu(getShipments(DB))
+                            } 
+                            else {
+                                screenError()
+                            }
+                        }
+                        else {
+                            let X = 60 + J*40
+                            box("Load"+J+1, table("x"=X, "y"=269.0, "w"=30.0, "h"=47.0, "r"=0, "g"=255, "b"=0))
+                            J++
+                        }
+                    })
+                })
+            }
+        })
+        
+        timer("proximity", 1, 0, function() {
+            if (!isPlayerNearby(Profile, 100)) {
+                screenError()
+                stoptimer("proximity")
+                stoptimer("loading")
+            }
+        })
+    }
+}
+

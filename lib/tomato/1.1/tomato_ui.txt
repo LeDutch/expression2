@@ -53,7 +53,7 @@ if (first()) {
 # ==================== UI Functions ===================== #
 
 if(userInput()) { # Function to execute behaviour if UI elements are drawn
-    const Cursor = cursorArray(UI:keys())
+    const Cursor = cursorObj(UI:keys())
     const Function = UI[Cursor, table]["function", function]
     if(Cursor) {
         Function()
@@ -170,7 +170,7 @@ function dropDown(Name:string, Options:array, Args:table) {
     }
     
     let Function = function() {
-        const Cursor = cursorArray(CursorArray)
+        const Cursor = cursorObj(CursorArray)
         let ID = Cursor:explode("_")[2, string]:toNumber()
         let Selected = Options[ID, string]
          
