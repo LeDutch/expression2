@@ -1,19 +1,9 @@
 @name Smooth Vec V2
 @inputs Signal:number [E1 E2 E3 E4]:wirelink 
-
-#[ 
-    Adjust the 'Es'if u want to add more props
-    (you will need to add more colours and targets)
-    
-    Also use a toggle button.
-    
-    I recommend going to this website for cool colours: https://colorhunt.co/
-]#
-
 @persist [Colours Targets]:array
-@persist TickInterval
 
 function void smoothTransition(Index:number, Duration:number, Targets:array) {
+    let TickInterval = _TICKINTERVAL
     let Steps = ceil(Duration / TickInterval)
     let Step = 0
     let Input = wirelink():inputs()[Index+1, string]

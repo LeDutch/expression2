@@ -1,0 +1,118 @@
+@name Gee's Light V2
+@inputs Signal:number [E1 E2 E3 E4]:wirelink # To add more lights, add another wirelink called E5 etc...
+@persist Colours:table Order:array Current:vector [Auto Duration]:number
+
+if (first() || dupefinished() | ~E1 | ~E2 | ~E3 | ~E4) {
+    Colours = table()
+    Duration = 1
+    Auto = 1
+    Current = vec()
+    
+    # The order colours are shown - You can manually change here
+    Order = array("red", "blue", "green", "white")
+
+    # Initial colours - You can manually add colours here
+    Colours["red", vector] = vec(255, 0, 0)
+    Colours["green", vector] = vec(0, 255, 0)
+    Colours["blue", vector] = vec(0, 0, 255)
+    Colours["white", vector] = vec(255, 255, 255)
+    Colours["grey", vector] = vec(100, 100, 100)
+}
+
+function void smoothTransition(Index:number, Duration:number, TargetColour:vector) {
+    let Steps = ceil(Duration / _TICKINTERVAL)
+    let Step = 0
+    let Input = wirelink():inputs()[Index+1, string]
+    let Wirelink = ioGetInputWirelink(Input)
+    let CurrentColour = Current
+
+    if (Wirelink != nowirelink()) {
+        timer(_TICKINTERVAL, Steps, function() {
+            let T = clamp(Step / Steps, 0, 1)
+            CurrentColour = CurrentColour + (TargetColour - CurrentColour) * T
+            Step++
+    
+            # Assign to outputs
+            Wirelink["RGB", vector] = CurrentColour
+            
+            if (Step == Steps) {
+                Current = CurrentColour
+            }
+        })
+    }
+}
+
+function void changeColours(NumInputs:number, Duration:number, Colour:vector) {
+    for (Index=1, NumInputs) {
+        smoothTransition(Index, Duration, Colour)
+    }
+}
+
+function start(NextColour:vector) {
+    stopAllTimers()
+    let Inputs = wirelink():inputs()
+    let NumInputs = Inputs:count()-1
+    let Count = 1
+    if (Auto) {
+        timer(Duration+0.1, 0, function() {
+            changeColours(NumInputs, Duration, NextColour)
+            Count = (Count % Order:count()) + 1
+            NextColour = Colours[Order[Count, string], vector]
+        })
+    }
+    else {
+        changeColours(NumInputs, Duration, NextColour)
+    }
+}
+
+if (~Signal) {
+    stopAllTimers()
+    let Inputs = wirelink():inputs()
+    let NumInputs = Inputs:count()-1
+    let NextColour = Colours[Order[1, string], vector]
+    if (Signal) {
+        start(NextColour)
+    }
+    for(I=1, NumInputs) {
+        let Wirelink = ioGetInputWirelink(Inputs[I+1, string])
+        Wirelink["On", number] = Signal
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    Args = Message:sub(2):explode(" ")
+    Command = Args:shiftString()
+    if (Player == owner() && Message[1] == "!") {
+        switch (Command) {
+            case "auto",
+                NextColour = Current
+                print("Changed to auto mode")
+            break
+            case "color",
+                NextColour = vec(Args[1, string]:toNumber(), Args[2, string]:toNumber(), Args[3, string]:toNumber())
+                Auto = 0
+                print("Changed to custom colour.")
+            break
+            case "speed",
+                Duration = Args[1, string]:toNumber()
+                NextColour = Colours[1, vector]
+                print("Changed speed to " + Duration)
+            break
+            case "bright",
+                let Inputs = wirelink():inputs()
+                let NumInputs = Inputs:count()-1
+                let Brightness = Args[1, string]:toNumber()
+                for(I=1, NumInputs) {
+                    Inputs[I, wirelink]["GlowBrightness", number] = Brightness
+                }
+                print("Changed brightness to " + Brightness)
+            break
+            default,
+                NextColour = Colours[Command, vector]
+                Auto = 0
+                print("Changed colour to " + Command)
+            break
+        }
+        start(NextColour)
+    }
+}

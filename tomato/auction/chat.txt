@@ -1,0 +1,15 @@
+function auctionHandleChat(Player:entity, Message:string) {
+    let Args = Message:explode(" ")
+    let Command = Args[2, string]:lower()
+    
+    if (Args[1, string]:sub(2):lower() == "auction") {
+        auctionCommand(Player, Command, Args)
+    }
+    elseif(ActivePlayers:exists(Player:steamID64())) {
+        auctionHandleBrowseInput(Player, Message)
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    auctionHandleChat(Player, Message)
+}

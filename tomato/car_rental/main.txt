@@ -1,0 +1,121 @@
+@name Tomato Car Rental
+@inputs
+@outputs
+@persist Car:entity Fare:number Pending:table ActiveRides:table
+@trigger
+@strict
+
+# Minimal car rental helper. Owner aims at a vehicle and uses !rent set to track it.
+# When a passenger enters that vehicle, they are prompted to pay the set fare.
+# On payment, the driver (chip owner) is notified.
+
+#include "lib/tomato/1.1/tomato_core"
+
+if (first() || dupefinished()) {
+    Fare = 500            # default fare
+    Pending = table()     # SteamID64 -> 1 while waiting on payment
+    ActiveRides = table() # SteamID64 -> last paid amount/time if needed later
+    Prefix = "Car Rental Service"
+    PrefixColour = "cyan"
+}
+
+function rentalMsgDriver(Text:string) {
+    if (owner():isValid()) {
+        owner():msg(Text)
+    }
+}
+
+function rentalMsgPassenger(Ply:entity, Text:string) {
+    if (Ply:isValid()) {
+        Ply:msg(Text)
+    }
+}
+
+function rentalSetCar(CarEnt:entity) {
+    if (CarEnt:isValid()) {
+        Car = CarEnt
+        rentalMsgDriver("Car set to " + Car:type() + " (" + Car:id() + ")")
+    }
+    else {
+        rentalMsgDriver("Invalid vehicle. Aim at a vehicle and use !rent set.")
+    }
+}
+
+function rentalPromptPassenger(Ply:entity) {
+    let Steam = Ply:steamID64()
+    if (Pending:exists(Steam)) { return }
+    
+    #Pending[Steam, number] = 1
+    rentalMsgPassenger(Ply, "Ride available for $" + Fare + ". Paying now will notify the driver.")
+    moneyRequest(Ply, Fare, "Pay for a ride?")
+}
+
+event chat(Ply:entity, Msg:string, Team:number) {
+    let Args = Msg:explode(" ")
+    
+    let Command = Args[1, string]:lower()
+    if (Command == "!rent") {
+        if (Ply == owner()) {
+            let Sub = Args[2, string]:lower()
+            switch (Sub) {
+                case "set",
+                    rentalSetCar(Ply:aimEntity())
+                break
+                case "fare",
+                    let NewFare = Args[3, string]:toNumber()
+                    if (NewFare > 0) {
+                        Fare = NewFare
+                        rentalMsgDriver("Fare set to $" + Fare)
+                    } else {
+                        rentalMsgDriver("Usage: !rent fare <amount>")
+                    }
+                break
+                case "status",
+                    let Status = Car:isValid() ? ("Tracking: ent " + Car:id() + " (" + Car:type() + ")") : "No car tracked."
+                    rentalMsgDriver(Status + " Fare: $" + Fare)
+                break
+                default,
+                    rentalMsgDriver("Commands: !rent set (aim car), !rent fare <amount>, !rent status")
+                break
+            }
+        }
+        else {
+            rentalMsgPassenger(Ply, "Only the driver can configure rides.")
+        }
+    }
+}
+
+event playerEnteredVehicle(Ply:entity, Vehicle:entity) {
+    if (Vehicle == Car) {
+        print(Ply:name())
+        rentalPromptPassenger(Ply)
+    }
+}
+
+event playerLeftVehicle(Ply:entity, Vehicle:entity) {
+    if (Vehicle == Car && Ply != owner()) {
+        Pending:remove(Ply:steamID64())
+    }
+}
+
+if(moneyClk()) {
+    let Ply = moneyClkPlayer()
+    let Steam = Ply:steamID64()
+    if (!Pending:exists(Steam)) {
+        break
+    }
+    
+    let Amount = moneyClkAmount()
+    if (Amount != Fare) {
+        rentalMsgPassenger(Ply, "Ride costs $" + Fare + ". Refunding your payment.")
+        moneyGive(Ply, Amount)
+        break
+    }
+    
+    Pending:remove(Steam)
+    ActiveRides[Steam, table] = table("LastPaid" = getDate(), "Amount" = Amount)
+    
+    rentalMsgPassenger(Ply, "Payment received. Enjoy your ride!")
+    moneyGive(owner(), Amount)
+    rentalMsgDriver(Ply:name() + " paid $" + Amount + " for a ride.")
+}

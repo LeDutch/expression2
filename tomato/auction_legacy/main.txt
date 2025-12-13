@@ -8,6 +8,12 @@
 
 #include "lib/tomato/1.1/tomato_core"
 #include "lib/tomato/1.1/tomato_db"
+#include "lib/tomato/1.1/tomato_egp"
+#include "tomato/auction/graphics"
+
+if (initial()) {
+    menu()
+}
 
 if (first() || dupefinished()) {
     # Global Vars

@@ -1,0 +1,53 @@
+@name Tomato Auction House Graphics
+@persist [Dark Secondary Primary Light]:vector
+
+#include "lib/tomato/1.1/tomato_ui"
+
+if(first() || dupefinished()) {
+    Dark = vec(255, 212, 105)
+    Primary = vec(28, 35, 45)
+    Secondary = vec(54, 60, 68)
+    Light = vec(218, 218, 218)
+}
+
+function bg() {
+    EGP:egpClear()
+    Elements = table()
+    stopAllTimers()
+    EGP:egpDrawTopLeft(1)
+    
+    # BG
+    box(table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "rgb"=Dark))
+    
+    # Menu
+    box(table("x"=17, "y"=17, "w"=512-30, "h"=512-30, "r"=11, "g"=33, "b"=48, "radius"=15))
+    box(table("x"=16, "y"=16, "w"=512-30, "h"=512-30, "r"=50, "g"=50, "b"=50, "radius"=15))
+    box(table("x"=15, "y"=15, "w"=512-30, "h"=512-30, "rgb"=Primary, "radius"=15))
+}
+
+function header() {
+    box(table("x"=15, "y"=15, "w"=512-30, "h"=70, "rgb"=Secondary, "radius"=15))
+    box(table("x"=15, "y"=25, "w"=512-30, "h"=60, "rgb"=Secondary, "radius"=0))
+    
+    text(table("text"="TAU Auction House", "size"=30, "halign"=2, "valign"=1, "x"=20, "y"=15, "w"=512-40, "h"=70, "rgb"=Light))
+}
+
+function menu() {
+    bg()
+    header()
+    
+    
+    # Table Header
+    text(table("text"="Name", "x"=29.0, "y"=129.0, "w"= 68.0, "h"=21.0, "r"=255, "g"=255, "b"=255, "size"=17, "halign"=1, "valign"=1))
+    text(table("text"="Seller", "x"=218.0, "y"=129.0, "w"= 68.0, "h"=21.0, "r"=255, "g"=255, "b"=255, "size"=17, "halign"=1, "valign"=1))
+    text(table("text"="Price", "x"=376.0, "y"=129.0, "w"= 68.0, "h"=21.0, "r"=255, "g"=255, "b"=255, "size"=17, "halign"=1, "valign"=1))
+    
+    
+    # Nagivation
+    box("Back", table("material"="materials/zerochain/zerolib/ui/icon_back.png", 
+    "x"=30, "y"=512-80, "w"=60, "h"=60, "rgb"=Light, "radius"=15))
+    
+    box("Next", table("angle"=180, "material"="materials/zerochain/zerolib/ui/icon_back.png", 
+    "x"=512-30, "y"=512-20, "w"=60, "h"=60, "rgb"=Light, "radius"=15))
+    
+}

@@ -51,23 +51,29 @@ function void entity:msg(Text:string) {
 }
 
 function void start() {
-    Time = 0
-    Score = 0
-    if (Model:length()) {
-        Flags = getFlags(Model)
-        Flag = Flags:nextFlag()
-        timer("range", 0.1, 0, function() {
-            if (Flag) {
-                Time+=0.1
-            }
-            else {
-                stoptimer("range")
-            }
-        })
-    }
-    else {
-        owner():msg("Setup - Please look at prop and type !model.")
-    }
+    Time = 1
+    timer(1, 2, function() {
+        Time++
+    })
+    timer(3, function() {
+        Time = 0
+        Score = 0
+        if (Model:length()) {
+            Flags = getFlags(Model)
+            Flag = Flags:nextFlag()
+            timer("range", 0.1, 0, function() {
+                if (Flag) {
+                    Time+=0.1
+                }
+                else {
+                    stoptimer("range")
+                }
+            })
+        }
+        else {
+            owner():msg("Setup - Please look at prop and type !model.")
+        }
+    })
 }
 
 function void stop() {

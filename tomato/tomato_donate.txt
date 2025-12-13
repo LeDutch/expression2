@@ -11,101 +11,101 @@
 #Coded by Bob Tomato, any changes or reqs /pm me :)
  
 if(first() || dupefinished()){
-#Global Vars
-Amount = 10000
-D = 500000
+    #Global Vars
+    Amount = 10000
+    D = 500000
+        
+    EGP:egpClear()
     
-EGP:egpClear()
-
-#Main paints
-EGP:egpCircle(1, vec2(200, 260), vec2(190))
-EGP:egpColor(1,vec(255, 255, 255))
-  
-EGP:egpCircle(5, vec2(200, 260), vec2(180))
-EGP:egpMaterial(5, "entities/weapon_fists.png")
-
-#Slider stuff
-EGP:egpDrawTopLeft(2)
-EGP:egpRoundedBox(2,vec2(100,355),vec2(10,10))
-EGP:egpSize(2,vec2(200,20))
- 
-EGP:egpDrawTopLeft(3)
-EGP:egpRoundedBox(3,vec2(100,355),vec2(10,10))
-EGP:egpSize(3,vec2(20,20))
-EGP:egpColor(3,vec(72,72,72))
- 
-EGP:egpDrawTopLeft(4)
-EGP:egpRoundedBox(4,vec2(132,390),vec2(10,10))
-EGP:egpSize(4,vec2(140,30))
-EGP:egpColor(4,vec(72,72,72))
-
-#Secondary paints
-EGP:egpText(9,"Donate: $10000",vec2(202,397))
-EGP:egpSize(9,16)
-EGP:egpAlign(9,1)
- 
-EGP:egpDrawTopLeft(7)#second
-EGP:egpBox(7,vec2(130,341),vec2(10,10))
-EGP:egpSize(7,vec2(40,15))
-EGP:egpColor(7,vec(218,218,218))
-
-EGP:egpDrawTopLeft(6)#first
-EGP:egpBox(6,vec2(180,341),vec2(10,10))
-EGP:egpSize(6,vec2(40,15))
- 
-EGP:egpDrawTopLeft(8)#third
-EGP:egpBox(8,vec2(230,341),vec2(10,10))
-EGP:egpSize(8,vec2(40,15))
-EGP:egpColor(8,vec(218,218,218))
- 
-EGP:egpText(20,"1st",vec2(192,342))
-EGP:egpColor(20,vec(18,18,18)) 
-EGP:egpFont(20,"Roboto" ,12) 
-
-EGP:egpText(19,"2nd",vec2(142,342))
-EGP:egpColor(19,vec(18,18,18))
-EGP:egpFont(19,"Roboto" ,12) 
-
-EGP:egpText(21,"3rd",vec2(242,342))
-EGP:egpColor(21,vec(18,18,18))
-EGP:egpFont(21,"Roboto" ,12) 
-
-EGP:egpText(37,"Type !title (name) to change Title",vec2(202,102))
-EGP:egpAlign(37,1)
-EGP:egpColor(37,vec(0,0,0))
-EGP:egpFont(37,"Roboto" ,30)
-
-EGP:egpText(36,"Type !title (name) to change Title",vec2(200,100))
-EGP:egpAlign(36,1)
-EGP:egpFont(36,"Roboto" ,30)
-
-EGP:egpText(29,"Donation Goal: $500000",vec2(202,147))
-EGP:egpAlign(29,1)
-EGP:egpColor(29,vec(0,0,0))
-EGP:egpFont(29,"Roboto" ,22) 
-
-EGP:egpText(23,"Donation Goal: $500000",vec2(200,145))
-EGP:egpAlign(23,1)
-EGP:egpFont(23,"Roboto" ,22) 
-   
-EGP:egpText(13,"LEADERBOARD" ,vec2(95,0))
-EGP:egpSize(13,36)
-
-EGP:egpText(14,"A Tomato Production" ,vec2(190,30)) 
-EGP:egpFont(14,"Roboto" ,16) 
-
-EGP:egpBox(15,vec2(100,168),vec2(10,10))
-EGP:egpSize(15,vec2(200,15))
-EGP:egpColor(15,vec(160,160,160))
-
-EGP:egpBox(16,vec2(100,168),vec2(10,10))
-EGP:egpSize(16,vec2(1,15))
-
-EGP:egpText(34,"Recent Donors",vec2(400,200))
-EGP:egpFont(34,"Roboto" ,16)
-
-EGP:egpBox(35,vec2(400,217),vec2(10,10))
-EGP:egpSize(35,vec2(100,3))
+    #Main paints
+    EGP:egpCircle(1, vec2(200, 260), vec2(190))
+    EGP:egpColor(1,vec(255, 255, 255))
+      
+    EGP:egpCircle(5, vec2(200, 260), vec2(180))
+    EGP:egpMaterial(5, "entities/weapon_fists.png")
+    
+    #Slider stuff
+    EGP:egpDrawTopLeft(2)
+    EGP:egpRoundedBox(2,vec2(100,355),vec2(10,10))
+    EGP:egpSize(2,vec2(200,20))
+     
+    EGP:egpDrawTopLeft(3)
+    EGP:egpRoundedBox(3,vec2(100,355),vec2(10,10))
+    EGP:egpSize(3,vec2(20,20))
+    EGP:egpColor(3,vec(72,72,72))
+     
+    EGP:egpDrawTopLeft(4)
+    EGP:egpRoundedBox(4,vec2(132,390),vec2(10,10))
+    EGP:egpSize(4,vec2(140,30))
+    EGP:egpColor(4,vec(72,72,72))
+    
+    #Secondary paints
+    EGP:egpText(9,"Donate: $10000",vec2(202,397))
+    EGP:egpSize(9,16)
+    EGP:egpAlign(9,1)
+     
+    EGP:egpDrawTopLeft(7)#second
+    EGP:egpBox(7,vec2(130,341),vec2(10,10))
+    EGP:egpSize(7,vec2(40,15))
+    EGP:egpColor(7,vec(218,218,218))
+    
+    EGP:egpDrawTopLeft(6)#first
+    EGP:egpBox(6,vec2(180,341),vec2(10,10))
+    EGP:egpSize(6,vec2(40,15))
+     
+    EGP:egpDrawTopLeft(8)#third
+    EGP:egpBox(8,vec2(230,341),vec2(10,10))
+    EGP:egpSize(8,vec2(40,15))
+    EGP:egpColor(8,vec(218,218,218))
+     
+    EGP:egpText(20,"1st",vec2(192,342))
+    EGP:egpColor(20,vec(18,18,18)) 
+    EGP:egpFont(20,"Roboto" ,12) 
+    
+    EGP:egpText(19,"2nd",vec2(142,342))
+    EGP:egpColor(19,vec(18,18,18))
+    EGP:egpFont(19,"Roboto" ,12) 
+    
+    EGP:egpText(21,"3rd",vec2(242,342))
+    EGP:egpColor(21,vec(18,18,18))
+    EGP:egpFont(21,"Roboto" ,12) 
+    
+    EGP:egpText(37,"Type !title (name) to change Title",vec2(202,102))
+    EGP:egpAlign(37,1)
+    EGP:egpColor(37,vec(0,0,0))
+    EGP:egpFont(37,"Roboto" ,30)
+    
+    EGP:egpText(36,"Type !title (name) to change Title",vec2(200,100))
+    EGP:egpAlign(36,1)
+    EGP:egpFont(36,"Roboto" ,30)
+    
+    EGP:egpText(29,"Donation Goal: $500000",vec2(202,147))
+    EGP:egpAlign(29,1)
+    EGP:egpColor(29,vec(0,0,0))
+    EGP:egpFont(29,"Roboto" ,22) 
+    
+    EGP:egpText(23,"Donation Goal: $500000",vec2(200,145))
+    EGP:egpAlign(23,1)
+    EGP:egpFont(23,"Roboto" ,22) 
+       
+    EGP:egpText(13,"LEADERBOARD" ,vec2(95,0))
+    EGP:egpSize(13,36)
+    
+    EGP:egpText(14,"A Tomato Production" ,vec2(190,30)) 
+    EGP:egpFont(14,"Roboto" ,16) 
+    
+    EGP:egpBox(15,vec2(100,168),vec2(10,10))
+    EGP:egpSize(15,vec2(200,15))
+    EGP:egpColor(15,vec(160,160,160))
+    
+    EGP:egpBox(16,vec2(100,168),vec2(10,10))
+    EGP:egpSize(16,vec2(1,15))
+    
+    EGP:egpText(34,"Recent Donors",vec2(400,200))
+    EGP:egpFont(34,"Roboto" ,16)
+    
+    EGP:egpBox(35,vec2(400,217),vec2(10,10))
+    EGP:egpSize(35,vec2(100,3))
 }
  
 

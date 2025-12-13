@@ -1,0 +1,135 @@
+@name E2 Draw
+@inputs 
+@outputs 
+@persist Colour:vector
+@strict
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_animations"
+
+if (first()) {
+    Colour = vec(0,255,255)
+}
+
+function changeColour() {
+    let Cursor = cursorObj(CurrentUser)
+    if (Cursor[1] == "G" ) {
+        if(!timerExists(Cursor+"_colourTo")) {
+            let Obj = EGP:egpobject(Elements:get(Cursor))
+            let RGB = vec(Obj["r", number], Obj["g", number], Obj["b", number])
+            if (RGB != Colour) {
+                colourTo(Cursor, 1, Colour)
+            }
+        }
+    }
+}
+
+function createGrid(Args:table) {
+    let StartX = Args["x", number]
+    let StartY = Args["y", number]
+    let Size = Args["size", number]
+    let Padding = Args["padding", number] + Size
+    let Cols = Args["cols", number]
+    let Rows = Args["rows", number]
+    let Name = Args["name", string]
+    let RGB = Args["rgb", vector]
+
+    Index = 1
+    timer(Name, _TICKINTERVAL, 0, function() {
+        let Total = Cols * Rows
+    
+        if (Index == Total) { 
+            stoptimer(Name)
+            break 
+        }
+
+        let I = ((Index - 1) % Cols) + 1
+        let J = floor((Index - 1) / Cols) + 1
+
+        let X = StartX + (I - 1) * Padding
+        let Y = StartY + (J - 1) * Padding
+
+        box(Name + Index, table("x"=X,"y"=Y,"w"=Size,"h"=Size,"rgb"=RGB))
+
+        Index++
+    })
+}
+
+if (initial()) {
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    
+    # BG
+    box("BG", table("x"=0, "y"=0, "w"=512.0, "h"=512.0, "rgb"=vec(28, 35, 45)))
+    text(table("size"=30, "text"="E2 Paint", "halign"=1, "valign"=1, 
+               "x"=0, "y"=0, "w"=512, "h"=60, "rgb"=vec(255, 255, 255)))
+
+    # The Grid
+    createGrid(table(
+        "x"=6,
+        "y"=60,
+        "padding"=0,
+        "size"=25,
+        "cols"=20,
+        "rows"=14,
+        "name"="G",
+        "rgb"=vec(255,255,255)
+    ))
+    
+    box("Delete", table("material"="materials/zerochain/zerolib/ui/delete.png",
+    "x"=512-50, "y"=512-50, "w"=40.0, "h"=40.0, "rgb"=vec(255, 255, 255)))
+    
+    circle("custom", table("x"=512-80, "y"=512-80, "w"=10.0, "h"=10.0, "rgb"=vec(255, 255, 255)))
+    circle("C1", table("x"=512-80, "y"=512-80, "w"=10.0, "h"=10.0, "rgb"=vec(255, 255, 255)))
+    circle("C1", table("x"=512-80, "y"=512-80, "w"=10.0, "h"=10.0, "rgb"=vec(255, 255, 255)))
+        
+}
+
+if(userInput()) {
+    let Cursor = cursorObj()
+    if (Cursor[1] == "C") {
+        let Obj = EGP:egpobject(Elements:get(Cursor))
+        let RGB = vec(Obj["r", number], Obj["g", number], Obj["b", number])
+        Colour = RGB
+    }
+    else {
+        switch (Cursor) {
+            case "Delete",
+                if (!timerExists("delete")) {
+                    let I = 1
+                    timer("delete", 0.1, 0, function() {
+                        if (I==20*14) { 
+                            stoptimer("delete")
+                            break 
+                        }
+                        
+                        let Obj = EGP:egpobject(Elements:get("G"+I))
+                        let RGB = vec(Obj["r", number], Obj["g", number], Obj["b", number])
+                        if (RGB != vec(255,255,255)) {
+                            colourTo("G"+I, 1, vec(255,255,255))
+                        }
+                
+                        I++
+                    })
+                }
+            break
+        }
+    }
+    # When you add buttons to change paint colours put click events here
+}
+
+event keyPressed(Player:entity, _:string, Down:number, _:string) {
+    if (Player == CurrentUser && Player:aimEntity() == EGP:entity()) {
+        if (Down) { # Key Down
+            if (!timerExists("keyPress")) {
+                timer("keyPress", _TICKINTERVAL, 0, function() {
+                    changeColour()
+                })
+            }
+        }
+        else {
+            stoptimer("keyPress")
+        }
+    }
+}

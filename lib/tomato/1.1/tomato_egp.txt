@@ -99,8 +99,17 @@ function void wirelink:delete(...Arr:array) {
 
 function egpobject text(Name:string, Args:table) {
     const ID = (Name) ? Elements:get(Name) : Elements:get()
+    const RGB = Args["rgb", vector]
+    
+    if (RGB) {
+        Args["r", number] = RGB:x()
+        Args["g", number] = RGB:y()
+        Args["b", number] = RGB:z()
+    }
+    
     const Object = EGP:egpTextLayout(ID, Args)
     const Parent = Args["parent", string]
+
     if (Parent) {
         Elements:get(Parent):giveChild(Object)
     }
@@ -112,8 +121,17 @@ function egpobject text(Args:table) {
 
 function egpobject stext(Name:string, Args:table) {
     const ID = (Name) ? Elements:get(Name) : Elements:get()
+    const RGB = Args["rgb", vector]
+    
+    if (RGB) {
+        Args["r", number] = RGB:x()
+        Args["g", number] = RGB:y()
+        Args["b", number] = RGB:z()
+    }
+    
     const Object = EGP:egpText(ID, Args)
     const Parent = Args["parent", string]
+    
     if (Parent) {
         Elements:get(Parent):giveChild(Object)
     }
@@ -127,6 +145,14 @@ function egpobject circle(Name:string, Args:table) {
     const ID = Elements:get(Name)
     const Parent = Args["parent", string]
     const Object = Args["outline", number] ? EGP:egpCircleOutline(ID, Args) : EGP:egpCircle(ID, Args)
+    const RGB = Args["rgb", vector]
+    
+    if (RGB) {
+        Args["r", number] = RGB:x()
+        Args["g", number] = RGB:y()
+        Args["b", number] = RGB:z()
+    }
+    
     if (Parent) {
         Elements:get(Parent):giveChild(Object)
     }
@@ -137,11 +163,18 @@ function egpobject circle(Args:table) {
 }
 
 function egpobject box(Name:string, Args:table) {
-    let ID = Elements:get(Name)
-    let Parent = Args["parent", string]
-    let Outline = Args["outline", number]
-    let Radius  = Args["radius", number]
-    let Material = Args["material", string]
+    const ID = Elements:get(Name)
+    const Parent = Args["parent", string]
+    const Outline = Args["outline", number]
+    const Radius  = Args["radius", number]
+    const Material = Args["material", string]
+    const RGB = Args["rgb", vector]
+    
+    if (RGB) {
+        Args["r", number] = RGB:x()
+        Args["g", number] = RGB:y()
+        Args["b", number] = RGB:z()
+    }
     
     let Object = noegpobject()
 
@@ -202,7 +235,7 @@ function number userInput(Player:entity) { # Check for specific player input
 }
 
 # Check all egp objects on screen - checks in reverse to reduce lag but will require ops if many objects
-function string cursorObj() {
+function string cursorObj(User:entity) {
     const Cursor = EGP:egpCursor(User)
     const Objects = EGP:egpObjectIndexes()
     const Names = Elements:flip()
@@ -233,6 +266,10 @@ function string cursorObj() {
     }
 
     return ""
+}
+
+function string cursorObj() {
+    return cursorObj(User)
 }
 
 # Checks an array of ONLY given object names - more efficient but doesn't check parents.

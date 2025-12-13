@@ -1,0 +1,675 @@
+@name Tomato Auction House 
+@inputs 
+@outputs 
+@persist [DB ActivePlayers ExpiredTrades ActiveTrades Items]:table
+@persist Categories:array Adverts:array
+@strict
+
+# Library
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_db"
+#include "lib/tomato/1.1/tomato_egp"
+
+# Custom
+#include "tomato/auction/graphics"
+
+if (initial()) {
+    menu()
+}
+
+if (first() || dupefinished()) {
+    # Global Vars
+    Categories = array("Knives", "TAU Coins", "Other")
+    ActivePlayers = table()
+    DB = table()
+    Items = table()
+    
+    # Default test listings
+    Items["Knives", table] = table(
+        table(
+            "Name" = "Test Karambit",
+            "Steam" = owner():steamID64(),
+            "Entity" = owner(),
+            "Desc" = "Factory New",
+            "Duration" = "45m",
+            "Expiration" = dateNowAdd(table("minutes"=45)),
+            "Category" = "Knives",
+            "Price" = 7500,
+            "CurrentBidder" = "",
+            "ID" = "test-knife-" + toString(randint(10000, 99999))
+        )
+    )
+    Items["TAU Coins", table] = table(
+        table(
+            "Name" = "50x TAU Coins",
+            "Steam" = owner():steamID64(),
+            "Entity" = owner(),
+            "Desc" = "Test lot of coins",
+            "Duration" = "1h",
+            "Expiration" = dateNowAdd(table("hours"=1)),
+            "Category" = "TAU Coins",
+            "Price" = 50000,
+            "CurrentBidder" = "",
+            "ID" = "test-coins-" + toString(randint(10000, 99999))
+        )
+    )
+    Items["Other", table] = table(
+        table(
+            "Name" = "Strange Part",
+            "Steam" = owner():steamID64(),
+            "Entity" = owner(),
+            "Desc" = "Used for testing bids",
+            "Duration" = "30m",
+            "Expiration" = dateNowAdd(table("minutes"=30)),
+            "Category" = "Other",
+            "Price" = 1200,
+            "CurrentBidder" = "",
+            "ID" = "test-other-" + toString(randint(10000, 99999))
+        )
+    )
+    
+    
+    ActiveTrades = table(
+            owner():steamID64() = table(
+                "Name" = "Test",
+                "Steam" = owner():steamID64(),
+                "Entity" = owner(),
+                "Desc" = "Testing",
+                "Duration"="1 min",
+                "Expiration"=dateNowAdd(table("min"=1)),
+                "Category"="Other",
+                "Price" = 1000
+            )
+        )
+    ExpiredTrades = table()
+    
+    # Add / change to this for more adverts.
+    Adverts = array(
+        "Your next upgrade is one bid away. Type !auction to start.",
+        "Welcome to the Auction House. Money talks, what's yours saying?"
+        )
+        
+    
+    Prefix = "The Auction House"
+    PrefixColour = "#d4af37"
+    
+    # Check for an auction end
+    timer(1, 0, function() {
+        let CurrentTime = dateUTC()
+        foreach(Name:string, Category:table = Items) {
+            foreach(I:number, Item:table = Category) {
+                let Expiration = Item["Expiration", table]
+                let TimeRemaining = hoursBetween(CurrentTime, Expiration)
+                if (TimeRemaining < 0) {
+                    let WinningBidder = Item["CurrentBidder", string]
+                    let BidderEnt = findPlayerBySteamID64(WinningBidder)
+                    let ItemName = Item["Name", string]
+                    if (BidderEnt:isValid()) {
+                        BidderEnt:msg("You won the auction for {red " + ItemName + "} expect an incoming trade shortly.")
+                    }
+                    ActivePlayers[WinningBidder, table]["Items Bought", table]:pushTable(Item)
+                    owner():msg("An auction ended for {red " + Item["Name", string] + "} type !auction delete after trading.")
+                    ExpiredTrades:pushTable(Item)
+                    Items[Name, table]:remove(I)
+                }
+            }
+        }
+    })
+}
+
+function msgActivePlayers(Text:string) {
+    foreach(_:string, Profile:table = ActivePlayers) {
+        let Player = Profile["Entity", entity]
+        Player:msg(Text)
+    }
+}
+
+function auctionBid(Player:entity, Profile:table, Money:number) {
+    let ItemID = Profile["Browsing", string]
+    foreach(_:string, Category:table = Items) {
+        foreach(_:number, Item:table = Category) {
+            if (Item["ID", string] == ItemID) {
+                let Price = Item["Price", number]
+                if (Money > Price) {
+                    let PrevBidder = Item["CurrentBidder", string]
+                    let PrevBidderEnt = findPlayerBySteamID64(PrevBidder)
+                    let Name = Item["Name", string]
+                    Item["Price", number] = Money
+                    if (PrevBidderEnt:isValid()) {
+                        PrevBidderEnt:msg("Your bid for " + Name + " has been beaten by "+ Player:name() + " ($" + Item["Price", number] + ")")
+                        PrevBidderEnt:msg("Your previous bid ($" + Price + " ) has been returned.")
+                        moneyGive(PrevBidderEnt, Price)
+                    }
+                    msgActivePlayers(Player:name() + " bid on " + Name + " ($" + Item["Price", number] + ")")
+                    Item["CurrentBidder", string] = Player:steamID64()
+                    return
+                }
+                else {
+                    Player:msg("Your bid must be greater than $" + Price)
+                    moneyGive(Player, Money)
+                    return
+                }
+            }
+        }
+    }
+    Player:msg("Please select a valid item.")
+}
+
+if(moneyClk()) {
+    let Money = moneyClkAmount()
+    let Player = moneyClkPlayer()
+    let Profile = ActivePlayers[Player:steamID64(), table]
+    auctionBid(Player, Profile, Money)
+}
+
+function listItemInfo(Player:entity, Item:table) {
+    let Steam = Player:steamID64()
+    let Name = Item["Name", string]
+    let Description = Item["Desc", string]
+    let Price = abbreviateNum(Item["Price", number])
+    let TimeLeft = formatTimeInHours(hoursBetween(dateUTC(), Item["Expiration", table]))
+    let ItemID = Item["ID", string] 
+    
+    ActivePlayers[Steam, table]["Browsing", string] = ItemID
+    
+    Player:msg("\n" +
+        " Name: {red " + Name + "}" 
+        + (Description == "" ? "" : ("\n Description: {grey " + Description + "}"))
+        + "\n Time Remaining: {cyan " + TimeLeft + "}"
+        + "\n Current Bid: {#01E04A $" + Price + "}" +
+    "\nType !auction bid (amount) to place a bid.")
+}
+
+function listItems(Player:entity, Category:table, Name:string) {
+    let Steam = Player:steamID64()
+    let Msg = "\n" + Name + "\n"
+    let I = 0
+    let Count = Category:count()
+    if (Count == 1) {
+        listItemInfo(Player, Category[1, table])
+    }
+    else {
+        foreach(_:string, Item:table = Category) {
+            I++
+            Msg+= " " + I + ". " + Item["Name", string] + "\n"
+        }
+        ActivePlayers[Steam, table]["Browsing", string] = "ItemInfo"
+        Player:msg(Msg != "\n" + Name + "\n" ? Msg + "\nType (1-" + I + ") to select an item." : "There are no items listed")
+    }
+}
+
+function listCategories(Player:entity) {
+    let Keys = Items:keys()
+    if (Keys:count() < 2) {
+        let Category = Keys[1, string]
+        listItems(Player, Items[Category, table], Category)
+    }
+    else {
+        let Categories = ""
+        foreach(I:number, Item:string = Keys) {
+            let Count = Items[Item, table]:count()
+            if (Count) {
+                Categories += "\n" + " " + I + ". "  + Item + " (" + Count + ")"
+            }
+        }
+        Categories += "\n Type !auction (category) to view more."
+        Player:msg(Categories)
+    }
+}
+
+function auctionEnsureProfile(Player:entity) {
+    let Steam = Player:steamID64()
+    if (!ActivePlayers:exists(Steam)) {
+        ActivePlayers[Steam, table] = table(
+            "Joined"        = getDate(),
+            "Items Sold"    = table(),
+            "Items Bought"  = table(),
+            "Listings"      = table(),
+            "ItemToList"    = table(),
+            "Commission"    = 2,
+            "Browsing"      = "Categories",
+            "Steam"         = Steam,
+            "Entity"        = Player
+        )
+    }
+    return ActivePlayers[Steam, table]
+}
+
+function auctionCommand(Player:entity, Command:string, Args:array) {
+    let Steam = Player:steamID64()
+    let Profile = auctionEnsureProfile(Player)
+    
+    switch (Command) {
+            case "a",
+            case "accept",
+                if (Player == owner()) {
+                    let Name = Args[3, string]
+                    let User = _NO_ENTITY
+                    let Category = ""
+                    let Steam = ""
+                    let Trade = table()
+                    
+                    if (Name:length()) {
+                        User = Name:findPlayer()
+                        if (User:isValid()) {
+                            let Steam = User:steamID64()
+                            if (ActiveTrades:exists(Steam)) {
+                                Trade = ActiveTrades[Steam, table]
+                                Category = Trade["Category", string]
+                            }
+                            else {
+                                owner():msg("Could not find an active trade for user: " + Name)
+                                break
+                            }
+                        }
+                        else {
+                            owner():msg("Could not find user: " + Name)
+                            break
+                        }
+                    }
+                    else {
+                        Trade = ActiveTrades[ActiveTrades:keys()[1, string], table]
+                        Category = Trade["Category", string]
+                        Steam = Trade["Steam", string]
+                        User = Trade["Entity", entity]
+                    }
+                    if (Trade:count()) {
+                        let Name = Trade["Name", string]
+                        let Price = Trade["Price", number]
+                        if(!Items[Category, table]) {
+                            Items[Category, table] = table()
+                        }
+                        Trade["ID", string] = Steam + toString(randint(10000, 99999))
+                        Items[Category, table]:pushTable(Trade)
+                        ActivePlayers[Steam, table]["Listings", table]:pushTable(Trade)
+                        
+                        let Desc = Trade["Desc", string]
+                        let Duration = Trade["Duration", string]
+                        
+                        let ItemInfo = "\n Name: {red " + Name + "}\n " + (Desc == "" ? "" : "Description: {grey " + Desc + "}\n ") + "Duration: " + Duration + "\n Bid: {#01E04A $" + abbreviateNum(Price) + "}"
+                        
+                        msgActivePlayers("A new item has been listed for auction.\n"+ItemInfo)
+                        
+                        ActiveTrades:removeTable(Steam)
+                    }
+                    else {
+                        owner():msg("There are no pending auctions")
+                    }
+                }
+            break
+            case "c",
+            case "cancel",
+                if (Player == owner()) {
+                    let Name = Args[3, string]
+                    let User = _NO_ENTITY
+                    let Steam = ""
+                    let Trade = table()
+                    
+                    if (Name:length()) {
+                        User = Name:findPlayer()
+                        if (User:isValid()) {
+                            let Steam = User:steamID64()
+                            if (ActiveTrades:exists(Steam)) {
+                                Trade = ActiveTrades[Steam, table]
+                            }
+                            else {
+                                owner():msg("Could not find an active trade for user: " + Name)
+                                break
+                            }
+                        }
+                        else {
+                            owner():msg("Could not find user: " + Name)
+                            break
+                        }
+                    }
+                    else {
+                        Trade = ActiveTrades[ActiveTrades:keys()[1, string], table]
+                        Steam = Trade["Steam", string]
+                        User = Trade["Entity", entity]
+                    }
+                    if (Trade:count()) {
+                        ActiveTrades:removeTable(Steam)
+                        owner():msg("Successfully cancelled " + User:name() + "'s trade for auction")
+                    }
+                    else {
+                        owner():msg("There are no pending auctions")
+                    }
+                }
+            break
+            case "m",
+            case "motd",
+                if (Player == owner()) {
+                    Player:advert(Adverts[randint(1, Adverts:count()), string])
+                }
+            break
+            case "d",
+            case "delete",
+                if (Player == owner()) {
+                    Player:msg("\n 1. Expired Auctions\n 2. Active Auctions\nType (1-2) to select.")
+                    ActivePlayers[Steam, table]["Browsing", string] = "Delete"
+                }
+            break
+            case "s",
+            case "sell",
+            case "list",
+                let Msg = ""
+                foreach(I:number, Category:string = Categories) {
+                    Msg+= "\n   " + (I) + ". " + Category
+                }
+                Player:msg("List an item for auction\nCategories:" + Msg +
+                "\nWhat category is your item? (Type 1-" + Categories:count() + ")")
+                ActivePlayers[Steam, table]["Browsing", string] = "Sell"
+            break
+            case "b",
+            case "bid",
+                let Bid = Args[3, string]:toNumber()
+                moneyRequest(Player, Bid)
+                if (!Bid) {
+                    Player:msg("Syntax: !auction bid (amount)")
+                }
+            break
+            case "l",
+            case "leave",
+                ActivePlayers:removeTable(Steam)
+                Player:msg("Notifications have been stopped. Type !auction again to re-enable.")
+            break
+            case "trades",
+                let Profile = ActivePlayers[Steam, table]
+                let Msg = ""
+                foreach(I:number, Trade:table = ExpiredTrades) {
+                    let Player = findPlayerBySteamID64(Trade["CurrentBidder", string])
+                    let Status = "Offline"
+                    if (Player:isValid()) {
+                        Status = Player:name() + " - Online"
+                    }
+                    Msg += "\n" + I + ". " + Trade["Name", string] + ", " + Trade["Desc", string] + " (" + Status + ")"
+                }
+                if (Msg != "") {
+                    Player:msg(Msg)
+                    Profile["Browsing", string] = "DeleteExpired"
+                }
+                else {
+                    Player:msg("No pending trades found.")
+                }
+            break
+            case "admin",
+                if (Player == owner()) {
+                    let Commands = array()
+                    
+                    Commands:pushString("\n\nAdmin Commands")
+                    Commands:pushString(" !auction accept - (optional name), accepts potential auction")
+                    Commands:pushString(" !auction cancel - (optional name), cancels potential auction")
+                    Commands:pushString(" !auction delete  - select from active/expired auctions")
+                    Commands:pushString(" !auction trades - view a list of pending trades you need to make.")
+                    Commands:pushString(" !auction motd - /adverts in chat")
+                    Commands:pushString("Type !auction a,c,d,m for shorthand\n")
+                    
+                    Player:msg("\n"+Commands:implode("\n"))
+                }
+            break
+            case "coins",
+            case "tau",
+            case "knives",
+            case "knife",
+            case "other",
+                let Name = Command
+                switch (Name) {
+                    case "coins",
+                    case "tau",
+                        Name = "TAU Coins"
+                    break
+                    case "knife",
+                        Name = "knives"
+                    break
+                }
+                let Category = Items[Name, table]
+                listItems(Player, Category, Name)
+            break
+            default,
+                if (Command:length()) {
+                    let Commands = array(
+                        "  !auction             - list active auction categories",
+                        "  !auction sell      - put an item up for auction",
+                        "  !auction bid       - bid on your selected item",
+                        "  !auction leave   - stop getting auction notifications",
+                        "  \nType !auction s,b,l for shorthand"
+                        )
+                        
+                    Player:msg("\n"+Commands:implode("\n"))
+                }
+                else {
+                    ActivePlayers[Steam, table]["Browsing", string] = "Items"
+                    listCategories(Player)
+                    break
+        }
+    }
+}
+
+function auctionHandleBrowseInput(Player:entity, Message:string) {
+    let Steam = Player:steamID64()
+    if (!ActivePlayers:exists(Steam)) {
+        return
+    }
+    let Profile = ActivePlayers[Steam, table]
+    let Browse = Profile["Browsing", string]
+    let Args = Message:explode(" ")
+    let Choice = Args[1, string]
+    
+    if(Browse != "") {
+        if(Browse:startsWith("Item")) {
+            switch (Browse) {
+                case "ItemName",
+                    let IsCoin = Profile["ItemToList", table]["Category", string] == "TAU Coins"
+                    let CoinsSuffix = IsCoin ? " TAU Coins" : ""
+                    Profile["ItemToList", table]["Name", string] = Message + CoinsSuffix
+                    if (IsCoin) {
+                        Profile["Browsing", string] = "ItemTime"
+                        Player:msg("What is the duration of the auction? (use 1d, 4hr, 1w...)")
+                    }
+                    else {
+                        Profile["Browsing", string] = "ItemDesc"
+                        Player:msg("Please type a description for your item.")
+                    }
+                break
+                case "ItemDesc",
+                    Profile["Browsing", string] = "ItemTime"
+                    Profile["ItemToList", table]["Desc", string] = Message
+                    Player:msg("What is the duration of the auction? (use 1d, 4hr, 1w...)")
+                break
+                case "ItemTime",
+                    let TimeUnit = Message:sub(Message:length())
+                    let Time = Message:sub(1, Message:length()-1):toNumber()
+                    let Date = dateUTC()
+                    let Msg = "Please type the starting bid."
+                    switch (TimeUnit) {
+                        case "m",
+                        case "n",
+                            Date = dateAdd(Date, table(
+                                "minutes" = Time
+                            ))
+                        break
+                        case "d",
+                            Date = dateAdd(Date, table(
+                                "days" = Time
+                            ))
+                        break
+                        case "h",
+                        case "r",
+                            Date = dateAdd(Date, table(
+                                "hours" = Time
+                            ))
+                        break
+                        case "w",
+                            Date = dateAdd(Date, table(
+                                "weeks" = Time
+                            ))
+                        break
+                        default,
+                            Msg = "Invalid time format. Please use 1d, 4hr, 1w etc..."
+                        break
+                    }
+                    Profile["ItemToList", table]["Expiration", table] = Date
+                    Profile["ItemToList", table]["Duration", string] = Message
+                    Profile["Browsing", string] = Msg == "Please type the starting bid." ? "ItemPrice" : "ItemTime"
+                    Player:msg(Msg)
+                break
+                case "ItemPrice",
+                    Profile["Browsing", string] = "Categories"
+                    let Item = Profile["ItemToList", table]
+                    
+                    let Price = Message:toNumber()
+                    let Name = Item["Name", string]
+                    let Desc = Item["Desc", string]
+                    let Duration = Item["Duration", string]
+                    
+                    Item["Price", number] = Message:toNumber()
+                    Item["Steam", string] = Profile["Steam", string]
+                    Item["Entity", entity] = Player
+                    
+                    let ItemInfo = "\n Name: {red " + Name + "}\n " + (Desc == "" ? "" : "Description: {grey " + Desc + "}\n ") + "Duration: " + Duration + "\n Bid: {#01E04A $" + abbreviateNum(Price) + "}"
+                    
+                    Player:msg(
+                    ItemInfo + "\nPlease send a trade offer to " + owner():name())
+                    
+                    owner():msg(Player:name() + " wants to list an item:" + ItemInfo + "\n Type !auction accept after trading.")
+                    
+                    ActiveTrades[Steam, table] = Profile["ItemToList", table]
+                break
+                default,
+                break
+            }
+        }
+        elseif(Browse:startsWith("Delete")) {
+            let Msg = ""
+            if (Browse == "DeleteExpired") {
+                let Item = ExpiredTrades[Choice:toNumber(), table]
+                let Steam = Item["Steam", string]
+                
+                let OwnerEnt = findPlayerBySteamID64(Steam)
+                if (OwnerEnt:isValid()) {
+                    let Price = Item["Price", number]
+                    let ItemName = Item["Name", string]
+                    let Commission = Price*Item["Commission", number]
+                    let TaxedAmount = Price - Commission
+                    
+                    OwnerEnt:msg("You have been paid $" + TaxedAmount + " for your auction: " + ItemName)
+                    moneyGive(OwnerEnt, TaxedAmount)
+                    
+                    ActivePlayers[Steam, table]["Items Sold", table]:pushTable(Item)
+                    
+                    ExpiredTrades:remove(Choice:toNumber())
+                    Player:msg("Finalized trade, auctioneer has been paid, you made: $" + abbreviateNum(Commission))
+                }
+                else {
+                    Player:msg("Cannot finalize this trade, as the auctioneer is not online.")
+                }
+            }
+            elseif(Browse == "DeleteActive") {
+                let ItemArray = table()
+                foreach(_:string, Category:table = Items) {
+                        foreach(_:number, Item:table = Category) {
+                           ItemArray:pushTable(Item)
+                        }
+                    }
+                let Item = ItemArray[Choice:toNumber(), table]
+                let Name = Item["Name", string]
+                let SelectedCategory = Item["Category", string]
+                
+                Items[SelectedCategory, table]:remove(Choice:toNumber())
+                
+                Player:msg("The active auction has been cancelled.")
+                let ItemOwner = findPlayerBySteamID64(Item["Steam", string])
+                if (ItemOwner:isValid()) {
+                    ItemOwner:msg("Your auction for: " + Name + " has been cancelled.")
+                }
+                
+            }
+            else {
+                if (Choice == "1") {
+                    foreach(I:number, Trade:table = ExpiredTrades) {
+                        Msg += "\n" + I + ". " + Trade["Name", string] + ", " + Trade["Desc", string] + " (" + Trade["Steam", string] + ")"
+                    }
+                    Profile["Browsing", string] = "DeleteExpired"
+                }
+                elseif (Choice == "2") {
+                    foreach(_:string, Category:table = Items) {
+                        foreach(I:number, Trade:table = Category) {
+                           Msg += "\n" + I + ". " + Trade["Name", string] + ", " + Trade["Desc", string] + " (" + Trade["Steam", string] + ")"
+                        }
+                    }
+                    if (Msg != "") {
+                        Profile["Browsing", string] = "DeleteActive"
+                    }
+                }
+            }
+            Player:msg(Msg:length() ? Msg : "No auctions found.")
+        }
+        elseif (Choice >= "1" && Choice <= "99") {
+            if (Browse == "Sell") {
+                let Category=Categories[Choice:toNumber(), string]
+                Profile["Browsing", string] = "ItemName"
+                Profile["ItemToList", table]["Category", string] = Category
+                if (Category == "Knives") {
+                    Player:msg("What type of knife is it?")
+                }
+                elseif (Category == "TAU Coins") {
+                    Player:msg("Specify (i.e 1x) how many coins you are selling")
+                }
+                else {
+                    Player:msg("Please type a name for your item.")
+                }
+            }
+            elseif(Browse == "Items") {
+                let Category = Items:keys()[Choice:toNumber(), string]
+                
+                Profile["Browsing", string] = Category
+                let ItemTable = Items[Category, table]
+                listItems(Player, ItemTable, Category)
+            }
+            elseif(Browse == "ItemInfo") {
+                let Category = ActivePlayers[Steam, table]["Browsing", string]
+                let Item = Items[Category, table][Choice, table]
+                
+                listItemInfo(Player, Item)
+            }
+        }
+    }
+    
+    # Kicks a player from auction menu after 30 seconds of idle behaviour.
+    if (!timerExists(Steam)) {
+        timer(Steam, 30, function() {
+            ActivePlayers[Steam, table]["Browsing", string] = ""
+        })
+    }
+    else {
+        timerRestart(Steam)
+    }
+}
+
+function auctionHandleChat(Player:entity, Message:string) {
+    let Args = Message:explode(" ")
+    let Command = Args[2, string]:lower()
+    
+    if (Args[1, string]:sub(2):lower() == "auction") {
+        auctionCommand(Player, Command, Args)
+    }
+    elseif(ActivePlayers:exists(Player:steamID64())) {
+        auctionHandleBrowseInput(Player, Message)
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    auctionHandleChat(Player, Message)
+}
+
+
+# Public helpers for GUI buttons to call the same logic as chat commands.
+function auctionOpen(Player:entity) { auctionCommand(Player, "", array("!auction")) }
+function auctionSell(Player:entity) { auctionCommand(Player, "sell", array("!auction", "sell")) }
+function auctionBidAmount(Player:entity, Bid:number) { auctionCommand(Player, "bid", array("!auction", "bid", toString(Bid))) }
+function auctionLeave(Player:entity) { auctionCommand(Player, "leave", array("!auction", "leave")) }
+function auctionTrades(Player:entity) { auctionCommand(Player, "trades", array("!auction", "trades")) }
+function auctionAdminAccept(Player:entity, Name:string) { auctionCommand(Player, "accept", array("!auction", "accept", Name)) }
+function auctionAdminCancel(Player:entity, Name:string) { auctionCommand(Player, "cancel", array("!auction", "cancel", Name)) }
+function auctionAdminDelete(Player:entity) { auctionCommand(Player, "delete", array("!auction", "delete")) }
+function auctionAdminMotd(Player:entity) { auctionCommand(Player, "motd", array("!auction", "motd")) }
