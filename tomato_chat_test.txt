@@ -1,0 +1,26 @@
+@name Tomato Chat Test
+@inputs 
+@outputs 
+@persist 
+@strict
+
+event chat(Ply:entity, Message:string, _:number) {
+    if (Message:length() > 1) {
+        if (Message[1] == "!") {
+            if (Ply == owner()) {
+                let Args = Message:sub(2):explode(" ")
+                let Command = Args:shiftString():lower()
+                hideChat(1)
+                switch (Command) {
+                    case "test",
+                        print(Ply:keyvalues():toString())
+                    break
+                    case "aim",
+                        let Ent = Ply:aimEntity()
+                        Ent:killPod()
+                    break
+                }
+            }
+        }
+    }
+}

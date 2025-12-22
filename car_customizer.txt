@@ -17,7 +17,7 @@ event chat(Player:entity, Message:string, Team:number) {
                     Car:setColor(vec(Args[1, string]:toNumber(), Args[2, string]:toNumber(), Args[3, string]:toNumber()))
                 break
                 case "material",
-                    Car:setMaterial(Args[1, string])
+                    Car:setSubMaterial(Args[1, string]:toNumber(), Args[2, string])
                 break
                 case "body",
                     Car:setBodygroup(Args[1, string]:toNumber(), Args[2, string]:toNumber())

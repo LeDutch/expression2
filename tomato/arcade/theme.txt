@@ -9,11 +9,15 @@
 function bg() {
     EGP:clear()
     EGP:egpDrawTopLeft(1)
-    box("Background", table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42923250f.png"))
+    box("Background", table("x"=0.0, "y"=0.0, "w"=512.0, "h"=512.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, 
+    "precache"="6900408",
+    "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a42923250f.png"
+    ))
 }
 
 function header() {
     box("TopLine", table("x"=34.0, "y"=166.0, "w"=444.0, "h"=4.0, "r"=217, "g"=217, "b"=217, "radius"=0))
+    
     sprite("HeaderMask", table(
         "x"=0, "y"=0, "w"=512, "h"=166,
         "uv_start"=vec2(0, 0),
@@ -23,7 +27,9 @@ function header() {
     ))
     
     box("Header", table("x"=-1.0, "y"=1.0, "w"=513.0, "h"=160.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, 
-    "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4552cdfea.png"))
+    "precache"="6839329", 
+    "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4552cdfea.png"
+    ))
 
 }
 
@@ -55,6 +61,11 @@ function mainMenu() {
     let Frame5 = box("Frame_5", table("outline"=1, "size"=2, "x"=171.0, "y"=417.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
     let Frame6 = box("Frame_6", table("outline"=1, "size"=2, "x"=36.0, "y"=417.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10))
     
+    
+    let Game1 = box("Game1", table(
+    "size"=2, "x"=171.0, "y"=199.0, "w"=104.0, "h"=134.0, "r"=217, "g"=217, "b"=217, "radius"=10
+    ))
+    
     MenuFrame:giveChild(Frame1)
     MenuFrame:giveChild(Frame2)
     MenuFrame:giveChild(Frame3)
@@ -62,48 +73,46 @@ function mainMenu() {
     MenuFrame:giveChild(Frame5)
     MenuFrame:giveChild(Frame6)
     
+    # Put games here
+    MenuFrame:giveChild(Game1)
+    
     header()
     
     EGP:egpRemove(Elements:get("MainMenu"))
 }
 
-function gameMenu(Cursor:string) {
-    EGP:egpRemove(Elements:get("TopLine"))
-    EGP:egpRemove(Elements:get("HeaderMask"))
-    EGP:egpRemove(Elements:get("Scrollbar"))
-    EGP:egpRemove(Elements:get("Scrollbar_bar"))
-    EGP:egpRemove(Elements:get("Scrollbar_bg"))
-    for (I=1, 6) {
-        if(I == Cursor[7]:toNumber()) {
-            EGP:egpRemove(Elements:get("Frame_"+I+"_text"))
-            continue
-        }
-        else {
-            EGP:egpRemove(Elements:get("Frame_"+I))
-            EGP:egpRemove(Elements:get("Frame_"+I+"_text"))
-        }
-    }
+function gameMenu(Index:number) {
+    EGP:delete("HeaderMask")
     
+    let Frame = "Frame_"+Index
+    let Game = "Game"+Index
     
-    let Frame = EGP:egpobject(Elements:get(Cursor))
+    let FrameObj = EGP:egpobject(Elements:get(Frame))
+    let GameObj = EGP:egpobject(Elements:get(Game))
     let MenuFrame = EGP:egpobject(Elements:get("MenuFrame"))
-    Frame["radius", number] = 0
-    Frame["fidelity", number] = 1
+    
+    FrameObj["radius", number] = 0
+    GameObj["radius", number] = 0
+    FrameObj["fidelity", number] = 1
+    GameObj["fidelity", number] = 1
     MenuFrame["y", number] = 180
-    transform(Cursor, 0.5, vec2(445, 435))
+    
+    transform(Frame, 0.5, vec2(445, 435))
+    transform(Game, 0.5, vec2(445, 435))
     transform("Header", 0.5, vec2(155, 48))
-    moveTo(Cursor, 0.5, vec2(34, -115))
+    moveTo(Frame, 0.5, vec2(34, -115))
+    moveTo(Game, 0.5, vec2(34, -115))
     moveTo("Header", 0.5, vec2(178, 17))
     box("MainMenu", table("x"=34.0, "y"=21.0, "w"=40.0, "h"=40.0, "r" = 255, "g" = 255, "b" = 255, "radius"=0, "material"="materials/zerochain/zerolib/ui/icon_back.png"))
     fadeIn("MainMenu", 2)
     
     loadingSpinner("TheSpinner", table("primary"=vec(255,255,255), "coords"=vec2(256,266), "scale"=0.5, "size"=8))
     
-    switch (Cursor[7]:toNumber()) {
+    switch (Index) {
         case 1,
             stopSpinner("TheSpinner")
             timer(1, function() {
-                spaceInvaders("Frame_1")
+                spaceInvaders(Frame)
             })
         break
         case 2,

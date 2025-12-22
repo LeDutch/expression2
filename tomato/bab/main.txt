@@ -285,7 +285,7 @@ if (userInput()) {
             checkRadius()
         })
         loadingSpinner("TheSpinner", table("coords"=vec2(256,370), "size"=12))
-        EGP:del("PressE")
+        EGP:delete("PressE")
     }
     else {
         let Cursor = cursorObj()

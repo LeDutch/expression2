@@ -6,16 +6,20 @@
 
 if (initial()) {
     EGP:egpDrawTopLeft(1)
-    tauPrecacheMaterial("6900408")
-    tauPrecacheMaterial("6839329")
-
     mainMenu()
 
 }
 
 if (userInput()) {
-    let Cursor = cursorObj()
+    let Buttons = array()
+    for(I=1, 6) {
+        Buttons:pushString("Game"+I)
+    }
+    Buttons:pushString("Settings")
+    Buttons:pushString("MainMenu")
+    Buttons:pushString("CloseSettings")
     
+    let Cursor = cursorObj(Buttons)
     switch(Cursor) {
         case "Settings",
             stopSpinner("TheSpinner")
@@ -32,8 +36,9 @@ if (userInput()) {
         case "CloseSettings",
         break
         default,
-            if(Cursor:startsWith("Frame")) {
-                gameMenu(Cursor)
+            if(Cursor:startsWith("Game")) {
+                let Game = Cursor:sub(5):toNumber()
+                gameMenu(Game)
             }
         break
     }

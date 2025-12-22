@@ -1,0 +1,16 @@
+@name Materials
+@inputs 
+@outputs 
+@persist 
+@strict
+
+#[
+    # Glitch effect billboard
+    models/mark2580/gtav/electrical/screens/effect_03
+    
+    
+    # Interesting
+    models/mark2580/gtav/electrical/screens/effect_03
+    
+    entity():setSubMaterial(1, "models/mark2580/gtav/electrical/screens/effect_04") - volume effect
+]#

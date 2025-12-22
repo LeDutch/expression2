@@ -1,0 +1,371 @@
+@name Security Core
+@inputs [DOOR1 DOOR2 DOOR3]:wirelink
+@outputs TRIGGER:number # Wire to lights (= 1 if outsider is detected).
+@persist [Whitelist Settings]:table
+
+#[ 
+    To Do List:
+    
+    - EGP HUD for the FindZones
+    - EGP Rader (if allowed)
+]#
+
+if (first() || dupefinished()) {
+    Whitelist = table(
+        "players" = table(
+            owner():steamID()=1
+        ),
+        "admins" = table(
+            owner():steamID()=1
+        ),
+        "jobs"    = table(),                    
+        "orgs"    = table(
+            toString(owner():tauOrg())=1
+        )                                                                                          
+    )
+    
+    Settings = table(
+        "alarm"="air-raid.wav", # Change the alarm string to change the sound
+        "min"=vec(),
+        "max"=vec()
+    )
+    
+    if(DOOR1 | DOOR2 | DOOR3) {} # inputs() is better than targeting individual
+    fileLoad("security_core.txt")
+}
+
+# ==================== Helper functions ================ #
+
+function string table:implode(Delimiter:string) {
+    let Result = ""
+    let First = 1
+
+    foreach(Key:string, Value:number = This) {
+        if (Value) {
+            if (!First) {
+                Result += Delimiter
+            }
+            Result += Key
+            First = 0
+        }
+    }
+
+    if (Result == "") {
+        Result = "No results found."
+    }
+
+    return Result
+}
+
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg("{cyan Security Core}: " + Text)
+}
+
+function entity string:findPlayer() {
+    return This:sub(1, 5):upper() == "STEAM" ? findPlayerBySteamID(This) : findPlayerByName(This)
+}
+
+# ==================== Core functions ================== #
+
+function array getDoors() {
+    let Out = array()
+    let Names = wirelink():inputs()
+    for (I = 1, Names:count()) {
+        let N = Names[I, string]
+        if (N:left(4) == "DOOR") {
+            let W = ioGetInputWirelink(N)
+            if (W != nowirelink() && W:entity():isValid()) {
+                Out:pushWirelink(W)
+            }
+        }
+    }
+    return Out
+}
+
+function number isWhitelisted(Player:entity) {
+    if (!Player:isValid() || !Player:isPlayer() || !Player:isAlive()) { return 0 }
+
+    let Players = Whitelist["players", table]
+    let Jobs    = Whitelist["jobs", table]
+    let Orgs    = Whitelist["orgs", table]
+
+    # Player steamID allowlist
+    if (Players[Player:steamID(), number]) { return 1 }
+
+    # Accepted orgs
+    if (Orgs[toString(Player:tauOrg()), number]) { return 1 }
+
+    # Job groups
+    let JobData = table(
+        "POLICE"  = array("Mayor", "Police Officer", "Police Chief", "SWAT", "SWAT Medic", "SWAT Sniper", "Secret Service", "CUSTOM_POLICE"),
+        "THIEF"   = array("Thief", "Pickpocket", "Pickpocket Thief", "Professional Thief", "Parkour Thief", "CUSTOM_THIEF"),
+        "MAFIA"   = array("Mafia Leader", "Mafia Member"),
+        "GANGSTER"= array("Gangster Leader", "Gangster Member"),
+        "CITIZEN" = array("Citizen", "CUSTOM_CITIZEN")
+    )
+
+    let TeamName = Player:team():teamName()
+    foreach (Group:string, Arr:array = JobData) {
+        for (I = 1, Arr:count()) {
+            if (Arr[I, string] == TeamName) {
+                return Jobs:exists(Group)
+            }
+        }
+    }
+
+    return 0
+}
+
+function number outsiderNearby() {
+    if (!findCanQuery()) { return 0 }
+    
+    let Min = Settings["min", vector]
+    let Max = Settings["max", vector]
+
+    findIncludeClass("player")
+    findInBox(Min, Max)
+
+    let Hits = findToArray()
+    foreach(_:number, P:entity = Hits) {
+        if (!P:isValid() || !P:isPlayer() || !P:isAlive()) { continue }
+        if (!isWhitelisted(P)) { return 1 }
+    }
+    return 0
+}
+
+function number whitelistedNearDoor(Door:wirelink) {
+    if (!findCanQuery()) { return 0 }
+    findIncludeClass("player")
+    findInSphere(Door:entity():pos(), 25)
+    let Hits = findToArray()
+    foreach(_:number, Hit:entity = Hits) {
+        if (isWhitelisted(Hit)) { return 1 }
+    }
+    return 0
+}
+
+function void scanDoors() {
+    let Doors = getDoors()
+    foreach (_:number, D:wirelink = Doors) {
+        if (!D["FadeActive", number] && whitelistedNearDoor(D)) {
+            let Door = D
+            Door["Fade", number] = 1
+            timer(4, function() { Door["Fade", number] = 0 })
+        }
+    }
+}
+
+function void scanIntruder() {
+    TRIGGER = outsiderNearby()
+    if (TRIGGER && !timerExists("sound")) {
+        let Alarm = Settings["alarm", string]
+        timer("sound", 30, function() {}) # Do nothing
+        entity():soundPlay(1,30,Alarm)
+    }
+    elseif(!TRIGGER && timerExists("sound")) {
+        soundStop(1)
+    }
+}
+
+if (first() || dupefinished()) {
+    timer("scan", 1, 0, function() { 
+        scanDoors() 
+        timer(0.5, function() { scanIntruder() })
+    })
+}
+
+# ==================== DB functions ==================== #
+
+function void saveData() {
+    if (!fileCanWrite()) { return }
+
+    let Data = table("Settings"=Settings, "Whitelist"=Whitelist)
+    fileWrite("security_core.txt", jsonEncode(Data, 1))
+}
+
+event fileLoaded(File:string, Data:string) {
+    if (File == "security_core.txt") { 
+        let Unload = jsonDecode(Data)
+
+        if (!Unload || !Unload:exists("Settings") || !Unload:exists("Whitelist")) {
+            owner():msg("Load failed: missing keys. Keeping defaults.")
+            break
+        }
+    
+        Settings = Unload["Settings", table]
+        Whitelist = Unload["Whitelist", table]
+        
+        owner():msg("Database loaded.")
+    }
+}
+
+# ==================== Chat functions ================== #
+
+event chat(Player:entity, Message:string, _:number) {
+    if (Message:length() > 1) {
+        if (Message[1] == "!") {
+            if (Player == owner() || Whitelist["admins", table]:exists(Player:steamID())) {
+                let Args = Message:sub(2):explode(" ")
+                let Command = Args:shiftString():lower()
+
+                switch (Command) {
+                    case "corner",
+                        let Side = Args[1, string]:toNumber()
+                        if (Side == 1) {
+                            Settings["min", vector] = Player:pos() - vec(0,0,50)
+                            Player:msg("Corner 1 set!")
+                        }
+                        elseif(Side == 2) {
+                            Settings["max", vector] = Player:pos() + vec(0,0,50)
+                            Player:msg("Corner 2 set!")
+                        }
+                        else {
+                            Player:msg("Syntax: !corner 1, !corner 2")
+                        }
+                    break
+                    case "jobs",
+                        Player:msg("Valid jobs: Police, Thief, Mafia, Gangster, Citizen")
+                    break
+                    case "help",
+                        Player:msg("Commands:")
+                        Player:msg("!corner 1-2 - set corners")
+                        Player:msg("!add <name|steamid> - these players can use !commands")
+                        Player:msg("!del <name|steamid>")
+                        Player:msg("!adminadd <name|steamid>")
+                        Player:msg("!admindel <name|steamid>")
+                        Player:msg("!addjob <GROUP>")
+                        Player:msg("!deljob <GROUP>")
+                        Player:msg("!addorg <name|steamid> (optional) look at a player from a different org")
+                        Player:msg("!delorg <name|steamid>")
+                        Player:msg("!who")
+                        Player:msg("!jobs")
+                    break
+                    case "add",
+                        let Name = Args[1, string]
+                        let Target = Name:findPlayer()
+
+                        if (Target:isValid() && Target:isPlayer()) {
+                            Whitelist["players", table][Target:steamID(), number] = 1
+                            Player:msg("Added player: " + Target:name())
+                        } else {
+                            Player:msg("Could not find player: " + Name)
+                        }
+                    break
+                    case "del",
+                        let Name = Args[1, string]
+                        let Target = Name:findPlayer()
+
+                        if (Target:isValid() && Target:isPlayer()) {
+                            Whitelist["players", table][Target:steamID(), number] = 0
+                            Player:msg("Removed player: " + Target:name())
+                        } else {
+                            Whitelist["players", table][Target:steamID(), number] = 0
+                            Player:msg("Removed (if present): " + Name)
+                        }
+                    break
+                    case "addadmin",
+                        let Name = Args[1, string]
+                        let Target = Name:findPlayer()
+
+                        if (Target:isValid() && Target:isPlayer()) {
+                            Whitelist["admins", table][Target:steamID(), number] = 1
+                            Player:msg("Added player: " + Target:name())
+                        } else {
+                            Player:msg("Could not find player: " + Name)
+                        }
+                    break
+                    case "deladmin",
+                        let Name = Args[1, string]
+                        let Target = Name:findPlayer()
+
+                        if (Target:isValid() && Target:isPlayer()) {
+                            Whitelist["admins", table][Target:steamID(), number] = 0
+                            Player:msg("Removed player: " + Target:name())
+                        } else {
+                            Whitelist["admins", table][Target:steamID(), number] = 0
+                            Player:msg("Removed (if present): " + Name)
+                        }
+                    break
+                    case "addjob",
+                        let Jobs = Whitelist["jobs", table]
+                        let Group = Args[1, string]:upper()
+
+                        if (Group != "") {
+                            Jobs[Group, number] = 1
+                            Player:msg("Added job group: " + Group)
+                        }
+                    break
+                    case "deljob",
+                        let Jobs = Whitelist["jobs", table]
+                        let Group = Args[1, string]:upper()
+
+                        if (Group != "") {
+                            Jobs[Group, number] = 0
+                            Player:msg("Removed job group: " + Group)
+                        }
+                    break
+                    case "addorg",
+                        let Orgs = Whitelist["orgs", table]
+                        let Org = Args[1, string]
+                        let OrgID = 0
+                        if (Org == "") {
+                            let AimEnt = Player:aimEntity()
+                            if (AimEnt:isPlayer()) {
+                                OrgID = AimEnt:tauOrg()
+                            }
+                        }
+                        else {
+                            let Ent = Org:findPlayer()
+                            if (Ent:isValid()) {
+                                OrgID = Ent:tauOrg()
+                            }
+                        }
+                        if (OrgID) {
+                            Orgs[toString(OrgID), number] = 1
+                            Player:msg("Added org: " + OrgID)
+                        }
+                        else {
+                            Player:msg("Could not find org for that player")
+                        }
+                    break
+                    case "delorg",
+                        let Orgs = Whitelist["orgs", table]
+                        let Org = Args[1, string]
+                        let OrgID = 0
+                        if (Org == "") {
+                            let AimEnt = Player:aimEntity()
+                            if (AimEnt:isPlayer()) {
+                                OrgID = AimEnt:tauOrg()
+                            }
+                        }
+                        else {
+                            let Ent = Org:findPlayer()
+                            if (Ent:isValid()) {
+                                OrgID = Ent:tauOrg()
+                            }
+                        }
+                        if (OrgID) {
+                            Orgs[OrgID, number] = 0
+                            Player:msg("Deleted org: " + OrgID)
+                        }
+                        else {
+                            Player:msg("Could not find org for that player")
+                        }
+                    break
+                    case "who",
+                        let WL = Whitelist["players", table]:implode(", ")
+                        let Jobs = Whitelist["jobs", table]:implode(", ")
+                        let Orgs = Whitelist["orgs", table]:implode(", ")
+                        
+                        Player:msg("Players: " + WL)
+                        Player:msg("Jobs: " + Jobs)
+                        Player:msg("Orgs: " + Orgs)
+                    break
+                }
+                saveData()
+            }
+        }
+    }
+}
+

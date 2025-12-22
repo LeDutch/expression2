@@ -1,0 +1,96 @@
+@name Tomato Expressions
+@inputs 
+@outputs 
+@persist Toggle:number
+@strict
+
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg("{cyan Skin Changer}: " + Text)
+}
+
+function void setPlayerSkin(Skin:number) {
+    let Player = owner()
+    if (Skin < 0) { Skin = 0 }
+    Player:setSkin(Skin)
+}
+
+event entityDamage(Victim:entity, D:damage) {
+    if (Victim == owner()) {
+        #let Skin = D:toNumber() > 0 ? 3 : 6
+        Victim:selectWeapon("cw_kk_hk416")
+        setPlayerSkin(3)
+        timer(5, function() {
+            setPlayerSkin(0)
+        })
+    }
+}
+
+event chat(Ply:entity, Message:string, _:number) {
+    if (Message:length() > 1) {
+        if (Message[1] == "!") {
+            if (Ply == owner()) {
+                let Args = Message:sub(2):explode(" ")
+                let Command = Args:shiftString():lower()
+                hideChat(1)
+                switch (Command) {
+                    case "exp",
+                    case "expressions",
+                        Toggle = !Toggle
+                        Ply:msg("Toggled skin commands")
+                    break
+                    case "skin",
+                        let Number = Args[1, string]:toNumber()
+                        setPlayerSkin(Number)
+                        Ply:msg("Changed skin to " + Number)
+                    break
+                    case "smile",
+                    case "happy",
+                        setPlayerSkin(0)
+                    break
+                    case "ew",
+                    case "disgusted",
+                        setPlayerSkin(1)
+                    break
+                    case "sleepy",
+                    case "sleep",
+                        setPlayerSkin(2)
+                    break
+                    case "upset",
+                    case "cry",
+                        setPlayerSkin(3)
+                    break
+                    case "curious",
+                        setPlayerSkin(4)
+                    break
+                    case "retard",
+                    case "derp",
+                        setPlayerSkin(5)
+                    break
+                    case "adorable",
+                    case "aw",
+                        setPlayerSkin(6)
+                    break
+                    case "dank",
+                        setPlayerSkin(7)
+                    break
+                    case "rainbow",
+                    case "cycle",
+                        timer(1, 7, function() {
+                            let Rand = randint(1,7)
+                            setPlayerSkin(Rand)
+                        })
+                    break
+                    default,
+                        Ply:msg("Not a valid command")
+                    break
+                    case "weapon",
+                        print(Ply:weapon())
+                        print(Ply:getWeaponColor())
+                        Ply:setBloodColor(2)
+                    break
+                }
+            }
+        }
+    }
+}

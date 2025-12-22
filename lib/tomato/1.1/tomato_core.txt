@@ -1,7 +1,7 @@
 @name Tomato Core
-@persist Functions:table 
+@persist [Prefix PrefixColour]:string Functions:table 
 
-if (first()) {
+if (first() || dupefinished()) {
     # Initialize variables
     Prefix = "E2"
     PrefixColour = "!#d4af37"
@@ -10,8 +10,8 @@ if (first()) {
     if (PrefixColour) {}
     
     entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
-    entity():setSubMaterial(3, "zerochain/props_methlab/gasmask/zmlab2_gasmask_straps_diff")
-    entity():setColor(vec(255,0,0))
+    entity():setSubMaterial(2, "zerochain/props_mining/zrms_goldbar")
+    entity():setColor(vec(255,255,255))
 }
 
 #[ =================== Messaging ========================= #
@@ -280,6 +280,7 @@ function hoursBetween(A:table, B:table)
 
 # ==================== Array functions =================== #
 
+
 function array array:reverse() {
     let Temp = array()
     for (I = This:count(), 1, -1) {
@@ -315,6 +316,19 @@ function number array:numExists(A:number) {
     }
     return 0
 }
+
+function array array:intersect(B:array) {
+    let Out = array()
+    for (I = 1, This:count()) {
+        let V = This[I, string]
+        if (B:exists(V)) {
+            Out:pushString(V)
+        }
+    }
+    return Out
+
+}
+
 
 function string array:implode(Delimiter:string) {
     let Result = ""

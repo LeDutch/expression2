@@ -64,13 +64,12 @@ if (initial()) {
     
     #loadingSpinner("Test", table("coords"=vec2(150,150), "size"=12))
     
-    
-    
     circle("Fade", table("x"=340.0, "y"=85.0, "w"=16.0, "h"=28.0, "r"=217, "g"=217, "b"=217))
 }
 
 if (userInput()) {
     let Cursor = cursorObj()
+    print(Cursor)
     switch (Cursor) {
         case "TheBox",
             moveTo("TheBox", 0.5, vec2(randint(20,480), randint(20,480)))

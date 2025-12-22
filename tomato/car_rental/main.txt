@@ -89,6 +89,9 @@ event playerEnteredVehicle(Ply:entity, Vehicle:entity) {
     if (Vehicle == Car) {
         print(Ply:name())
         rentalPromptPassenger(Ply)
+        if (Ply != owner()) {
+           Car:killPod()
+        }
     }
 }
 

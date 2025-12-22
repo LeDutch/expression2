@@ -32,9 +32,13 @@ function menu() {
     
     text(table("halign"=1, "valign"=1, "text"="Enter Amount", "size"=30, "x"=0, "y"=0, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
     
-    box("Logo", table("material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
-    "a"=40, "x"=256-40, "y"=80, "w"=100, "h"=100, 
-    "r"=69, "g"=104, "b"=130))
+    box("Logo", table(
+        "precache"="6843241", 
+        "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
+        "x"=256-40, "y"=80, 
+        "w"=100, "h"=100, 
+        "a"=40, "r"=69, "g"=104, "b"=130
+    ))
 
     let StartX = 173
     let StartY = 240
@@ -91,9 +95,13 @@ function menu() {
 function loading() {
     bg()
     
-    box("Logo", table("material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
-    "a"=40, "x"=256-40, "y"=80, "w"=100, "h"=100, 
-    "r"=69, "g"=104, "b"=130))
+    box("Logo", table(
+        "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a4e0d30d83.png", 
+        "x"=256-40, "y"=80, 
+        "w"=100, "h"=100, 
+        "a"=40, "r"=69, "g"=104, "b"=130
+    ))
+        
     
     text(table("halign"=1, "valign"=1, "text"="Pay Screen", "size"=30, "x"=0, "y"=0, "w"=512.0, "h"=256.0, "r"=35, "g"=76, "b"=106))
     
@@ -119,7 +127,6 @@ function loading() {
 }
 
 if (initial()) {
-    preCache("6843241")
     
     menu()
 }

@@ -1,0 +1,25 @@
+@name Welcome_To_TAU
+@persist # All global variables
+@inputs EGP:wirelink
+@strict 
+
+if (first() || dupefinished()) {
+    W = 512
+    H = 512
+    
+    tauPrecacheMaterial("7389497")
+    
+    EGP:egpClear()
+    EGP:egpDrawTopLeft(1)
+    
+    EGP:egpBox(1, vec2(0,0), vec2(H,W))
+    EGP:egpColor(1, vec(255,255,255))
+    EGP:egpMaterial(1, "../data/tau/cache/files/1a2b6f5882d9172bea6d86bdae2d8590.png")
+    
+    #EGP:egpAngle(1,90)
+    
+    # Text Layout - Rotates top left
+    # Regular text - Rotates middle
+    # Circle - Rotates middle
+}
+

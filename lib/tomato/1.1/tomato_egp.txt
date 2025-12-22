@@ -91,6 +91,12 @@ function void wirelink:clear() {
     Elements:clear()
 }
 
+function void wirelink:delArray(Arr:array) {
+    foreach(_:number, Item:string = Arr) {
+        This:egpRemove(Elements:get(Item))
+    }
+}
+
 function void wirelink:delete(...Arr:array) {
     foreach(_:number, Item:string = Arr) {
         This:egpRemove(Elements:get(Item))
@@ -164,10 +170,13 @@ function egpobject circle(Args:table) {
 
 function egpobject box(Name:string, Args:table) {
     const ID = Elements:get(Name)
-    const Parent = Args["parent", string]
     const Outline = Args["outline", number]
     const Radius  = Args["radius", number]
+    
+    const Parent = Args["parent", string]
     const Material = Args["material", string]
+    const Precache = Args["precache", string]
+    
     const RGB = Args["rgb", vector]
     
     if (RGB) {
@@ -189,9 +198,20 @@ function egpobject box(Name:string, Args:table) {
     }
 
     if (Parent) { Elements:get(Parent):giveChild(Object) }
-    if (Material:sub(1, 7) == "../data") {
-        Precached:pushString(Name)
+    
+    if (Precache) {
+        #ifdef tauPrecacheMaterial(String)
+            tauPrecacheMaterial(Precache)
+            timer(_TICKINTERVAL, function() {
+                Object["material", string] = Material
+            })
+            Precached:pushEgpobject(Object)
+        #else
+            print("This E2 uses a webmat on TAU which has not been loaded")
+            print(String)
+        #endif
     }
+    
     return Object
 }
 
@@ -293,10 +313,15 @@ if (initial()) {
     EGP:egpDrawTopLeft(1)
 }
 
-# Webmats
-function void preCache(String:string) {
-    #ifdef tauPrecacheMaterial(String)
+# Webmats - is also done in the regular box() function. LEGACY
+function void preCache(String:string, Object:egpobject) {
+     #ifdef tauPrecacheMaterial(String)
+        let Material = Object["material", string]
         tauPrecacheMaterial(String)
+        timer(_TICKINTERVAL, function() {
+            Object["material", string] = Material
+        })
+        Precached:pushEgpobject(Object)
     #else
         print("This E2 uses a webmat on TAU which has not been loaded")
         print(String)
@@ -305,11 +330,9 @@ function void preCache(String:string) {
 
 event playerSpawn(Player:entity) { 
     if(Player:deaths() == 0){
-        foreach(_:number, Name:string = Precached) {
-            let ID = Elements:get(Name)
-            let Obj = EGP:egpobject(ID)
-            let Material = Obj["material", string]
-            EGP:egpMaterial(ID, Material)
+        foreach(_:number, Object:egpobject = Precached) {
+            let Material = Object["material", string]
+            Object["material", string] = Material
         }
     }
 }

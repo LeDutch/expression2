@@ -1,34 +1,282 @@
-@name Org Check V2
-@inputs Door:wirelink
-@outputs 
-@persist OrgID:number PlayerScan:array
-@strict
+@name Tomato DJ Booth
+@inputs  Lamp:entity Gimbal:wirelink
+@outputs RGB:vector FOV On Texture:string Brightness Target:vector Time
+@persist [Textures]:array
+@persist [Time AnimBlink AnimFOV AnimRGB AnimDir AnimPulse AnimBanger Look Rainbow H Angle]:number
+@trigger
 
-function void getOrg(Player:entity) {
-    let Org = Player:tauOrg()
-    if (Org == OrgID) {
-        Door["Fade", number] = 1
-        if (!timerExists("close")) {
-            timer("close", 6, function() {
-                Door["Fade", number] = 0
-            })
+###################################################
+#Coded by Bob Tomato, any changes or reqs /pm me :)
+###################################################
+
+if (first() || ~EGP) {
+    #include "library/tomato_lib"
+    
+    #Colours
+    White = vec(255,255,255)
+    Green = vec(0,127,31)
+    
+    Dark = vec(44, 51, 51)
+    Primary = vec(14, 131, 136)
+    Secondary = vec(46, 79, 79)
+    Light = vec(203, 228, 222)
+    
+    #Program Specific
+    Owner = owner()
+    Time = 0.05
+    Angle = 0
+    AnimBlink = 0
+    AnimRGB = 0
+    AnimDir = 0
+    AnimFOV = 0
+    AnimBanger = 0
+    AnimPulse = 0
+    FindUser = 0
+    Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
+    
+    Textures = array(
+    "caustics",
+    "bars",
+    "soft",
+    "circles",
+    "tech")
+    
+    RGB = White
+    FOV = 100
+    On = 1 
+    Texture = "effects/flashlight/"+Textures[1,string]
+    Brightness = 8
+    
+    #Program Specific Functions
+    ############################################
+    
+    function animations() {
+        if (AnimBlink) {
+            if (Timer:getTime("Blink") == 0.05) {
+                On = !On
+                Timer:addTime("Blink", Timer:getTime("BlinkTimer"))
+            }
+            Timer:reduceTime("Blink", 0.05)
         }
-        else {
-            timerRestart("close")
+        if (AnimRGB) {
+            if (Rainbow) {
+                H += 0.9
+                if (H >= 360)
+                {
+                    H = 0
+                }
+                RGB = hsv2rgb(H, 1, 1)
+            }
+            elseif (Timer:getTime("RGB") == 0.05) {
+                if (On) {
+                    RGB = randvec(0,255)
+                }
+                Timer:addTime("RGB", Timer:getTime("RGBTimer"))
+            }
+            Timer:reduceTime("RGB", 0.05)
+        }
+        if (AnimDir) {
+            local Time = Timer:getTime("DIR")
+            if (Gimbal != nowirelink()) {
+                Gimbal["Angle", angle] = ang(90,0,Angle)
+            }
+            Angle -=20/Time
+        }
+        if (AnimFOV) {
+            FOV = 200*Timer:getTime("FOV")
+            if (Timer:getTime("FOV") == 0.05) {
+                Timer:addTime("FOV", Timer:getTime("FOVTimer"))
+            }
+            Timer:reduceTime("FOV", 0.05)
+        }
+        if (AnimPulse) {
+            Brightness = 10*Timer:getTime("Pulse")
+            if (Timer:getTime("Pulse") == 0.05) {
+                Timer:addTime("Pulse", Timer:getTime("PulseTimer"))
+            }
+            Timer:reduceTime("Pulse", 0.05)
+        }
+        if (AnimBanger) {
+            local Time = Timer:getTime("Banger")
+            local X = randint(0,255)
+            local Y = randint(0,255)
+            local Z = randint(0,255)
+            Brightness = 10*Timer:getTime("Banger")
+            FOV = X
+            RGB = vec(X,Y,Z)
+            local NewX = X * cos(Time) + X * sin(Time)
+            local NewY = X * sin(Time) - X * cos(Time)
+            if (Look) {
+                Target = Owner:aimPos()
+            }
+            else {
+                Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
+            }
+            EGP:egpColor(Elements:get("BangerBox"), vec(X,Y,Z))
+            if (Time == 0.05) {
+                Brightness = 10
+                FOV = 100
+                Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
+                AnimBanger = !AnimBanger
+                EGP:egpColor(Elements:get("BangerBox"), vec(255,255,255))
+            }
+            Timer:reduceTime("Banger", 0.05)
         }
     }
+    
+    #Draw initial screen
+    #-------------------------------------------#
+    EGP:egpClear()
+    
+    #Generic
+    createBox("Background",size(vec2(ScreenXY,ScreenXY)), color(Dark), coords(vec2(0,0)))
+    createText("Title",size(40),color(Primary),align(1),coords(vec2(ScreenXY/2,0)))
+    createText("A Tomato Production",size(16),align(1),coords(vec2(ScreenXY/2,35)))
+    EGP:egpSetText(Elements:get("Title"),"DJ BOOTH")
+
+    #DJ Options
+    createText("Lighting Options",size(24),align(1),coords(vec2(ScreenXY/4,80)))
+    
+    createCheckBox("On/Off", size(vec2(40,20)),  coords(vec2(ScreenXY/8,120)))
+    useCheckBox("On/Off", 1)
+    
+    createText("Change Brightness",size(18),align(1),coords(vec2(ScreenXY/4,160)))
+    createSlider("Brightness", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,180)))
+    
+    createDropdown("Texture", size(vec2(ScreenXY / 4, 25)), coords(vec2(ScreenXY/8,220)))
+    
+    createText("Change RGB",size(18),align(1),coords(vec2(ScreenXY/4,260)))
+    createSlider("RGB", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,280)))
+    
+    createText("Change FOV", size(18), align(1), coords(vec2(ScreenXY/4,320)))
+    createSlider("FOV", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,340)))
+    
+    #DJ Animations
+    createText("Animations",size(24),align(1),coords(vec2(ScreenXY - ScreenXY/4,80)))
+    
+    createText("Change Timing", size(18), align(1), coords(vec2(ScreenXY/2+ScreenXY/4,120)))
+    createSlider("Timing", size(vec2(ScreenXY / 4 - 20, 20)), coords(vec2(ScreenXY/2+ScreenXY / 8,140)))
+    createText("Timer", size(18), coords(vec2(ScreenXY/2+ScreenXY/4 + 50,140)))
+    EGP:egpSetText(Elements:get("Timer"),"0.05s")
+    
+    createCheckBox("    Rotate", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,180)))
+    createCheckBox("       Blink", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,220)))
+    createCheckBox("   Colours", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,260)))
+    createCheckBox("        FOV", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,300)))
+    createCheckBox("      Pulse", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,340)))
+    
+    #Columns
+    createBox("Column",size(vec2(1,250)), color(Light), coords(vec2(ScreenXY/2,120)))
+    
+    #Footer info
+    createBox("BangerBox",size(vec2(ScreenXY/2,50)), color(White), coords(vec2(ScreenXY/2-ScreenXY/4,ScreenXY-100)))
+    createText("Click if it's a banger",size(25),color(Primary),align(1),coords(vec2(ScreenXY/2,ScreenXY-90)))
 }
 
-if (first() || dupefinished()) {
-    OrgID = owner():tauOrg()
+interval(50)
+
+if (~User || FindUser) {
+    if(FindUser) {
+        findByClass("player")
+        User = findClosest(entity():pos())
+    }
+    
+    Option_FOV = useSlider("FOV", 10, 170, 1)
+    Option_Brightness = useSlider("Brightness", 0, 10, 1)
+    Option_OnOff = useCheckBox("On/Off", 0)
+    Option_RGB = useSlider("RGB", 0, 255, 1)
+    Option_Texture = useDropDown("Texture", Textures)
+
+    #Static Options
+    if (Option_FOV) {FOV = Option_FOV}
+    elseif (Option_Brightness) {Brightness = Option_Brightness}
+    elseif (Option_OnOff){On = !On}
+    elseif (Option_RGB) {RGB = vec(255*cos(Option_RGB),255*sin(Option_RGB),255*tan(Option_RGB))}
+    elseif (Option_Texture){Texture = "effects/flashlight/"+Textures[Option_Texture,string]}
+    
+    #Animation Options
+    Animation_Timing = useSlider("Timing", 0.05, 2, 0.05)
+    Animation_Direction = useCheckBox("    Rotate", 0)
+    Animation_Blink = useCheckBox("       Blink", 0)
+    Animation_Colours = useCheckBox("   Colours", 0)
+    Animation_FOV = useCheckBox("        FOV", 0)
+    Animation_Pulse = useCheckBox("      Pulse", 0)
+    
+    #Animation Options
+    if (Animation_Timing) {
+        EGP:egpSetText(Elements:get("Timer"),Time+"s")
+        Time = Animation_Timing
+        }
+    elseif (Animation_Blink) {
+        On = 1
+        AnimBlink = !AnimBlink
+        Timer:setTime("BlinkTimer", Time)
+        Timer:setTime("Blink", Timer:getTime("BlinkTimer"))
+        }
+    elseif (Animation_Colours) {
+        AnimRGB = !AnimRGB
+        Timer:setTime("RGBTimer", Time)
+        Timer:setTime("RGB", Timer:getTime("RGBTimer"))
+    }
+    elseif (Animation_Direction) {
+        AnimDir = !AnimDir
+        Timer:setTime("DIRTimer", Time)
+        Timer:setTime("DIR", Timer:getTime("DIRTimer"))
+    }
+    elseif (Animation_FOV) {
+        AnimFOV = !AnimFOV
+        Timer:setTime("FOVTimer", Time)
+        Timer:setTime("FOV", Timer:getTime("FOVTimer"))
+    }
+    elseif (Animation_Pulse) {
+        AnimPulse = !AnimPulse
+        Timer:setTime("PulseTimer", Time)
+        Timer:setTime("Pulse", Timer:getTime("PulseTimer"))
+    }
+    
+    if((User:keyPressed("E") & cursorPos(Elements:get("BangerBox"))))
+    {
+        AnimBanger = !AnimBanger
+        EGP:egpColor(Elements:get("BangerBox"), vec(255,255,255))
+        Timer:setTime("BangerTimer", 10)
+        Timer:setTime("Banger", Timer:getTime("BangerTimer"))
+    }
+}
+    
+animations()
+
+if (~Gimbal || first()) {
+    Gimbal["On", number] = 1 
+    Gimbal["Target", vector] = Gimbal:entity():pos()-vec(0,0,100)
 }
 
-event keyPressed(Player:entity, Key:string, Down:number, _:string) {
-    if (Key == "e") {
-        if (Player:aimEntity() == Door:entity()) {
-            if (Down) {
-                getOrg(Player)
+runOnChat(1)
+if(chatClk(Owner))  
+{  
+    Chat = Owner:lastSaid()
+    if(Chat:index(1) == "!")  
+    {  
+        Arguments = Chat:sub(2):explode(" ")
+        Command = Arguments:shiftString() 
+        if(Command == "look")  
+        {                    
+            Look = !Look
+        }
+        elseif(Command == "rainbow")  
+        {                    
+            Rainbow = !Rainbow
+        }
+        elseif (Command == "changeowner") {
+            Text = Arguments[1,string]
+            NewOwner = findPlayerByName(Text)
+            # If owner exists - error
+            if (NewOwner:isValid()) {
+                Owner = NewOwner
+                Owner:msg("DJ: Owner changed.")
             }
+            else {
+                Owner:msg("DJ: Please select a valid player.")
+            }         
         }
     }
 }

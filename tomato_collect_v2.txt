@@ -1,0 +1,103 @@
+@name Tomato Collect
+@persist Racks:table
+#include "lib/tomato/1.1/tomato_core"
+
+function number checkRack(E:entity) {
+    if (!E:isValid()) { return 0 }
+    let C = E:keyvalues()["classname", string]
+    return C:startsWith("printer_rack") || C:startsWith("bitminer_tower")
+}
+
+if (first() || dupefinished()) {
+    let E2 = entity()
+    E2:setSubMaterial(1, "models/mark2580/gtav/electrical/screens/effect_12")
+    E2:setColor(vec(255, 16, 7))
+    
+    Prefix = "Base Mates"
+    PrefixColour = "cyan"
+
+    Racks = table()
+
+    chat("track", "!track (name) - look at a rack to link it to your base mate",
+        function(_:entity, Args:array) {
+            let Rack = owner():aimEntity()
+            let P = Args[1, string]:findPlayer()
+            if (!P:isValid()) { owner():msg("Syntax: !track (name)") return }
+            if (!checkRack(Rack)) { owner():msg("Look at a printer rack or tower.") return }
+            Racks[Rack:id():toString(), entity] = P
+            owner():msg("Tracking rack for " + P:name() + ".")
+        },
+    owner())
+
+    chat("untrack", "!untrack - remove tracking from the rack you're looking at",
+        function(_:entity, _:array) {
+            let Rack = owner():aimEntity()
+            if (!checkRack(Rack)) { return }
+            let Id = Rack:id():toString()
+            if (Racks:exists(Id)) {
+                Racks:remove(Id)
+                owner():msg("Stopped tracking this rack.")
+            }
+        },
+    owner())
+
+    # --- Collection loop  ---
+    let Poll = 0.2 
+    let GraceTicks = ceil(1 / Poll) 
+
+    let ActiveId = ""
+    let ActiveMate = _NO_ENTITY
+    let Snapshot = 0
+    let Grace = 0
+
+    let EndSession = function() {
+        ActiveId = ""
+        ActiveMate = _NO_ENTITY
+        Snapshot = 0
+        Grace = 0
+    }
+
+    let Pay = function() {
+        if (!Snapshot) { return }
+        if (!ActiveMate:isValid()) { EndSession() return }
+
+        let Amount = owner():money() - Snapshot
+        if (Amount > 200) {
+            moneyGive(ActiveMate, Amount)
+            owner():msg("Sent $" + abbreviateNum(Amount) + " to " + ActiveMate:name())
+            ActiveMate:msg(owner():name() + " collected {green $" + abbreviateNum(Amount) + "} from your printers.")
+            Snapshot = owner():money()
+        }
+    }
+
+    timer(Poll, 0, function() {
+        let Aim = owner():aimEntity()
+
+        if (Aim:isValid() && checkRack(Aim)) {
+            let Id = Aim:id():toString()
+
+            if (Racks:exists(Id)) {
+                let Mate = Racks[Id, entity]
+
+                if (!Snapshot || ActiveId != Id) {
+                    ActiveId = Id
+                    ActiveMate = Mate
+                    Snapshot = owner():money()
+                    Grace = GraceTicks
+                    owner():msg("Ready for collection.")
+                } else {
+                    Grace = GraceTicks
+                    Pay()
+                }
+
+            } else {
+                # looking at a rack that isn't tracked
+                if (Grace > 0) { Grace--, Pay() } else { if (Snapshot) { EndSession() } }
+            }
+
+        } else {
+            # not looking at a rack
+            if (Grace > 0) { Grace--, Pay() } else { if (Snapshot) { EndSession() } }
+        }
+    })
+}

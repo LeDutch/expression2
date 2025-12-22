@@ -1,0 +1,180 @@
+@name Tomato MultiDoor
+@inputs [D1 D2 D3 D4 D5 D6 D7 D8 D9 D10 D11 D12 D13 D14 D15 D16 D17 D18 D19 D20 D21 D22 D23 D24 D25]:wirelink # Change this to add/remove fading doors
+@outputs
+@persist [OrgID]:number
+@strict
+
+function number getOrg(OrgID:number, Player:entity) {
+    let Org = Player:tauOrg()
+    return Org == OrgID
+}
+
+function number dist2(A:vector, B:vector) {
+    let D = A - B
+    return D:x()*D:x() + D:y()*D:y() + D:z()*D:z()
+}
+
+function array orderByDistance(Links:array, Origin:vector) {
+    # Copy only valid links into a working array
+    let L = array()
+    foreach(_:number, W:wirelink = Links) {
+        if (W != nowirelink() && W:entity():isValid()) {
+            L:pushWirelink(W)
+        }
+    }
+
+    # Selection sort by squared distance (nearest first)
+    for (I = 1, L:count() - 1) {
+        let Best = I
+        let BestD = dist2(L[I, wirelink]:entity():pos(), Origin)
+
+        for (J = I + 1, L:count()) {
+            let DJ = dist2(L[J, wirelink]:entity():pos(), Origin)
+            if (DJ < BestD) {
+                BestD = DJ
+                Best = J
+            }
+        }
+
+        if (Best != I) {
+            let Temp = L[I, wirelink]
+            L[I] = L[Best, wirelink]
+            L[Best] = Temp
+        }
+    }
+
+    return L
+}
+
+function void setFadeAll(Wirelinks:array, State:number, Origin:vector) {
+    let Ordered = orderByDistance(Wirelinks, Origin)
+    let Count = Ordered:count()
+    if (!Count) { return }
+
+    stoptimer("fade_all")
+
+    let I = 1
+
+    timer("fade_all", _TICKINTERVAL, Count, function() {
+        let W = Ordered[I, wirelink]
+        if (W != nowirelink() && W:entity():isValid()) {
+            W["Fade", number] = State
+        }
+        I++
+    })
+}
+
+function void buildMode() {
+    let Reps = 60
+    let Count = 1
+
+    stoptimer("green")
+
+    timer("green", 1, Reps, function() {
+        let Names = wirelink():inputs()
+        let Colour = Count == Reps ? vec(255, 255, 255) : vec(0, 255, 0)
+
+        for (I = 1, Names:count()) {
+            let W = ioGetInputWirelink(Names[I, string])
+            if (W != nowirelink()) {
+                let E = W:entity()
+                if (E:isValid()) {
+                    E:setColor(vec(0, 255, 0))
+                }
+            }
+        }
+        Count++
+    })
+}
+
+function number array:exists(A:entity) {
+    for (I = 1, This:count()) {
+        if (This[I, entity] == A) { return 1 }
+    }
+    return 0
+}
+
+function array getLinks() {
+    let Links = array()
+    let Names = wirelink():inputs()
+    for (I = 1, Names:count()) {
+        let W = ioGetInputWirelink(Names[I, string])
+        if (W != nowirelink()) { Links:pushWirelink(W) }
+    }
+    return Links
+}
+
+if (first() || dupefinished()) {
+    OrgID = owner():tauOrg()
+
+    timer(1, 0, function() {
+        if (!timerExists("close")) {
+            let Links = getLinks()
+    
+            # Find ANY active, and also capture which door triggered it for a nice radiate origin
+            let Any = 0
+            let Origin = owner():pos() # fallback; any vector works if none active
+            foreach(_:number, W:wirelink = Links) {
+                if (W:entity():isValid() && W["FadeActive", number]) {
+                    Any = 1
+                    Origin = W:entity():pos()
+                    break
+                }
+            }
+    
+            if (Any) {
+                setFadeAll(Links, 1, Origin)
+                
+                timer("close", 4 + _TICKINTERVAL*Links:count(), function() {
+                })
+                timer(4, function() {
+                    setFadeAll(Links, 0, Origin)
+                })
+            }
+        }
+    })
+}
+
+event keyPressed(Player:entity, Key:string, Down:number, _:string) {
+    if (!timerExists("close")) {
+        if (Key == "e" && Down) {
+            let Aim = Player:aimEntity()
+            if (Aim:isValid() && getOrg(OrgID, Player)) {
+    
+                let Links = getLinks()
+    
+                # Check aim is one of the linked doors
+                let DoorEnts = array()
+                foreach(_:number, W:wirelink = Links) {
+                    if (W != nowirelink() && W:entity():isValid()) {
+                        DoorEnts:pushEntity(W:entity())
+                    }
+                }
+    
+                if (DoorEnts:exists(Aim)) {
+                    let Origin = Aim:pos()
+                    
+                    setFadeAll(Links, 1, Origin)
+                    timer("close", 4 + _TICKINTERVAL*Links:count(), function() {})
+                    timer(4, function() {
+                        setFadeAll(Links, 0, Origin)
+                    })
+                }
+            }
+        }
+    }
+}
+
+event chat(Player:entity, Msg:string, _:number) {
+    if (Player == owner()) {
+        let Args = Msg:explode(" ")
+        let Command = Args[1, string]:lower()
+        
+        switch (Command) {
+            case "!build",
+                buildMode()
+            break
+        }
+    }
+}
+

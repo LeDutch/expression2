@@ -1,0 +1,122 @@
+@name Tomato Collect
+@persist Racks:table Snapshot:number
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_animations"
+
+function number checkRack(Entity:entity) {
+    if (Entity:isValid()) {
+        let Class = Entity:keyvalues()["classname", string]
+        return Class:startsWith("printer_rack") || Class:startsWith("bitminer_tower")
+    }
+    return 0
+}
+
+function void startSnapshot(Player:entity) {
+    Snapshot = Player:money()
+}
+
+function void payMate(Player:entity, Mate:entity) {
+    let Amount = Player:money() - Snapshot
+    if (Amount > 200) {
+        moneyGive(Mate, Amount)
+        Player:msg("Sent $" + abbreviateNum(Amount) + " to " + Mate:name())
+        Mate:msg(owner():name() + " collected {green $" + abbreviateNum(Amount) + "} from your printers.")
+        Snapshot = Player:money()
+    }
+}
+
+function void checkCollection(Racks:table, Player:entity) {
+    let AimEntity = Player:aimEntity()
+    if (AimEntity:isValid()) {
+        if (checkRack(AimEntity)) {
+            let RackId = AimEntity:id():toString()
+            if (Racks:exists(RackId)) {
+                let Mate = Racks[RackId, entity]
+                if (!Snapshot) {
+                    startSnapshot(Player)
+                    Player:msg("Ready for collection.")
+                }
+                else {
+                    payMate(Player, Mate)
+                }
+                return
+            }
+        }
+    }
+    Snapshot = 0
+}
+
+function void entColourTo(Object:entity, Dur:number, Target:vector) {
+    let RGB = Object:getColor()
+    let Steps = repeats(Dur)
+    let Step = 0
+    
+    let Animation = function() {
+        let T = clamp(Step / Steps, 0, 1)
+        RGB += (Target - RGB) * T
+        Step++
+        
+        Object:setColor(RGB)
+    }
+    startAnimation(Object:id()+"_colourTo", Animation, Dur)
+}
+
+if (first() || dupefinished()) {
+    let E2 = entity()
+    let I = 1
+    E2:setSubMaterial(1, "models/mark2580/gtav/electrical/screens/effect_08")
+    
+    timer(2,0,function() {
+        let Colours = array(
+            vec(62, 7, 3),
+            vec(102, 11, 5),
+            vec(140, 16, 7),
+            vec(255, 240, 196)
+        )
+        let Colour = Colours[I, vector]
+        entColourTo(E2, 1, Colour)
+        I = (I % Colours:count()) + 1
+    })
+    
+    Prefix = "Base Mates"
+    PrefixColour = "cyan"
+    Racks = table()
+    Snapshot = 0
+
+    chat("track", "!track (name) - look at a rack to link it to your base mate",
+        function(_:entity, Args:array) {
+            let Rack = owner():aimEntity()
+            let Player = Args[1, string]:findPlayer()
+            if (Player:isValid()) {
+                if (!checkRack(Rack)) {
+                    owner():msg("Look at a printer rack or tower.")
+                    return
+                }
+                Racks[Rack:id():toString(), entity] = Player
+                owner():msg("Tracking rack for " + Player:name() + ".")
+            }
+            else {
+                owner():msg("Syntax: !track (name)")
+            }
+        },
+    owner())
+
+    chat("untrack", "!untrack - remove tracking from the rack you're looking at",
+        function(_:entity, _:array) {
+            let Rack = owner():aimEntity()
+            if (!checkRack(Rack)) {
+                return
+            }
+            let RackId = Rack:id():toString()
+            if (Racks:exists(RackId)) {
+                Racks:remove(RackId)
+                owner():msg("Stopped tracking this rack.")
+            }
+        },
+    owner())
+
+    timer(1, 0, function() {
+        checkCollection(Racks, owner())
+    })
+}

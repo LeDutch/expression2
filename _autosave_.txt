@@ -1,35 +1,17 @@
-@name Org Check V2
-@inputs Door:wirelink
-@outputs 
-@persist OrgID:number PlayerScan:array
+@name Rotate Logo
+@inputs Gimbal:wirelink
+@persist Angle
+@trigger 
 @strict
 
-function void getOrg(Player:entity) {
-    let Org = Player:tauOrg()
-    if (Org == OrgID) {
-        Door["Fade", number] = 1
-        if (!timerExists("close")) {
-            timer("close", 6, function() {
-                Door["Fade", number] = 0
-            })
-        }
-        else {
-            timerRestart("close")
-        }
-    }
+interval(30)
+
+if (~Gimbal) {
+    Gimbal["On", number] = 1 
 }
 
-if (first() || dupefinished()) {
-    OrgID = owner():tauOrg()
+if (Gimbal != nowirelink()) {
+    Gimbal["Angle", angle] = ang(0,Angle,0)
 }
 
-event keyPressed(Player:entity, Key:string, Down:number, _:string) {
-    if (Key == "e") {
-        if (Player:aimEntity() == Door:entity()) {
-            if (Down) {
-                getOrg(Player)
-            }
-        }
-    }
-}
-
+Angle -=1

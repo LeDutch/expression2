@@ -110,11 +110,51 @@ if (first() || dupefinished()) {
                     ActivePlayers[WinningBidder, table]["Items Bought", table]:pushTable(Item)
                     owner():msg("An auction ended for {red " + Item["Name", string] + "} type !auction delete after trading.")
                     ExpiredTrades:pushTable(Item)
-                    Items[Name, table]:remove(I)
+            Items[Name, table]:remove(I)
                 }
             }
         }
     })
+}
+
+function table auctionGetCategoriesData() {
+    let CategoriesData = table()
+    foreach(_:number, Name:string = Items:keys()) {
+        let Count = Items[Name, table]:count()
+        CategoriesData:pushTable(table(
+            "Name" = Name,
+            "Count" = Count
+        ))
+    }
+    return CategoriesData
+}
+
+function auctionGetItemData(Item:table) {
+    let Price = Item["Price", number]
+    return table(
+        "Name" = Item["Name", string],
+        "Desc" = Item["Desc", string],
+        "Price" = Price,
+        "PricePretty" = abbreviateNum(Price),
+        "Expiration" = Item["Expiration", table],
+        "TimeRemaining" = formatTimeInHours(hoursBetween(dateUTC(), Item["Expiration", table])),
+        "Category" = Item["Category", string],
+        "ID" = Item["ID", string],
+        "CurrentBidder" = Item["CurrentBidder", string],
+        "Steam" = Item["Steam", string]
+    )
+}
+
+function table auctionGetCategoryItemsData(CategoryName:string) {
+    let ItemsData = table()
+    let Category = Items[CategoryName, table]
+    if (!Category) {
+        return ItemsData
+    }
+    foreach(_:number, Item:table = Category) {
+        ItemsData:pushTable(auctionGetItemData(Item))
+    }
+    return ItemsData
 }
 
 function msgActivePlayers(Text:string) {
@@ -164,13 +204,15 @@ if(moneyClk()) {
 
 function listItemInfo(Player:entity, Item:table) {
     let Steam = Player:steamID64()
-    let Name = Item["Name", string]
-    let Description = Item["Desc", string]
-    let Price = abbreviateNum(Item["Price", number])
-    let TimeLeft = formatTimeInHours(hoursBetween(dateUTC(), Item["Expiration", table]))
-    let ItemID = Item["ID", string] 
+    let Info = auctionGetItemData(Item)
+    let Name = Info["Name", string]
+    let Description = Info["Desc", string]
+    let Price = Info["PricePretty", string]
+    let TimeLeft = Info["TimeRemaining", string]
+    let ItemID = Info["ID", string]
     
     ActivePlayers[Steam, table]["Browsing", string] = ItemID
+    ActivePlayers[Steam, table]["BrowsingCategory", string] = Info["Category", string]
     
     Player:msg("\n" +
         " Name: {red " + Name + "}" 
@@ -184,32 +226,35 @@ function listItems(Player:entity, Category:table, Name:string) {
     let Steam = Player:steamID64()
     let Msg = "\n" + Name + "\n"
     let I = 0
-    let Count = Category:count()
+    let ItemsData = auctionGetCategoryItemsData(Name)
+    let Count = ItemsData:count()
     if (Count == 1) {
         listItemInfo(Player, Category[1, table])
     }
     else {
-        foreach(_:string, Item:table = Category) {
+        foreach(_:number, Item:table = ItemsData) {
             I++
             Msg+= " " + I + ". " + Item["Name", string] + "\n"
         }
         ActivePlayers[Steam, table]["Browsing", string] = "ItemInfo"
+        ActivePlayers[Steam, table]["BrowsingCategory", string] = Name
         Player:msg(Msg != "\n" + Name + "\n" ? Msg + "\nType (1-" + I + ") to select an item." : "There are no items listed")
     }
 }
 
 function listCategories(Player:entity) {
-    let Keys = Items:keys()
-    if (Keys:count() < 2) {
-        let Category = Keys[1, string]
+    let CategoriesData = auctionGetCategoriesData()
+    if (CategoriesData:count() < 2) {
+        let Category = CategoriesData[1, table]["Name", string]
         listItems(Player, Items[Category, table], Category)
     }
     else {
         let Categories = ""
-        foreach(I:number, Item:string = Keys) {
-            let Count = Items[Item, table]:count()
+        foreach(I:number, Item:table = CategoriesData) {
+            let Count = Item["Count", number]
+            let Name = Item["Name", string]
             if (Count) {
-                Categories += "\n" + " " + I + ". "  + Item + " (" + Count + ")"
+                Categories += "\n" + " " + I + ". "  + Name + " (" + Count + ")"
             }
         }
         Categories += "\n Type !auction (category) to view more."
@@ -228,6 +273,7 @@ function auctionEnsureProfile(Player:entity) {
             "ItemToList"    = table(),
             "Commission"    = 2,
             "Browsing"      = "Categories",
+            "BrowsingCategory" = "",
             "Steam"         = Steam,
             "Entity"        = Player
         )
@@ -439,6 +485,7 @@ function auctionCommand(Player:entity, Command:string, Args:array) {
                 }
                 else {
                     ActivePlayers[Steam, table]["Browsing", string] = "Items"
+                    ActivePlayers[Steam, table]["BrowsingCategory", string] = ""
                     listCategories(Player)
                     break
         }
@@ -515,6 +562,7 @@ function auctionHandleBrowseInput(Player:entity, Message:string) {
                 break
                 case "ItemPrice",
                     Profile["Browsing", string] = "Categories"
+                    Profile["BrowsingCategory", string] = ""
                     let Item = Profile["ItemToList", table]
                     
                     let Price = Message:toNumber()
@@ -609,6 +657,7 @@ function auctionHandleBrowseInput(Player:entity, Message:string) {
                 let Category=Categories[Choice:toNumber(), string]
                 Profile["Browsing", string] = "ItemName"
                 Profile["ItemToList", table]["Category", string] = Category
+                Profile["BrowsingCategory", string] = ""
                 if (Category == "Knives") {
                     Player:msg("What type of knife is it?")
                 }
@@ -623,11 +672,12 @@ function auctionHandleBrowseInput(Player:entity, Message:string) {
                 let Category = Items:keys()[Choice:toNumber(), string]
                 
                 Profile["Browsing", string] = Category
+                Profile["BrowsingCategory", string] = Category
                 let ItemTable = Items[Category, table]
                 listItems(Player, ItemTable, Category)
             }
             elseif(Browse == "ItemInfo") {
-                let Category = ActivePlayers[Steam, table]["Browsing", string]
+                let Category = ActivePlayers[Steam, table]["BrowsingCategory", string]
                 let Item = Items[Category, table][Choice, table]
                 
                 listItemInfo(Player, Item)
