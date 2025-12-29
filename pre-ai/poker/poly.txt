@@ -24,7 +24,7 @@ function void animatePolyBilinear(Name:string, Dur:number, From:number, To:numbe
     let Function = function() {
         Step++
         local T = clamp(Step / Steps, 0, 1)
-        local K = easeInOutCirc(T)
+        local K = easeBilinear(T)
         local Size = From + Dist * K
         poly(Name, table(
             "vertices" = polyVectors(Size, Sides, Offset),

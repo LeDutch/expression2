@@ -1,83 +1,25 @@
 @name Tomato Poker Logic
 @persist [Players CommunityCards Deck AllIn]:table
 @persist [GameState CoinSeat BuyIn InPlay ActionSeat Pot CurrentBet MinBet]:number
+@persist [Prefix PrefixColour]:string
 @persist [SeatsInPlay]:array
 
 #include "lib/tomato/1.1/tomato_ui"
 #include "lib/tomato/1.1/tomato_core"
 #include "tomato/poker/graphics"
 
-# Function to create the Deck
-function table deckCreate() {
-    let Deck = table()
-    
-    # Lambda to create a card
-    let Card_create = function(Rank:string, Suit:string) {
-        let Card = table()
-        Card["Rank"] = Rank
-        Card["Suit"] = Suit
-        Card["toString"] = function() {
-            return Card["Rank", string] + " of " + Card["Suit", string]
-        }
-        return Card
-    }
-    Deck["Cards"] = table()
-    
-    # Initialize the deck
-    Deck["initialize"] = function() {
-        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
-        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
-        
-        foreach(_:number, Suit:string = Suits) {
-            foreach(_:number, Rank:string = Ranks) {
-                let Card = Card_create(Rank, Suit)[table]
-                Deck["Cards", table]:pushTable(Card)
-            }
-        }
-    }
-    
-    # Shuffle the deck
-    Deck["shuffle"] = function() {
-        let Cards = Deck["Cards", table]
-        let Count = Cards:count()
-        for (I = Count, 1, -1) {
-            let J = randint(1, I) # Random index between 0 and I
-            # Swap Cards[I] and Cards[J]
-            let Temp = Cards[I, table]
-            Cards[I] = Cards[J, table]
-            Cards[J] = Temp
-        }
-    }
-    
-    # Draw a card
-    Deck["draw"] = function() {
-        let Cards = Deck["Cards", table]
-        if (Cards:count()) {
-            let FirstCard = Cards[1, table] # Get the first card
-            Deck["Cards", table]:shift()
-            return FirstCard
-        }
-        return table() # Deck is empty
-    }
-    
-    return Deck
-}
-
-if (first() || dupefinished()) {
-    Players = table()
-    CommunityCards = table()
-    AllIn = table()
-    Deck = deckCreate()
-    SeatsInPlay = array()
-    GameState = 0
-    CoinSeat = 0
-    ActionSeat = 0
-    CurrentBet = 0
-    Pot = 0
-    InPlay = 0
-    BuyIn = 100000
-    MinBet = BuyIn / 100
-}
+Players = table()
+CommunityCards = table()
+AllIn = table()
+Deck = table()
+SeatsInPlay = array()
+GameState = 0
+CoinSeat = 0
+ActionSeat = 0
+CurrentBet = 0
+Pot = 0
+MinBet = 0
+BuyIn = 100000
 
 # =================== Poker Helper Functions =============== #
 
@@ -105,48 +47,6 @@ function number indexOf(Value:string, Array:array) {
     return 0
 }
 
-function void broadcast(Text:string) {
-    foreach(_:string, Player:table = Players) {
-        let Entity = Player["Entity", entity]
-        if (Entity:isValid()) {
-            Entity:msg(Text)
-        }
-    }
-}
-
-function array seatsInPlay() {
-    let Array = array()
-    foreach(_:string, Player:table = Players) {
-        if(Player["InPlay", number]) {
-            let Seat = Player["Seat", number]
-            Array:pushNumber(Seat)
-        }
-    }
-    return Array
-}
-
-function array seatsWithAction() {
-    let Array = array()
-    foreach(_:string, Player:table = Players) {
-        if(Player["InPlay", number] && Player["Chips", number] > 0) {
-            let Seat = Player["Seat", number]
-            Array:pushNumber(Seat)
-        }
-    }
-    return Array
-}
-
-function table playerFromSeat(Seat:number) {
-    foreach(_:string, Player:table = Players) {
-        if(Player["Seat", number] == Seat) {
-            return Player
-        }
-    }
-    print("Player from seat error")
-    return table()
-}
-
-
 
 # =================== Poker Logic Functions ================ #
 
@@ -156,8 +56,7 @@ function void assignCoin() {
     }
     if (!CoinSeat) {
         CoinSeat = SeatsInPlay[randint(1, SeatsInPlay:count()), number]
-        drawDealerCoin(CoinSeat)
-        broadcast("Dealercoin assigned randomly.")
+        Players:keys():msgAll("Dealercoin assigned randomly.")
     }
     else {
         CoinSeat = NextCoinSeat(SeatsInPlay, CoinSeat)[number]
@@ -178,33 +77,10 @@ function void revealHand(PlayerID:string) {
         return CardsString
     }
     let RevealedPlayer = Players[PlayerID, table]
-    let Seat = RevealedPlayer["Seat", number]
-    let Cards = RevealedPlayer["Cards", table]
-    let Hand = HandtoString(Cards)[string]
+    let Hand = HandtoString(RevealedPlayer["Cards", table])[string]
     let Entity = RevealedPlayer["Entity", entity]
     let Name = Entity:isValid() ? Entity:name() : "Player " + PlayerID
-    
-    deleteShowHand(Seat)
-    
-    let ShowCard = function(Name:string) {
-        if (!Elements:exists(Name)) { return }
-        let Obj = EGP:egpobject(Elements:get(Name))
-        if (!Obj) { return }
-        Obj["a", number] = 255
-    }
-    
-    timer(1, function() {
-        suit_rank("Card1" + Seat, Cards[1, table])
-        suit_rank("Card2" + Seat, Cards[2, table])
-    })
-    
-    ShowCard("Card1" + Seat)
-    ShowCard("Card1" + Seat + "_border")
-    ShowCard("Card2" + Seat)
-    ShowCard("Card2" + Seat + "_border")
-    
-    revealCardAnim(Seat)
-    broadcast(Name + " revealed " + Hand)
+    Players:keys():msgAll((Name + " revealed " + Hand))
 }
 
 # =================== Poker Core Functions ================= #
@@ -387,73 +263,37 @@ function table evaluateHand(Player:table) {
     return table("Points"=0, "Description"="No Hand", "HighCards"=array())
 }
 
-function array findWinners(Eligible:array, Hands:table) {
-    let OrderedRanks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
-    let BestHand = table("Points"=0, "HighCards"=array())
-    let Winners = array()
-    foreach(_:number, PlayerID:string = Eligible) {
-        let EvaluatedHand = Hands[PlayerID, table]
-        if (!EvaluatedHand) {
-            let Player = Players[PlayerID, table]
-            EvaluatedHand = evaluateHand(Player)
-            Hands[PlayerID, table] = EvaluatedHand
-        }
-        if (EvaluatedHand["Points", number] > BestHand["Points", number]) {
-            BestHand = EvaluatedHand
-            Winners = array(PlayerID)
-        }
-        elseif (EvaluatedHand["Points", number] == BestHand["Points", number]) {
-            let BestCards = BestHand["HighCards", array]
-            let CurrentBestCards = EvaluatedHand["HighCards", array]
-            let Tie = 1
-            foreach(Index:number, HighCard:string = BestCards) {
-                let BestRank = indexOf(HighCard, OrderedRanks)
-                let CurrentRank = indexOf(CurrentBestCards[Index, string], OrderedRanks)
-                if (CurrentRank > BestRank) {
-                    BestHand = EvaluatedHand
-                    Winners = array(PlayerID)
-                    Tie = 0
-                    break
-                } elseif (CurrentRank < BestRank) {
-                    Tie = 0
-                    break
-                }
-            }
-            if (Tie) {
-                Winners:pushString(PlayerID)
-            }
-        }
-    }
-    return Winners
-}
-
 function string bet(Player:table) {
     let Seat = Player["Seat", number]
     let Entity = Player["Entity", entity]
     let Chips = Player["Chips", number]
     let PlayerBet = Player["CurrentBet", number]
-    let Amount = max(0, CurrentBet - PlayerBet)
-    let AmountToPut = min(Amount, Chips)
-    Pot += AmountToPut
-    Player["Chips", number] = Chips - AmountToPut
-    Player["CurrentBet", number] = PlayerBet + AmountToPut
-    Player["TotalBet", number] = Player["TotalBet", number] + AmountToPut
-    if (Player["Chips", number] == 0) {
-        AllIn[Player["ID", string]] = Player["TotalBet", number]
+    let Amount = abs(CurrentBet - PlayerBet)
+    if (Chips - Amount < 0) {  # All in bets
+        Pot+=Chips
+        Player["Chips", number] = 0
+        Player["CurrentBet", number] = Chips
+        if(CurrentBet < Chips) {
+            CurrentBet = Chips
+        }
+        AllIn:pushTable(Player)
     }
+    else {
+        Pot+=Amount
+        Player["Chips", number] = Chips - Amount
+        Player["CurrentBet", number] = CurrentBet
+    }
+    Player["TotalBet", number] = Player["TotalBet", number] + Player["CurrentBet", number]
     Player["Action", number] = 1
+    timer(0, function() {
+        #drawCurrentBet(Seat, Player["CurrentBet", number])
+        #drawChips(Seat, Player["Chips", number])
 
-    let IsAllIn = Player["Chips", number] == 0
-    drawCurrentBet(Seat, Player["CurrentBet", number], IsAllIn, BuyIn)
-    updateChips(Seat, Player["Chips", number])
-    updatePot(Pot)
-    
+    })
     return Entity:isValid() ? Entity:name() : "Player " + toString(Seat)
 }
 
 function void foldHand(Seat:number) {
-    if (Seat < 2 | Seat > 8) { return }
-    deleteButtons(Seat)
     let Name = "Player " + Seat
     foreach(_:string, Player:table = Players) {
         if (Player["Seat", number] == Seat) {
@@ -465,81 +305,46 @@ function void foldHand(Seat:number) {
         }
     }
     
-    broadcast(Name + " has folded.")
-    SeatsInPlay = sortAscending(seatsInPlay())
+    Players:keys():msgAll(Name + " has folded.")
     for (I=1, 2) {
-        let Card = "Card" + I + Seat
-        let Border = Card + "_border"
-        if (Elements:exists(Card)) {
-            fadeOut(Card, 0.5)
-        }
-        if (Elements:exists(Border)) {
-            fadeOut(Border, 0.5)
-        }
+        fadeOut(Seat + "Card"+I, 0.5)
+        fadeOut(Seat + "Card"+I+"_border", 0.5)
     }
 }
 
 function void checkOrCall(Seat:number) {
-    if (Seat < 2 | Seat > 8) { return }
-    deleteButtons(Seat)
     let Name = "Player " + Seat
-    let Description = "checked."
-    let NeedsCall = 0
+    let Description = CurrentBet ? "called $" + CurrentBet : "checked."
     foreach(_:string, Player:table = Players) {
         if (Player["Seat", number] == Seat) {
-            NeedsCall = max(0, CurrentBet - Player["CurrentBet", number])
-            if (NeedsCall > 0) {
-                Description = "called $" + CurrentBet
-            }
             Name = bet(Player)
             if(Player["Chips", number] < CurrentBet) {
                 Description = "went all in (" + Player["Chips", number]+")."
             }
         }
     }
-    broadcast(Name + " has " + Description)
-    if (NeedsCall > 0) {
+    Players:keys():msgAll(Name + " has " + Description)
+    if (CurrentBet) {
         soundPlay(2,0.3,"pcasino/chip/chip_2.wav")
     }
 }
 
 function void raise(Seat:number, Amount:number) {
-    if (Seat < 2 | Seat > 8) { return }
-    deleteButtons(Seat)
-    let Description = "raised $" + Amount
+    CurrentBet = Amount
+    let Description = "raised $" + CurrentBet
     let Name = "Player " + Seat
-    let DidRaise = 0
     foreach(_:string, Player:table = Players) {
         if (Player["Seat", number] == Seat) {
-            if (Player["Chips", number] < MinBet) {
-                let AllInBet = Player["CurrentBet", number] + Player["Chips", number]
-                if (AllInBet > CurrentBet) {
-                    CurrentBet = AllInBet
-                    DidRaise = 1
-                }
-                Name = bet(Player)
-                Description = "went all in (" + Player["CurrentBet", number] + ")."
-            }
-            else {
-                if (Amount <= CurrentBet) {
-                    checkOrCall(Seat)
-                    return
-                }
-                CurrentBet = Amount
-                DidRaise = 1
-                Name = bet(Player)
-                if(Player["Chips", number] < CurrentBet) {
-                    Description = "went all in (" + Player["CurrentBet", number]+")."
-                }
+            Name = bet(Player)
+            if(Player["Chips", number] < CurrentBet) {
+                Description = "went all in (" + Player["CurrentBet", number]+")."
             }
         }
         else {
-            if (DidRaise) {
-                Player["Action", number] = 0
-            }
+            Player["Action", number] = 0
         }
     }
-    broadcast(Name + " has " + Description)
+    Players:keys():msgAll(Name + " has " + Description)
     soundPlay(2,0.3,"pcasino/chip/chip_1.wav")
 }
 
@@ -553,7 +358,7 @@ function void blind(Seat:number, Amount:number) {
             Player["Action", number] = 0
         }
     }
-    broadcast(Name + " has paid the " + Blind + " blind.")
+    Players:keys():msgAll(Name + " has paid the " + Blind + " blind.")
     soundPlay(2,0.3,"pcasino/chip/chip_2.wav")
 }
 
@@ -568,7 +373,7 @@ function payWinners(Winners:table) {
             if (Player["Seat", number] == Seat) {
                 let Entity = Player["Entity", entity]
                 Player["Chips", number] = Player["Chips", number] + Payout
-                updateChips(Seat, Player["Chips", number])
+                #drawChips(Seat, Player["Chips", number])
                 return Entity:isValid() ? Entity:name() : "Player " + Seat
             }
         }
@@ -594,7 +399,7 @@ function payWinners(Winners:table) {
             let Name = UpdatePlayerChips(Seat, Payout)[string]
     
             # Announce the winner
-            broadcast(Name + " has won " + abbreviateNum(Payout))
+            Players:keys():msgAll(Name + " has won " + abbreviateNum(Payout))
         }
     }
     else {
@@ -605,140 +410,22 @@ function payWinners(Winners:table) {
         let Name = UpdatePlayerChips(Seat, Payout)[string]
     
         # Announce the winner
-        broadcast(Name + " has won " + abbreviateNum(Payout))
+        Players:keys():msgAll(Name + " has won " + abbreviateNum(Payout))
     }
 
     # Reset the pot
     Pot = 0
-    updatePot(Pot)
 }
 
-function void paySidePots() {
-    let Bets = table()
-    let Levels = array()
-    let Hands = table()
-    let TotalPaid = 0
-
-    foreach(PlayerID:string, Player:table = Players) {
-        let Bet = Player["TotalBet", number]
-        Bets[PlayerID] = Bet
-        Levels:pushNumber(Bet)
-        if (Player["InPlay", number]) {
-            Hands[PlayerID] = evaluateHand(Player)
+function array seatsInPlay() {
+    let Array = array()
+    foreach(_:string, Player:table = Players) {
+        if(Player["InPlay", number]) {
+            let Seat = Player["Seat", number]
+            Array:pushNumber(Seat)
         }
     }
-
-    if (!Levels:count()) {
-        Pot = 0
-        updatePot(Pot)
-        return
-    }
-
-    Levels = sortAscending(Levels)
-    let Unique = array()
-    let Last = -1
-    foreach(_:number, Level:number = Levels) {
-        if (Level > Last) {
-            Unique:pushNumber(Level)
-            Last = Level
-        }
-    }
-
-    let UpdatePlayerChips = function(Seat:number, Payout:number) {
-        foreach(_:string, Player:table = Players) {
-            if (Player["Seat", number] == Seat) {
-                Player["Chips", number] = Player["Chips", number] + Payout
-                updateChips(Seat, Player["Chips", number])
-                return
-            }
-        }
-        return
-    }
-
-    let Prev = 0
-    let TotalWins = table()
-    let WinnerList = array()
-    foreach(_:number, Level:number = Unique) {
-        let CountAll = 0
-        let Eligible = array()
-        foreach(PlayerID:string, Bet:number = Bets) {
-            if (Bet >= Level) {
-                CountAll++
-            }
-            if (Bet >= Level && Players[PlayerID, table]["InPlay", number]) {
-                Eligible:pushString(PlayerID)
-            }
-        }
-        let PotAmount = (Level - Prev) * CountAll
-        if (PotAmount > 0 && Eligible:count()) {
-            let Winners = findWinners(Eligible, Hands)
-            let Share = floor(PotAmount / Winners:count())
-            foreach(_:number, WinnerID:string = Winners) {
-                let Seat = Players[WinnerID, table]["Seat", number]
-                UpdatePlayerChips(Seat, Share)
-                TotalPaid += Share
-                if (!TotalWins[WinnerID, number]) {
-                    TotalWins[WinnerID, number] = 0
-                    WinnerList:pushString(WinnerID)
-                }
-                TotalWins[WinnerID, number] = TotalWins[WinnerID, number] + Share
-            }
-        }
-        Prev = Level
-    }
-
-    if (WinnerList:count() == 0 && Pot > 0) {
-        let Eligible = array()
-        foreach(PlayerID:string, Player:table = Players) {
-            if (Player["InPlay", number]) {
-                Eligible:pushString(PlayerID)
-                Hands[PlayerID] = evaluateHand(Player)
-            }
-        }
-        if (Eligible:count()) {
-            let Winners = findWinners(Eligible, Hands)
-            let Share = floor(Pot / Winners:count())
-            foreach(_:number, WinnerID:string = Winners) {
-                let Seat = Players[WinnerID, table]["Seat", number]
-                UpdatePlayerChips(Seat, Share)
-                TotalPaid += Share
-                if (!TotalWins[WinnerID, number]) {
-                    TotalWins[WinnerID, number] = 0
-                    WinnerList:pushString(WinnerID)
-                }
-                TotalWins[WinnerID, number] = TotalWins[WinnerID, number] + Share
-            }
-        }
-    }
-
-    if (WinnerList:count() == 1) {
-        let WinnerID = WinnerList[1, string]
-        let Seat = Players[WinnerID, table]["Seat", number]
-        let Entity = Players[WinnerID, table]["Entity", entity]
-        let Name = Entity:isValid() ? Entity:name() : "Player " + Seat
-        let HandDesc = Hands[WinnerID, table]["Description", string]
-        if (HandDesc == "") { HandDesc = "a hand" }
-        broadcast(Name + " has won " + abbreviateNum(TotalWins[WinnerID, number]) + " with " + HandDesc)
-        revealHand(WinnerID)
-    }
-    else {
-        let I = 0
-        foreach(_:number, WinnerID:string = WinnerList) {
-            let Seat = Players[WinnerID, table]["Seat", number]
-            let Entity = Players[WinnerID, table]["Entity", entity]
-            let Name = Entity:isValid() ? Entity:name() : "Player " + Seat
-            let HandDesc = Hands[WinnerID, table]["Description", string]
-            if (HandDesc == "") { HandDesc = "a hand" }
-            broadcast(Name + " has won " + abbreviateNum(TotalWins[WinnerID, number]) + " with " + HandDesc)
-            I++
-            timer(I, function() {
-                revealHand(WinnerID)
-            })
-        }
-    }
-
-    Pot = 0
-    updatePot(Pot)
+    return Array
 }
 
 function table:removePlayer(Seat:number) {
@@ -765,70 +452,25 @@ function table:removePlayer(Seat:number) {
     }
 }
 
-function void processLeavingPlayers() {
-    let Seats = array()
-    let Entities = array()
-    let Balances = array()
-    foreach(_:string, Player:table = Players) {
-        if (Player["Leaving", number]) {
-            Seats:pushNumber(Player["Seat", number])
-            Entities:pushEntity(Player["Entity", entity])
-            Balances:pushNumber(Player["Chips", number])
-        }
-    }
-    for (I=1, Seats:count()) {
-        let Seat = Seats[I, number]
-        let Entity = Entities[I, entity]
-        let Chips = Balances[I, number]
-        if (Entity:isValid()) {
-            moneyGive(Entity, Chips)
-        }
-        deletePlayerCards(Seat)
-        deleteButtons(Seat)
-        drawCurrentBet(Seat, 0, 0, BuyIn)
-        drawEmptySeat(Seat)
-        Players:removePlayer(Seat)
-    }
-}
-
-function number isBot(Player:table) {
-    let Entity = Player["Entity", entity]
-    return !Entity:isValid()
-}
-
-function void botAct(Seat:number) {
-    let Player = playerFromSeat(Seat)
-    if (!Player["InPlay", number]) { return }
-    if (Player["Chips", number] <= 0) { return }
-    let Roll = randint(1, 3)
-    if (Roll == 1) {
-        checkOrCall(Seat)
-    }
-    elseif (Roll == 2) {
-        foldHand(Seat)
-    }
-    else {
-        let Target = max(CurrentBet + MinBet, MinBet * 2)
-        raise(Seat, Target)
-    }
-}
-
 function void newAction() {
-    SeatsInPlay = sortAscending(seatsWithAction())
-    if (SeatsInPlay:count() <= 1) { return }
     let Count = SeatsInPlay:count()
     
-    let NextSeat = function(Current:number) {
-        let Index = SeatsInPlay:indexOf(Current)
-        if (!Index) {
-            foreach(I:number, Seat:number = SeatsInPlay) {
-                if (Seat > Current) {
-                    return SeatsInPlay[I, number]
+    # Recursive Lambda to filter out folded players
+    let FindNextAction = function() {}
+    FindNextAction = function(ActionSeat:number) {
+        let Index = SeatsInPlay:indexOf(ActionSeat)
+        ActionSeat = SeatsInPlay[Index % Count + 1, number]
+        foreach(_:string, Player:table = Players) {
+            if (ActionSeat == Player["Seat", number]) {
+                if (Player["InPlay", number]) {
+                    return ActionSeat
+                }
+                else {
+                    return FindNextAction(ActionSeat)[number]
                 }
             }
-            return SeatsInPlay[1, number]
         }
-        return SeatsInPlay[Index % Count + 1, number]
+        return 0
     }
     let HasActioned = function(Seat:number) {
         foreach(_:string, Player:table = Players) {
@@ -838,22 +480,10 @@ function void newAction() {
         }
         return 0
     }
-    ActionSeat = NextSeat(ActionSeat)[number]
+    ActionSeat = FindNextAction(ActionSeat)[number]
     if(!HasActioned(ActionSeat)[number]) {
-        let CurrentPlayer = playerFromSeat(ActionSeat)
-        drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
-
-        let BotPlayer = playerFromSeat(ActionSeat)
-        if (isBot(BotPlayer)) {
-            let BotTimer = "bot_" + ActionSeat
-            timer(BotTimer, 1, function() {
-                botAct(ActionSeat)
-                timer(1.2, function() {
-                    newAction()
-                })
-            })
-            return
-        }
+        print(ActionSeat)
+        drawButtons(ActionSeat, CurrentBet)
     }
 }
 
@@ -889,49 +519,25 @@ function string updateGameState() {
     }
     
     let ResetBoard = function() {
+        # Kick Players with no chips
+        foreach(_:string, Player:table = Players) {
+            if (Player["Chips", number] == 0) {
+                let SeatNum = Player["Seat", number]
+                #deletePlayer(SeatNum)
+                #drawEmptySeat(SeatNum)
+                Players:removePlayer(SeatNum)
+            }
+        }
+        # Reset board
+        ActionSeat = 0
+        CurrentBet = 0
+        Pot = 0
+        InPlay = 0
+        #updatePot()
         stoptimer("action")
         stoptimer("fold")
-        
-        processLeavingPlayers()
-        timer(1, function() {
-            foreach(_:string, Player:table = Players) {
-                if (Player["Chips", number] == 0) {
-                    let SeatNum = Player["Seat", number]
-                    drawEmptySeat(SeatNum)
-                    Players:removePlayer(SeatNum)
-                }
-            }
-        })
-        timer(5, function() {
-            # Reset board
-            ActionSeat = 0
-            CurrentBet = 0
-            Pot = 0
-            InPlay = 0
-            for (Seat=2, 8) {
-                deleteButtons(Seat)
-                deleteShowHand(Seat)
-                clearHandRanks(Seat)
-                deleteCurrentBet(Seat)
-            }
-            deleteCommunityCards()
-            updatePot(Pot)
-
-            timer(1, function() {
-                if (Players:count() < 2) {
-                    InPlay = 0
-                    return
-                }
-                for (Seat=2, 8) {
-                    initHand(Seat)
-                }
-            })
-
-            timer(2, function() {
-                if (Players:count() < 2) {
-                    InPlay = 0
-                    return
-                }
+        timer(3, function() {
+            timer(5, function() {
                 InPlay = 1
                 GameState = 0
                 updateGameState()
@@ -939,39 +545,9 @@ function string updateGameState() {
         })
     }
 
-    let EndRound = function() {
-        foreach(_:string, Player:table = Players) {
-            drawShowHandButton(Player["Seat", number])
-        }
-        InPlay = 0
-        timer(5, function() {
-            ResetBoard()
-        })
-    }
-
     let Action = function() {
-        # Timer animation for Player to make a move.
-        SeatsInPlay = sortAscending(seatsWithAction())
-        if (SeatsInPlay:count() == 0) {
-            updateGameState()
-            return
-        }
-        if (seatsInPlay():count() <= 1) {
-            if (seatsInPlay():count()) {
-                ActionSeat = seatsInPlay()[1, number]
-                payWinners(
-                    table(
-                        table("Seat" = ActionSeat, "MaxPot" = 0)
-                    )
-                )
-            }
-            EndRound()
-            return
-        }
-        let CurrentPlayer = playerFromSeat(ActionSeat)
-        if (!isBot(CurrentPlayer)) {
-            drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
-        }
+        # Timer animation for Player to make a move. 
+        drawButtons(ActionSeat, 0)
         let HasActioned = function(Seat:number) {
             foreach(_:string, Player:table = Players) {
                 if(Player["Seat", number] == Seat) {
@@ -992,38 +568,40 @@ function string updateGameState() {
             }
         }
         let ActionAnimation = function() {}
-        SeatsInPlay = sortAscending(seatsWithAction())
+        SeatsInPlay = sortAscending(seatsInPlay())
         ActionAnimation = function() {
             if (InPlay) {
                 if((seatsInPlay()):count() == 1) {
                     # Insert winning logic here
-                    ActionSeat = seatsInPlay()[1, number]
+                    newAction()
                     payWinners(
                         table(
                             table("Seat" = ActionSeat, "MaxPot" = 0)
                         )
                     )
-                    EndRound()
+                    ResetBoard()
                 }
                 elseif(!HasActioned(ActionSeat)[number]) {
                     RestartTimer("action", 16, function() {ActionAnimation()})
                     RestartTimer("fold", 15, function() {
                         foldHand(ActionSeat)
-                        newAction()
+                        timer(1.2, function() {
+                            newAction()
+                        })
                     })
                 }
                 else {
                     stoptimer("action")
                     stoptimer("fold")
-                    updatePot(Pot)
+                    #updatePot()
                     updateGameState()
                 }
             }
         }
-        timer("action", 22, function() {
+        timer("action", 19, function() {
             ActionAnimation()
         })
-        timer("fold", 19, function() {
+        timer("fold", 17, function() {
             foldHand(ActionSeat)
             timer(1.2, function() {
                 newAction()
@@ -1046,10 +624,12 @@ function string updateGameState() {
             Player["Action", number] = 0
             Player["CurrentBet", number] = 0
         }
-        for (Seat=2, 8) {
-            deleteCurrentBet(Seat)
+        foreach(PlayerID:string, _:table = AllIn) {
+            let Player = Players[PlayerID, table]
+            let TotalBet = Player["TotalBet", number]
+            Player["MaxPot", number] = TotalBet*seatsInPlay():count()
         }
-        AllIn = table()
+        AllIn=table()
         let PreFlop = function(Sorted:array, Index:number) {
             let Count = Sorted:count()
             return Sorted[(Index + 2) % Count + 1, number]
@@ -1123,12 +703,8 @@ function string updateGameState() {
             foreach(_:string, Player:table = Players) {
                 Player["InPlay", number] = 1
                 Player["Cards", table] = table()
-                Player["TotalBet", number] = 0
-                Player["CurrentBet", number] = 0
-                Player["MaxPot", number] = 0
-                clearHandRanks(Player["Seat", number])
-                Notify_Player(Player)
                 DealHand(Player)
+                Notify_Player(Player)
             }
             SeatsInPlay = sortAscending(seatsInPlay())
             assignCoin()
@@ -1159,6 +735,9 @@ function string updateGameState() {
         case "Turn",
         case "River",
             let Index = NewState == "Turn" ? 4 : 5
+            let Card = Deck["draw", function]()[table]
+            
+            CommunityCards:pushTable(Card)
             Draw_Community(Index)
             foreach(_:string, Player:table = Players) {
                 Notify_Player(Player)
@@ -1168,13 +747,84 @@ function string updateGameState() {
         case "Showdown",
             GameState = 0
             if(CommunityCards:count() != 5) {
-                timer(1, function() {
+                timer(0.5, function() {
                     updateGameState()
                 })
                 return ""
             }
-            paySidePots()
-            EndRound()
+            let OrderedRanks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+            let BestHand = table("Points"=0, "HighCards"=array())
+            let Winners = array()
+        
+            foreach(PlayerID:string, Player:table = Players) {
+                let EvaluatedHand = evaluateHand(Player)
+        
+                # Check if the current hand is better than the best hand so far
+                if (EvaluatedHand["Points", number] > BestHand["Points", number]) {
+                    BestHand = EvaluatedHand
+                    Winners = array(PlayerID) # Update the winner list to the current player
+                } 
+                # If hand ranks are the same, compare the top 5 cards
+                elseif (EvaluatedHand["Points", number] == BestHand["Points", number]) {
+                    let BestCards = BestHand["HighCards", array]
+                    let CurrentBestCards = EvaluatedHand["HighCards", array]
+                    let Tie = 1 # Assume a tie unless proven otherwise
+        
+                    foreach(Index:number, HighCard:string = BestCards) {
+                        let BestRank = indexOf(HighCard, OrderedRanks)
+                        let CurrentRank = indexOf(CurrentBestCards[Index, string], OrderedRanks)
+                    
+                        if (CurrentRank > BestRank) {
+                            BestHand = EvaluatedHand
+                            Winners = array(PlayerID) # Update winner list to the current player
+                            Tie = 0 # Break tie
+                            break
+                        } elseif (CurrentRank < BestRank) {
+                            Tie = 0 # Current player loses; no need to add them as a winner
+                            break
+                        }
+                    }
+        
+                    # If there is a tie, add the current player to the Winners list
+                    if (Tie) {
+                        Winners:pushString(PlayerID)
+                    }
+                }
+            }
+        
+            # Generate winner names
+            let GetNames = function() {
+                let Result = ""
+                foreach(Index:number, PlayerID:string = Winners) {
+                    let Entity = Players[PlayerID, table]["Entity", entity]
+                    let Name = Entity:isValid() ? Entity:name() : "Player " + PlayerID
+                    Result += Name
+                    if (Index < Winners:count()) {
+                        Result += ", "
+                    }
+                }
+                return Result
+            }
+        
+            # Message the result
+            Players:keys():msgAll((Winners:count() > 1 ? "Split Pot: " : "Winner: ") + GetNames()[string] + 
+            " with " + BestHand["Description", string])
+            
+            let PayOuts = table()
+            
+            # Reveal all winners hands
+            foreach(_:number, PlayerID:string = Winners) {
+                let Player = Players[PlayerID, table]
+                revealHand(PlayerID)
+                PayOuts:pushTable(
+                    table(
+                        "Seat" = Player["Seat", number], 
+                        "MaxPot" = Player["MaxPot", number]
+                    )
+                )
+            }
+            payWinners(PayOuts)
+            ResetBoard()
         break
         default,
         break
@@ -1183,13 +833,68 @@ function string updateGameState() {
 }
 
 
-# =================== Poker Player Functions =============== #
+# =================== Poker Deck Functions ================= #
+
+# Function to create the Deck
+function table deckCreate() {
+    let Deck = table()
+    
+    # Lambda to create a card
+    let Card_create = function(Rank:string, Suit:string) {
+        let Card = table()
+        Card["Rank"] = Rank
+        Card["Suit"] = Suit
+        Card["toString"] = function() {
+            return Card["Rank", string] + " of " + Card["Suit", string]
+        }
+        return Card
+    }
+    Deck["Cards"] = table()
+    
+    # Initialize the deck
+    Deck["initialize"] = function() {
+        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
+        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+        
+        foreach(_:number, Suit:string = Suits) {
+            foreach(_:number, Rank:string = Ranks) {
+                let Card = Card_create(Rank, Suit)[table]
+                Deck["Cards", table]:pushTable(Card)
+            }
+        }
+    }
+    
+    # Shuffle the deck
+    Deck["shuffle"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        for (I = Count, 1, -1) {
+            let J = randint(1, I) # Random index between 0 and I
+            # Swap Cards[I] and Cards[J]
+            let Temp = Cards[I, table]
+            Cards[I] = Cards[J, table]
+            Cards[J] = Temp
+        }
+    }
+    
+    # Draw a card
+    Deck["draw"] = function() {
+        let Cards = Deck["Cards", table]
+        if (Cards:count()) {
+            let FirstCard = Cards[1, table] # Get the first card
+            Deck["Cards", table]:shift()
+            return FirstCard
+        }
+        return table() # Deck is empty
+    }
+    
+    return Deck
+}
 
 # Add a player to the table
 function void table:addPlayer(Entity:entity, Chips:number, Seat:number) {
     let SteamID = Entity:isValid() ? Entity:steamID() : "Debug "+Seat
     This[SteamID, table] = table(
-        "ID" = SteamID,
         "Entity" = Entity,
         "Cards" = table(),
         "Chips" = Chips,
@@ -1243,22 +948,6 @@ function number getSeatNumber(Entity:entity) {
     return 0
 }
 
-function void leaveTable(Player:entity) {
-    if (!Player:isValid()) { return }
-    let Seat = getSeatNumber(Player)
-    if (!Seat) {
-        Player:msg("You are not seated.")
-        return
-    }
-    let Steam = Player:steamID()
-    let PlayerTable = Players[Steam, table]
-    if (PlayerTable["InPlay", number]) {
-        foldHand(Seat)
-    }
-    PlayerTable["Leaving", number] = 1
-    Player:msg("You will leave after this round.")
-}
-
 function number joinTable(Player:entity, SeatNumber:number) {
     if (Player == _NO_ENTITY && getSeatEntity(SeatNumber) == _NO_ENTITY) {
         Players:addPlayer(Player, BuyIn, SeatNumber) # For Debug Players
@@ -1276,19 +965,8 @@ function number joinTable(Player:entity, SeatNumber:number) {
 }
 
 function void start() {
-    if (InPlay) { return }
-    if (Players:count() < 2) {
-        broadcast("Waiting for more players...")
-        InPlay = 0
-        return
-    }
-    broadcast("Game starting...")
+    Players:keys():msgAll("Game starting soon...")
     InPlay = 1
-    GameState = 0
-    stoptimer("game")
-    timer(3, function() {
-        updateGameState()
-    })
 }
 
 function void showdown() {
@@ -1302,3 +980,4 @@ function void showdown() {
     }
     Showdown()
 }
+

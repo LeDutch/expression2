@@ -1,0 +1,330 @@
+@name Tomato Poker v2
+
+#[ =================== G'day ============================ #
+ Coded by Bob Tomato, feel free to add me :) 
+ Steam: https://steamcommunity.com/id/iamthedutchman/
+ Discord: le.dutch
+]#
+
+#include "tomato/poker/graphics"
+#include "tomato/poker/logic"
+
+if (first() || dupefinished()) {
+    concmd("wire_egp_model models/props/de_tides/restaurant_table.mdl")
+    concmd("wire_egp_createflat 0")
+}
+
+function void startingShowcase() {
+    let ShowcaseCards = table(
+        table(
+            card("8", "Spade"), card("8", "Club"), card("A", "Club"), card("A", "Spade"), card("J", "Diamond")
+        ),
+        table(
+            card("A", "Heart"), card("A", "Club"), card("K", "Club"), card("K", "Spade"), card("K", "Diamond")
+        ),
+        table(
+            card("10", "Club"), card("10", "Spade"), card("9", "Club"), card("9", "Spade"), card("2", "Diamond")
+        ),
+        table(
+            card("A", "Spade"), card(" K", "Spade"), card("Q", "Spade"), card("J", "Spade"), card("10", "Spade")
+        ),
+        table(
+            card("A", "Diamond"), card("2", "Heart"), card("3", "Club"), card("4", "Spade"), card("5", "Spade")
+        ),
+        table(
+            card("J", "Diamond"), card("J", "Heart"), card("3", "Diamond"), card("7", "Club"), card("9", "Diamond")
+        )
+    ) 
+    let RandomCardIndex = randint(1,ShowcaseCards:count())
+    let StartingShowcase = function() {
+        let I = 1
+        timer(0.15, 5, function() {
+            drawCommunityCard(array("Flop1", "Flop2", "Flop3", "Turn", "River")[I, string], 
+                ShowcaseCards[RandomCardIndex, table][I, table])
+            I++
+        })
+        timer(4, function() {
+            delCommunityCards()
+        })
+    }
+    StartingShowcase()
+    timer("game", 15, 0, function() {
+        if (!InPlay) {
+            StartingShowcase()
+        }
+        else {
+            stoptimer("game")
+            updateGameState()
+        }
+    })
+}
+
+if (initial()) {
+    Prefix = "Tomato Poker"
+    PrefixColour = "#d4af37"
+    BuyIn = 100000
+    Deck = deckCreate()
+    drawTable()
+    timer(6, function() {
+        startingShowcase()
+    })
+}
+
+if (userInput()) {
+    let LeaveButtons = array()
+    let ShowButtons = array()
+    for (I=2, 8) {
+        LeaveButtons:pushString("Leave" + I)
+        ShowButtons:pushString("ShowHand" + I)
+    }
+    let Cursor = cursorObj()
+    if (Cursor:startsWith("Leave")) {
+        let RevealedPlayer = Players[CurrentUser:steamID(), table]
+        let SeatNumber = Cursor:sub(6):toNumber()
+        if (RevealedPlayer["Seat", number] == SeatNumber) {
+            leaveTable(CurrentUser)
+            newAction()
+        }
+    }
+    elseif (Cursor:startsWith("ShowHand")) {
+        let Seat = Cursor:sub(9):toNumber()
+        let SeatEntity = getSeatEntity(Seat)
+        if (SeatEntity == CurrentUser && !InPlay) {
+            revealHand(CurrentUser:steamID())
+        }
+    }
+    elseif(Cursor:startsWith("Card")) {
+        let SeatNumber = Cursor:sub(6):toNumber()
+        let RevealedPlayer = Players[CurrentUser:steamID(), table]
+        if (RevealedPlayer["InPlay", number]) {
+            if (SeatNumber == RevealedPlayer["Seat", number]) {
+                let HandtoString = function(Cards:table) {
+                    let CardsString = ""
+                    foreach (Index:number, Card:table = Cards) {
+                        CardsString += Card["toString", function]()[string]
+                        if (Index < Cards:count()) {
+                            CardsString += ", "
+                        }
+                    }
+                    return CardsString
+                }
+                let Hand = HandtoString(RevealedPlayer["Cards", table])[string]
+                let Entity = RevealedPlayer["Entity", entity]
+                if (Hand != "") {
+                    Entity:msg(Hand)
+                    Players:keys():msgAll(Entity:name() + " checked their cards.")
+                }
+            }
+        }
+        else {
+            CurrentUser:msg("No peeking!")
+        }
+    }
+    elseif(Cursor:startsWith("Action")) {
+        let LastChar = Cursor:length() - 1
+        let Action = Cursor:sub(7, LastChar)
+        let Seat = Cursor:sub(LastChar+1):toNumber()
+        let SeatEntity = getSeatEntity(Seat)
+        if (CurrentUser == SeatEntity) {
+            switch (Action) {
+                case "Fold",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    foldHand(Seat)
+                    newAction()
+                break
+                case "Raise",
+                    SeatEntity:msg("Type the amount to raise in chat.")
+                break
+                case "Check",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    checkOrCall(Seat)
+                    newAction()
+                break
+                default,
+                break
+            }
+        }
+    }
+    elseif (Cursor:startsWith("Empty")) {
+        if (!Players:exists(CurrentUser:steamID())) {
+            let Seat = Cursor:sub(6):toNumber()
+            moneyRequest(CurrentUser, BuyIn, Seat + ": Sit at the table?")
+        }
+        else {
+            CurrentUser:msg("You are already seated.")
+        }
+    }
+}
+
+if(moneyClk()) {
+    let SeatNumber = moneyClkTitle()[1]:toNumber()
+    let Player = moneyClkPlayer()
+    if (joinTable(Player, SeatNumber)) {
+        let Count = Players:count()
+        if (Count == 1) {
+            Player:msg("Waiting 20 seconds for an opponent to join...")
+            timer(20, function() {
+                if(Players:count() == 1) {
+                    Player:msg("No opponents but here's a cookie.")
+                    Players:removePlayer(Player)
+                    drawEmptySeat(SeatNumber)
+                }
+            })
+        }
+        elseif(!InPlay && Players:count() == 2) {
+            start()
+        }
+    }
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    let InGame = Players:exists(Player:steamID())
+    if (Message[1] == "!") {
+        let Arguments = Message:sub(2):explode(" ")
+        let Command = Arguments:shiftString()
+        if(Player == owner()) {
+            switch (Command) {
+                case "next",
+                    updateGameState()
+                break
+                case "buyin",
+                    BuyIn = Arguments[1, string]:toNumber()
+                    Player:msg("Buy in changed to $" + BuyIn)
+                break
+                case "coin",
+                    assignCoin()
+                    print("assigned coin")
+                break
+                case "showdown",
+                    showdown()
+                break
+                case "bots",
+                    let I=1
+                    timer(0.3, 7, function() {
+                        I++
+                        let Player = I
+                        joinTable(_NO_ENTITY, Player)
+                    })
+                    if(!InPlay) {
+                        timer(3, function() {
+                           start()
+                        })
+                    }
+                break
+                case "bot",
+                    let Seat = Arguments[1,string]:toNumber()
+                    joinTable(_NO_ENTITY, Seat)
+                    if(!InPlay && Players:count() == 2) {
+                        start()
+                    }
+                break
+                case "botcall",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    checkOrCall(ActionSeat)
+                    newAction()
+                break
+                case "botfold",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    foldHand(ActionSeat)
+                    timer(1.2, function() {
+                        newAction()
+                    })
+                break
+                case "botraise",
+                    timerAdjust("action", 0.5, 1)
+                    stoptimer("fold")
+                    raise(ActionSeat, MinBet*5)
+                    newAction()
+                break
+                case "kick",
+                    let Seat = Arguments[1,string]:toNumber()
+                    let Entity = Arguments[1, string]:findPlayer()
+                    let SeatExists = function() {
+                        foreach(_:string, Player:table = Players) {
+                            if(Seat == Player["Seat", number]) {
+                                return 1
+                            }
+                        }
+                        return 0
+                    }
+                    if (SeatExists()[number]) {
+                        Players:removePlayer(Seat)
+                    }
+                    elseif(Entity:isValid()) {
+                        Players:removePlayer(Seat)
+                    }
+                    else {
+                        Player:msg("Invalid player.")
+                    }
+                break
+                default,
+                break
+            }
+        }
+        if (InGame) {
+            switch (Command) {
+                case "leave",
+                    leaveTable(Player)
+                break
+                case "help",
+                    Player:msg("!leave - leaves table")
+                    Player:msg("!reveal - reveals hand (must be end of round).")
+                break
+                case "reveal",
+                    if(!InPlay) {
+                        revealHand(Player:steamID())
+                    }
+                    else {
+                        Player:msg("Please wait till the round is over.")
+                    }
+                break
+                case "fold",
+                    let Seat = getSeatNumber(Player)
+                    if (ActionSeat == Seat) {
+                        timerAdjust("action", 0.5, 1)
+                        stoptimer("fold")
+                        foldHand(Seat)
+                    }
+                    else {
+                        Player:msg("Please wait till your turn")
+                    }
+                break
+                case "call",
+                case "check",
+                    let Seat = getSeatNumber(Player)
+                    if (ActionSeat == Seat) {
+                        timerAdjust("action", 0.5, 1)
+                        stoptimer("fold")
+                        checkOrCall(Seat)
+                    }
+                    else {
+                        Player:msg("Please wait till your turn")
+                    }
+                break
+                default,
+                break
+            }
+        }
+    }
+    elseif(InGame) {
+        let RaiseAmount = Message:toNumber()
+        if (RaiseAmount) {
+            let Seat = getSeatNumber(Player) 
+            if (Seat == ActionSeat) {
+            if (RaiseAmount > MinBet*2) {
+                timerAdjust("action", 0.5, 1)
+                stoptimer("fold")
+                raise(Seat, RaiseAmount)
+                newAction()
+            }
+            else {
+                Player:msg("The raise must be at least "+abbreviateNum(MinBet*2))
+                }
+            }
+        }
+    }
+}

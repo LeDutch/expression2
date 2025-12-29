@@ -1,20 +1,16 @@
 @name Tomato Poker Graphics
-@persist RevealedCards:table
+@persist 
 # Automagically Compiled via https://egpcompiler.com (Credits Odin & Bob Tomato)
 
 #include "lib/tomato/1.1/tomato_core"
 #include "lib/tomato/1.1/tomato_egp"
 #include "tomato/poker/poly"
 
-if (first() || dupefinished()) {
-    RevealedCards = table()
-}
-
 function number cardUnicode(Suit:string) {
-    return (Suit == "Heart" | Suit == "Hearts") ? 9829 :
-           (Suit == "Diamond" | Suit == "Diamonds") ? 9830 :
-           (Suit == "Spade" | Suit == "Spades") ? 9824 :
-           (Suit == "Club" | Suit == "Clubs") ? 9827 : 0
+    return (Suit == "Heart") ? 9829 :
+           (Suit == "Diamond") ? 9830 :
+           (Suit == "Spade") ? 9824 : 
+           (Suit == "Club") ? 9827 : 0
 }
 
 function table card(Value:string, Suit:string) {
@@ -30,7 +26,7 @@ function void suit_rank(CardID:string, Card:table) {
 
     let S = Obj["w", number]
     let SuitGlyph = toUnicodeChar(cardUnicode(Suit))
-    let IsRed = (Suit == "Heart" | Suit == "Hearts" | Suit == "Diamond" | Suit == "Diamonds")
+    let IsRed = (Suit == "Heart" | Suit == "Diamond")
 
     # Colours
     let R = IsRed ? 220 : 255
@@ -81,25 +77,9 @@ function delCommunityCards() {
     let I = 1
     timer(0.1, 5, function() {
         let Name = Names[I, string]
-        moveTo(Name, 0.6, vec2(256,-70))
+        moveTo(Name, 0.6, vec2(256,-30))
         I++
     })
-}
-
-function void deleteCommunityCards() {
-    let Names = array("Flop1", "Flop2", "Flop3", "Turn", "River")
-    foreach(_:number, Name:string = Names) {
-        EGP:delete(
-            Name, Name + "_border", Name + "_mask",
-            Name + "_suit", Name + "_top", Name + "_bottom"
-        )
-        Elements:removeTable(Name)
-        Elements:removeTable(Name + "_border")
-        Elements:removeTable(Name + "_mask")
-        Elements:removeTable(Name + "_suit")
-        Elements:removeTable(Name + "_top")
-        Elements:removeTable(Name + "_bottom")
-    }
 }
 
 function table seatPanelGeom(SeatNum:number, Offset:number, W:number, H:number) {
@@ -138,8 +118,7 @@ function void drawEmptySeat(SeatNum:number) {
         SeatNum + "Mask", SeatNum + "Name_BG", SeatNum + "Name_B",
         SeatNum + "Chips_BG", SeatNum + "Chips_B", SeatNum + "PlayerName",
         SeatNum + "Chips", SeatNum + "LShadow", SeatNum + "LShadow_B",
-        SeatNum + "RShadow", SeatNum + "RShadow_B", "Leave" + SeatNum,
-        "ShowHand" + SeatNum, "ShowHandBorder" + SeatNum, "ShowHandText" + SeatNum
+        SeatNum + "RShadow", SeatNum + "RShadow_B"
     )
 
     let W = 98
@@ -223,7 +202,6 @@ function void drawPlayer(SeatNum:number, Name:string, Chips:number) {
         "w"=W, "h"=H, "size"=11, "halign"=1, "valign"=1, "r"=21, "g"=74, "b"=34
     )):parentTo(Box2)
 
-
     box(Mask, table("x"=G["Xtl",number], "y"=G["Ytl",number], "w"=W, "h"=26, "r"=106, "g"=23, "b"=23, "radius"=0))
 
     rotateSeatPanel(PName,  G["X",number], G["Y",number], W, H, G["PanelAng",number])
@@ -241,98 +219,6 @@ function void drawPlayer(SeatNum:number, Name:string, Chips:number) {
             typeOut(Cp, abbreviateNum(Chips))
         })
     })
-}
-
-function void updateChips(SeatNum:number, Chips:number) {
-    if (SeatNum < 2 | SeatNum > 8) { return }
-    let Obj = EGP:egpobject(Elements:get(SeatNum + "Chips"))
-    if (Obj) {
-        Obj["text", string] = abbreviateNum(Chips)
-    }
-}
-
-function void drawCurrentBet(SeatNum:number, Amount:number, IsAllIn:number, BuyIn:number) {
-    if (SeatNum < 2 | SeatNum > 8) { return }
-    EGP:delete("Bet_BG" + SeatNum, "Bet_B" + SeatNum, "Bet_Text" + SeatNum)
-    Elements:removeTable("Bet_BG" + SeatNum)
-    Elements:removeTable("Bet_B" + SeatNum)
-    Elements:removeTable("Bet_Text" + SeatNum)
-    if (Amount <= 0) { return }
-
-    let W = 52
-    let H = 14
-    let Geo = seatPanelGeom(SeatNum, -100, W, H)
-
-    let R = 0
-    let G = 0
-    let B = 0
-    if (IsAllIn) {
-        R = 190
-        G = 140
-        B = 55
-    }
-    elseif (Amount > (BuyIn * 0.5)) {
-        R = 50
-        G = 170
-        B = 175
-    }
-    elseif (Amount > (BuyIn * 0.1)) {
-        R = 40
-        G = 140
-        B = 60
-    }
-
-    let Box = box("Bet_BG" + SeatNum, table(
-        "x"=Geo["Xtl",number], "y"=Geo["Ytl",number], "w"=W, "h"=H,
-        "r"=240, "g"=240, "b"=240, "radius"=0
-    ))
-    box("Bet_B" + SeatNum, table(
-        "x"=Geo["Xtl",number], "y"=Geo["Ytl",number], "w"=W, "h"=H,
-        "r"=0, "g"=0, "b"=0, "radius"=1, "size"=2, "outline"=1
-    ))
-    stext("Bet_Text" + SeatNum, table(
-        "text"=abbreviateNum(Amount), "x"=W/2, "y"=H/2, "w"=W, "h"=H,
-        "size"=12, "halign"=1, "valign"=1, "r"=R, "g"=G, "b"=B
-    )):parentTo(Box)
-
-    rotateSeatPanel("Bet_BG" + SeatNum, Geo["X",number], Geo["Y",number], W, H, Geo["PanelAng",number]+180)
-    rotateSeatPanel("Bet_B" + SeatNum, Geo["X",number], Geo["Y",number], W, H, Geo["PanelAng",number]+180)
-}
-
-function void deleteCurrentBet(SeatNum:number) {
-    if (SeatNum < 2 | SeatNum > 8) { return }
-    EGP:delete("Bet_BG" + SeatNum, "Bet_B" + SeatNum, "Bet_Text" + SeatNum)
-    Elements:removeTable("Bet_BG" + SeatNum)
-    Elements:removeTable("Bet_B" + SeatNum)
-    Elements:removeTable("Bet_Text" + SeatNum)
-}
-
-function void updatePot(Pot:number) {
-    EGP:delete("Pot_BG", "Pot_B", "Pot_Label", "Pot_Value")
-
-    let W = 120
-    let H = 50
-    let G = seatPanelGeom(1, -60, W, H)
-
-    let Box = box("Pot_BG", table(
-        "x"=G["Xtl",number], "y"=G["Ytl",number], "w"=W, "h"=H,
-        "r"=240, "g"=240, "b"=240, "radius"=0
-    ))
-    box("Pot_B", table(
-        "x"=G["Xtl",number], "y"=G["Ytl",number], "w"=W, "h"=H,
-        "r"=0, "g"=0, "b"=0, "radius"=1, "size"=2, "outline"=1
-    ))
-    stext("Pot_Label", table(
-        "text"="POT", "x"=W/2, "y"=H/3 - 6, "w"=W, "h"=H/2,
-        "size"=14, "halign"=1, "valign"=1, "r"=0, "g"=0, "b"=0
-    )):parentTo(Box)
-    stext("Pot_Value", table(
-        "text"=abbreviateNum(Pot), "x"=W/2, "y"=H/2 + 6, "w"=W, "h"=H/2,
-        "size"=24, "halign"=1, "valign"=1, "r"=21, "g"=74, "b"=34
-    )):parentTo(Box)
-
-    rotateSeatPanel("Pot_BG", G["X",number], G["Y",number], W, H, G["PanelAng",number])
-    rotateSeatPanel("Pot_B", G["X",number], G["Y",number], W, H, G["PanelAng",number])
 }
 
 function void initHand(SeatNum:number) {
@@ -361,53 +247,25 @@ function void initHand(SeatNum:number) {
     rotateSeatPanel(Card2, Card2C["X",number], Card2C["Y",number], W, H+20, Card2C["PanelAng",number] + 180 - 15)
 }
 
-function void revealCardAnim(SeatNum:number) {
-    if (SeatNum < 2 | SeatNum > 8) { return }
-    if (RevealedCards[SeatNum, number]) { return }
-    RevealedCards[SeatNum, number] = 1
-    let W = 44.36
-    let H = 62.36
-    
-    let Card1Pos = seatPanelGeom(SeatNum, -70, W, H)
-    let Card2Pos = seatPanelGeom(SeatNum, -65, W, H)
-    let Angle1 = Card1Pos["PanelAng", number] + 180
-    let Angle2 = Card2Pos["PanelAng", number] + 180
-
-    let MoveCard = function(Name:string, Pos:table, Ang:number) {
-        if (!Elements:exists(Name)) { return }
-        moveTo(Name, 0.35, vec2(Pos["Xtl", number], Pos["Ytl", number]))
-        rotateSeatPanel(Name, Pos["X", number], Pos["Y", number], W, H, Ang)
-    }
-    
-    MoveCard("Card1" + SeatNum, Card1Pos, Angle1)
-    MoveCard("Card2" + SeatNum, Card2Pos, Angle2)
-}
-
-function void drawButtons(Player:table, SeatNum:number, CurrentBet:number) {
-    let PlayerBet = Player["CurrentBet", number]
-    
-    let CheckOrCall = CurrentBet == PlayerBet ? "Check" : CurrentBet > 0 ? "Call" : "Check"
+function void drawButtons(SeatNum:number, CurrentBet:number) {
+    let CheckOrCall = CurrentBet > 0 ? "Call" : "Check"
     if (SeatNum < 2 | SeatNum > 8) { return }
     let W = 64
     let H = 20
     
     let G = seatPanelGeom(SeatNum, 11, W, H)
     
-    let Check_Call = "ActionCheck" + SeatNum
-    let Raise = "ActionRaise" + SeatNum
-    let Fold = "ActionFold" + SeatNum
-    let Time = "ActionTime" + SeatNum
-    let CountdownTimer = "countdown_" + SeatNum
+    let Check_Call = "Action" + "Check"
+    let Raise = "Action" + "Raise"
+    let Fold = "Action" + "Fold"
+    let Time = "Action" + "Time"
     
     let Box1 = box(Check_Call, table("x"=0, "y"=0,"w"=W,"h"=H,"a"=60, "r"=255,"g"=255,"b"=255))
     let Box2 = box(Raise, table("x"=0, "y"=0,"w"=W,"h"=H,"a"=60, "r"=255,"g"=255,"b"=255))
     let Box3 = box(Fold, table("x"=0, "y"=0,"w"=W,"h"=H,"a"=60, "r"=255,"g"=255,"b"=255))
-
-    box("Leave" + SeatNum, table(
-        "x"=0, "y"=-15, "w"=12, "h"=12,
-        "r"=255, "g"=255, "b"=255,
-        "material"="materials/zerochain/zrush/ui/zrush_cancel_icon.png"
-    ))
+    
+    box(Time, table("x"=2, "y"=H+3,"w"=W*3-2,"h"=4,"a"=60, "r"=255,"g"=255,"b"=255)):parentTo(Box1)
+    box(Time+"_box", table("x"=0, "y"=H+3,"w"=2,"h"=4,"a"=60, "r"=255,"g"=255,"b"=255)):parentTo(Box1)
     
     stext(Check_Call+"_text", table("text"=CheckOrCall, "x"=W/2, "y"=H - H/2,
         "w"=W, "h"=H, "size"=13, "halign"=1, "valign"=1, "r"=255, "g"=255, "b"=255
@@ -419,99 +277,22 @@ function void drawButtons(Player:table, SeatNum:number, CurrentBet:number) {
         "w"=W, "h"=H, "size"=13, "halign"=1, "valign"=1, "r"=255, "g"=255, "b"=255
     )):parentTo(Box3)
     
-    stext(Time, table("text"="", "x"=W-10, "y"=-10,
-        "w"=W, "h"=H, "size"=13, "halign"=1, "valign"=1, "r"=255, "g"=255, "b"=255
-    )):parentTo(Box3)
-    
-    rotateSeatPanel("Leave" + SeatNum, G["X",number], G["Y",number], W+(W*2+4), H+H+3, G["PanelAng",number] + 180)
     rotateSeatPanel(Check_Call, G["X",number], G["Y",number], W+(W*2+4), H, G["PanelAng",number] + 180)
     rotateSeatPanel(Raise, G["X",number], G["Y",number], W, H, G["PanelAng",number] + 180)
     rotateSeatPanel(Fold, G["X",number], G["Y",number], W-(W*2+4), H, G["PanelAng",number] + 180)
     
-    stoptimer(CountdownTimer)
-    let I = 15
-    let Reduce = function() {
-        let Obj = EGP:egpobject(Elements:get(Time))
-        if (Obj) {
-            Obj["text", string] = toString(I)
-            I--
-        }
-    }
-    timer(CountdownTimer, 1, 16, function() {
-        if (!Elements:exists(Time)) {
-            stoptimer(CountdownTimer)
-            return
-        }
-        Reduce()
+    stoptimer(Time)
+    timer(0.2, function() {
+        transform(Time, 15, vec2(0, 4))
     })
 }
 
 function void deleteButtons(SeatNum:number) {
-    let Check_Call = "ActionCheck" + SeatNum
-    let Raise = "ActionRaise" + SeatNum
-    let Fold = "ActionFold" + SeatNum
-    let Time = "ActionTime" + SeatNum
-    let CountdownTimer = "countdown_" + SeatNum
-    stoptimer(CountdownTimer)
     EGP:delete(
-        Check_Call, Check_Call+"_text",
-        Raise, Raise+"_text",
-        Fold, Fold+"_text",
-        Time, "Leave" + SeatNum
-    )
-    Elements:removeTable(Check_Call)
-    Elements:removeTable(Check_Call+"_text")
-    Elements:removeTable(Raise)
-    Elements:removeTable(Raise+"_text")
-    Elements:removeTable(Fold)
-    Elements:removeTable(Fold+"_text")
-    Elements:removeTable(Time)
-    Elements:removeTable("Leave" + SeatNum)
-}
-
-function void drawShowHandButton(SeatNum:number) {
-    if (SeatNum < 2 | SeatNum > 8) { return }
-    let W = 64
-    let H = 20
-    let G = seatPanelGeom(SeatNum, 11, W, H)
-
-    let Box = box("ShowHand" + SeatNum, table(
-        "x"=G["Xtl",number], "y"=G["Ytl",number], "w"=W, "h"=H,
-        "a"=60, "r"=255, "g"=255, "b"=255, "radius"=0
-    ))
-    stext("ShowHandText" + SeatNum, table(
-        "text"="Show", "x"=W/2, "y"=H/2, "w"=W, "h"=H,
-        "size"=13, "halign"=1, "valign"=1, "r"=255, "g"=255, "b"=255
-    )):parentTo(Box)
-
-    rotateSeatPanel("ShowHand" + SeatNum, G["X",number], G["Y",number], W, H, G["PanelAng",number] + 180)
-}
-
-function void deleteShowHand(SeatNum:number) {
-    EGP:delete(
-        "ShowHand" + SeatNum,
-        "ShowHandBorder" + SeatNum,
-        "ShowHandText" + SeatNum
-    )
-    Elements:removeTable("ShowHand" + SeatNum)
-    Elements:removeTable("ShowHandBorder" + SeatNum)
-    Elements:removeTable("ShowHandText" + SeatNum)
-}
-
-function void clearHandRanks(SeatNum:number) {
-    let Card1 = "Card1" + SeatNum
-    let Card2 = "Card2" + SeatNum
-    RevealedCards[SeatNum, number] = 0
-    EGP:delete(
-        Card1 + "_suit", Card1 + "_top", Card1 + "_bottom",
-        Card2 + "_suit", Card2 + "_top", Card2 + "_bottom"
-    )
-    Elements:removeTable(Card1 + "_suit")
-    Elements:removeTable(Card1 + "_top")
-    Elements:removeTable(Card1 + "_bottom")
-    Elements:removeTable(Card2 + "_suit")
-    Elements:removeTable(Card2 + "_top")
-    Elements:removeTable(Card2 + "_bottom")
+        SeatNum + "check_call", SeatNum + "check_call"+"_text", 
+        SeatNum + "raise", SeatNum + "raise"+"_text",
+        SeatNum + "fold", SeatNum + "fold"+"_text"
+        )
 }
 
 function void dealCardAnim(SeatNum:number, CardNum:number) {
@@ -548,6 +329,17 @@ function void dealHands(Seats:array) {
     })
 }
 
+function void hideHands() {
+    for (CardNum=1, 2) {
+        for(SeatNum=2, 8) {
+            let BG = EGP:egpobject(Elements:get(SeatNum+"Card"+CardNum))
+            let BG_B = EGP:egpobject(Elements:get(SeatNum+"Card"+CardNum+"_border"))
+            BG["a", number] = 0
+            BG_B["a", number] = 0
+        }
+    }
+}
+
 function void drawDealerCoin(SeatNum:number) {
     if (SeatNum < 2 | SeatNum > 8) { return }
     let W = 18.5
@@ -564,18 +356,11 @@ function void drawDealerCoin(SeatNum:number) {
 
 function void logo() {
     # Logo 1
-    box("Logo", table(
-            "precache"="6285338", 
-            "material"="../data/tau/cache/files/1a2b6f5882d9172bed0042a461c83ea4.png", 
-            "h"=512, "w"=512, "a"=0
-        ))
-    timer(1, function() {
-        fadeIn("Logo", 1)
-    })
+    
 }
 
 function void drawTable() {
-    animatePolyBilinear("BG", 1.2, 0, 276, 8, 22.5, 106, 23, 23, 255)
+    animatePolyBilinear("BG", 1.2, 0, 256, 8, 22.5, 106, 23, 23, 255)
     
     timer(1.2, function() {
         logo()
@@ -587,7 +372,7 @@ function void drawTable() {
                 drawEmptySeat(I)
             }
             poly("BG_mask", table(
-                "vertices" = polyVectors(276, 8, 22.5),
+                "vertices" = polyVectors(256, 8, 22.5),
                 "r" = 106, "g" = 23, "b" = 23, "a" = 255
             ))
             fadeOut("BG_mask", 1)

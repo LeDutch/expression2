@@ -1,283 +1,149 @@
-@name Tomato DJ Booth
-@inputs  Lamp:entity Gimbal:wirelink
-@outputs RGB:vector FOV On Texture:string Brightness Target:vector Time
-@persist [Textures]:array
-@persist [Time AnimBlink AnimFOV AnimRGB AnimDir AnimPulse AnimBanger Look Rainbow H Angle]:number
-@trigger
+@name Tomato Centrelink
+@persist 
+@model models/agency/electrical/monitor01.mdl 
 
-###################################################
-#Coded by Bob Tomato, any changes or reqs /pm me :)
-###################################################
+#[
+    Webmat: ../data/tau/cache/files/1a2b6f5882d9172b7dbf5f3578db8605.png
+    Webmat ID: 9257078
+    Model: models/agency/electrical/monitor01.mdl 
+    
+    By job - minimum/maximum payment range. Avg in the middle.
+    Questionnaire to fill out
+    
+    Height of EGP is 310 pixels
+    
+]#
 
-if (first() || ~EGP) {
-    #include "library/tomato_lib"
-    
-    #Colours
-    White = vec(255,255,255)
-    Green = vec(0,127,31)
-    
-    Dark = vec(44, 51, 51)
-    Primary = vec(14, 131, 136)
-    Secondary = vec(46, 79, 79)
-    Light = vec(203, 228, 222)
-    
-    #Program Specific
-    Owner = owner()
-    Time = 0.05
-    Angle = 0
-    AnimBlink = 0
-    AnimRGB = 0
-    AnimDir = 0
-    AnimFOV = 0
-    AnimBanger = 0
-    AnimPulse = 0
-    FindUser = 0
-    Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
-    
-    Textures = array(
-    "caustics",
-    "bars",
-    "soft",
-    "circles",
-    "tech")
-    
-    RGB = White
-    FOV = 100
-    On = 1 
-    Texture = "effects/flashlight/"+Textures[1,string]
-    Brightness = 8
-    
-    #Program Specific Functions
-    ############################################
-    
-    function animations() {
-        if (AnimBlink) {
-            if (Timer:getTime("Blink") == 0.05) {
-                On = !On
-                Timer:addTime("Blink", Timer:getTime("BlinkTimer"))
-            }
-            Timer:reduceTime("Blink", 0.05)
-        }
-        if (AnimRGB) {
-            if (Rainbow) {
-                H += 0.9
-                if (H >= 360)
-                {
-                    H = 0
-                }
-                RGB = hsv2rgb(H, 1, 1)
-            }
-            elseif (Timer:getTime("RGB") == 0.05) {
-                if (On) {
-                    RGB = randvec(0,255)
-                }
-                Timer:addTime("RGB", Timer:getTime("RGBTimer"))
-            }
-            Timer:reduceTime("RGB", 0.05)
-        }
-        if (AnimDir) {
-            local Time = Timer:getTime("DIR")
-            if (Gimbal != nowirelink()) {
-                Gimbal["Angle", angle] = ang(90,0,Angle)
-            }
-            Angle -=20/Time
-        }
-        if (AnimFOV) {
-            FOV = 200*Timer:getTime("FOV")
-            if (Timer:getTime("FOV") == 0.05) {
-                Timer:addTime("FOV", Timer:getTime("FOVTimer"))
-            }
-            Timer:reduceTime("FOV", 0.05)
-        }
-        if (AnimPulse) {
-            Brightness = 10*Timer:getTime("Pulse")
-            if (Timer:getTime("Pulse") == 0.05) {
-                Timer:addTime("Pulse", Timer:getTime("PulseTimer"))
-            }
-            Timer:reduceTime("Pulse", 0.05)
-        }
-        if (AnimBanger) {
-            local Time = Timer:getTime("Banger")
-            local X = randint(0,255)
-            local Y = randint(0,255)
-            local Z = randint(0,255)
-            Brightness = 10*Timer:getTime("Banger")
-            FOV = X
-            RGB = vec(X,Y,Z)
-            local NewX = X * cos(Time) + X * sin(Time)
-            local NewY = X * sin(Time) - X * cos(Time)
-            if (Look) {
-                Target = Owner:aimPos()
-            }
-            else {
-                Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
-            }
-            EGP:egpColor(Elements:get("BangerBox"), vec(X,Y,Z))
-            if (Time == 0.05) {
-                Brightness = 10
-                FOV = 100
-                Target = vec(Lamp:pos():x(), Lamp:pos():y(), Lamp:pos():z() - 200)
-                AnimBanger = !AnimBanger
-                EGP:egpColor(Elements:get("BangerBox"), vec(255,255,255))
-            }
-            Timer:reduceTime("Banger", 0.05)
-        }
-    }
-    
-    #Draw initial screen
-    #-------------------------------------------#
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_sprites"
+
+function start() {
     EGP:egpClear()
+    Elements = table()
+    EGP:egpDrawTopLeft(1)
+    stopAllTimers()
     
-    #Generic
-    createBox("Background",size(vec2(ScreenXY,ScreenXY)), color(Dark), coords(vec2(0,0)))
-    createText("Title",size(40),color(Primary),align(1),coords(vec2(ScreenXY/2,0)))
-    createText("A Tomato Production",size(16),align(1),coords(vec2(ScreenXY/2,35)))
-    EGP:egpSetText(Elements:get("Title"),"DJ BOOTH")
-
-    #DJ Options
-    createText("Lighting Options",size(24),align(1),coords(vec2(ScreenXY/4,80)))
+    box(table("w"=512, "h"=310, "rgb"=vec(121, 201, 197), "outline"=1, "size"=4))
     
-    createCheckBox("On/Off", size(vec2(40,20)),  coords(vec2(ScreenXY/8,120)))
-    useCheckBox("On/Off", 1)
+    sprite("Logo", table(
+        "x"=4, "y"=4,
+        "w"=504, "h"=302, 
+        "uv_start"=vec2(0, 110),
+        "uv_size"=vec2(433, 280),
+        "sheet_size"=vec2(433, 419),
+        "precache"="9257078", 
+        "material"="../data/tau/cache/files/1a2b6f5882d9172b7dbf5f3578db8605.png"
+    ))
     
-    createText("Change Brightness",size(18),align(1),coords(vec2(ScreenXY/4,160)))
-    createSlider("Brightness", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,180)))
+    text("Interact", table(
+        "halign"=1, "valign"=1,
+        "text"="Press 'E' to interact",
+        "x"=256-310/2, "y"=0,
+        "w"=310, "h"=260
+    ))
     
-    createDropdown("Texture", size(vec2(ScreenXY / 4, 25)), coords(vec2(ScreenXY/8,220)))
-    
-    createText("Change RGB",size(18),align(1),coords(vec2(ScreenXY/4,260)))
-    createSlider("RGB", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,280)))
-    
-    createText("Change FOV", size(18), align(1), coords(vec2(ScreenXY/4,320)))
-    createSlider("FOV", size(vec2(ScreenXY / 4, 20)), coords(vec2(ScreenXY / 8,340)))
-    
-    #DJ Animations
-    createText("Animations",size(24),align(1),coords(vec2(ScreenXY - ScreenXY/4,80)))
-    
-    createText("Change Timing", size(18), align(1), coords(vec2(ScreenXY/2+ScreenXY/4,120)))
-    createSlider("Timing", size(vec2(ScreenXY / 4 - 20, 20)), coords(vec2(ScreenXY/2+ScreenXY / 8,140)))
-    createText("Timer", size(18), coords(vec2(ScreenXY/2+ScreenXY/4 + 50,140)))
-    EGP:egpSetText(Elements:get("Timer"),"0.05s")
-    
-    createCheckBox("    Rotate", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,180)))
-    createCheckBox("       Blink", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,220)))
-    createCheckBox("   Colours", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,260)))
-    createCheckBox("        FOV", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,300)))
-    createCheckBox("      Pulse", size(vec2(40,20)),  coords(vec2(ScreenXY/2+ScreenXY/8,340)))
-    
-    #Columns
-    createBox("Column",size(vec2(1,250)), color(Light), coords(vec2(ScreenXY/2,120)))
-    
-    #Footer info
-    createBox("BangerBox",size(vec2(ScreenXY/2,50)), color(White), coords(vec2(ScreenXY/2-ScreenXY/4,ScreenXY-100)))
-    createText("Click if it's a banger",size(25),color(Primary),align(1),coords(vec2(ScreenXY/2,ScreenXY-90)))
+    box("Start", table("a"=0, "w"=512, "h"=310))
 }
 
-interval(50)
-
-if (~User || FindUser) {
-    if(FindUser) {
-        findByClass("player")
-        User = findClosest(entity():pos())
-    }
-    
-    Option_FOV = useSlider("FOV", 10, 170, 1)
-    Option_Brightness = useSlider("Brightness", 0, 10, 1)
-    Option_OnOff = useCheckBox("On/Off", 0)
-    Option_RGB = useSlider("RGB", 0, 255, 1)
-    Option_Texture = useDropDown("Texture", Textures)
-
-    #Static Options
-    if (Option_FOV) {FOV = Option_FOV}
-    elseif (Option_Brightness) {Brightness = Option_Brightness}
-    elseif (Option_OnOff){On = !On}
-    elseif (Option_RGB) {RGB = vec(255*cos(Option_RGB),255*sin(Option_RGB),255*tan(Option_RGB))}
-    elseif (Option_Texture){Texture = "effects/flashlight/"+Textures[Option_Texture,string]}
-    
-    #Animation Options
-    Animation_Timing = useSlider("Timing", 0.05, 2, 0.05)
-    Animation_Direction = useCheckBox("    Rotate", 0)
-    Animation_Blink = useCheckBox("       Blink", 0)
-    Animation_Colours = useCheckBox("   Colours", 0)
-    Animation_FOV = useCheckBox("        FOV", 0)
-    Animation_Pulse = useCheckBox("      Pulse", 0)
-    
-    #Animation Options
-    if (Animation_Timing) {
-        EGP:egpSetText(Elements:get("Timer"),Time+"s")
-        Time = Animation_Timing
-        }
-    elseif (Animation_Blink) {
-        On = 1
-        AnimBlink = !AnimBlink
-        Timer:setTime("BlinkTimer", Time)
-        Timer:setTime("Blink", Timer:getTime("BlinkTimer"))
-        }
-    elseif (Animation_Colours) {
-        AnimRGB = !AnimRGB
-        Timer:setTime("RGBTimer", Time)
-        Timer:setTime("RGB", Timer:getTime("RGBTimer"))
-    }
-    elseif (Animation_Direction) {
-        AnimDir = !AnimDir
-        Timer:setTime("DIRTimer", Time)
-        Timer:setTime("DIR", Timer:getTime("DIRTimer"))
-    }
-    elseif (Animation_FOV) {
-        AnimFOV = !AnimFOV
-        Timer:setTime("FOVTimer", Time)
-        Timer:setTime("FOV", Timer:getTime("FOVTimer"))
-    }
-    elseif (Animation_Pulse) {
-        AnimPulse = !AnimPulse
-        Timer:setTime("PulseTimer", Time)
-        Timer:setTime("Pulse", Timer:getTime("PulseTimer"))
-    }
-    
-    if((User:keyPressed("E") & cursorPos(Elements:get("BangerBox"))))
-    {
-        AnimBanger = !AnimBanger
-        EGP:egpColor(Elements:get("BangerBox"), vec(255,255,255))
-        Timer:setTime("BangerTimer", 10)
-        Timer:setTime("Banger", Timer:getTime("BangerTimer"))
-    }
-}
-    
-animations()
-
-if (~Gimbal || first()) {
-    Gimbal["On", number] = 1 
-    Gimbal["Target", vector] = Gimbal:entity():pos()-vec(0,0,100)
+function egpobject:header(Text:string) {
+    box("Header", table( 
+        "x"=0, "y"=0,
+        "w"=This["w", number], "h"=50, 
+        "rgb"=vec(63, 154, 174)
+    )):parentTo(This)
+    text("HeaderText", table(
+        "valign"=1,
+        "text"=Text,
+        "size"=23,
+        "x"=10, "y"=0,
+        "w"=390, "h"=50
+    )):parentTo(This)
+    box("Exit", table( 
+        "x"=This["w", number], "y"=24,
+        "w"=40, "h"=40, 
+        "rgb"=vec(249, 110, 91),
+        "material"="materials/zerochain/zrush/ui/zrush_cancel_icon.png"
+    ))
 }
 
-runOnChat(1)
-if(chatClk(Owner))  
-{  
-    Chat = Owner:lastSaid()
-    if(Chat:index(1) == "!")  
-    {  
-        Arguments = Chat:sub(2):explode(" ")
-        Command = Arguments:shiftString() 
-        if(Command == "look")  
-        {                    
-            Look = !Look
-        }
-        elseif(Command == "rainbow")  
-        {                    
-            Rainbow = !Rainbow
-        }
-        elseif (Command == "changeowner") {
-            Text = Arguments[1,string]
-            NewOwner = findPlayerByName(Text)
-            # If owner exists - error
-            if (NewOwner:isValid()) {
-                Owner = NewOwner
-                Owner:msg("DJ: Owner changed.")
-            }
-            else {
-                Owner:msg("DJ: Please select a valid player.")
-            }         
-        }
-    }
+function egpobject:form() {
+    text(table(
+        "valign"=1,
+        "text"="Are you a TAU citizen or permanent resident?",
+        "size"=18,
+        "r"=0, "g"=0, "b"=0,
+        "x"=20, "y"=50,
+        "w"=300, "h"=100
+    )):parentTo(This)
+    text(table(
+        "valign"=1,
+        "text"="Are you currently looking for work?",
+        "size"=18,
+        "r"=0, "g"=0, "b"=0,
+        "x"=20, "y"=100,
+        "w"=300, "h"=100
+    )):parentTo(This)
+    
+    checkBox("Q1", table("coords"=vec2(380,100+14), "scale"=0.5))
+    checkBox("Q2", table("coords"=vec2(380,140+14), "scale"=0.5))
+    
+    box("Submit", table(
+        "x"=This["w", number]/2-75, "y"=This["h", number]-50,
+        "w"=150, "h"=50, "radius"=2,
+        "rgb"=vec(121, 201, 197)
+    )):parentTo(This)
+    text("SubmitText", table(
+        "text"="Submit",
+        "x"=This["w", number]/2-75, "y"=This["h", number]-50,
+        "w"=150, "h"=50, 
+        "valign"=1, "halign"=1
+    )):parentTo(This)
 }
 
+function menu() {
+    let Menu = box("MenuPanel", table("x"=256-200, "y"=14, "w"=400, "h"=0))
+    transform("MenuPanel", 1, vec2(400, 226))
+    
+    timer(1, function() {
+        Menu:header("Centrelink Payments")
+        Menu:form()
+        
+        box("MenuMask", table("x"=256-200, "y"=14, "w"=400, "h"=226))
+        fadeOut("MenuMask", 1)
+        timer(1, function() {
+            EGP:delete("MenuMask")
+        })
+    })
+    
+}
+
+if (initial()) {
+    start()
+}
+
+if(userInput()) {
+    let Cursor = cursorObj()
+    print(Cursor)
+    switch (Cursor) {
+        case "Start",
+            EGP:delete("Interact", "Start")
+            loadingSpinner("StartSpinner", table("primary"=vec(255,255,255), "coords"=vec2(256,130), "size"=12))
+            timer(4, function() {
+                stopSpinner("StartSpinner")
+                menu()
+            })
+            timer("proximity", 1, 0, function() {
+                if (!isPlayerNearby(100)) {
+                    stoptimer("proximity")
+                    start()
+                }
+            })
+        break
+        case "Exit",
+            start()
+        break
+    }
+    
+    
+}

@@ -9,9 +9,9 @@ if (first() || dupefinished()) {
     if (Prefix) {}
     if (PrefixColour) {}
     
-    entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
-    entity():setSubMaterial(2, "zerochain/props_mining/zrms_goldbar")
-    entity():setColor(vec(255,255,255))
+    #entity():setSubMaterial(1, "zerochain/props_mining/zrms_goldbar")
+    #entity():setSubMaterial(2, "zerochain/props_mining/zrms_goldbar")
+    #entity():setColor(vec(255,255,255))
 }
 
 #[ =================== Messaging ========================= #

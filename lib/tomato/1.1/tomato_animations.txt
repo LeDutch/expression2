@@ -1,10 +1,9 @@
 @name Tomato Animations
-@persist FPS:number HoverElements:table
+@persist HoverElements:table
 
 #include "lib/tomato/1.1/tomato_egp"
 
 if (first()) {
-    FPS = 30 # Frames per second
     HoverElements = table()
 }
 
@@ -16,12 +15,12 @@ function number easeBilinear(T:number) {
 }
 
 function number repeats(Dur:number) {
-    return Dur * FPS
+    return max(1, ceil(Dur / tickRealInterval()))
 }
 
 function void startAnimation(Name:string, Func:function, Dur:number) {
     Func() # Start immediately
-    timer(Name, 1/FPS, repeats(Dur)-1, function() {
+    timer(Name, tickRealInterval(), repeats(Dur)-1, function() {
         Func()
     })
 }
@@ -52,14 +51,20 @@ function void fadeOut(Name:string, Dur:number) {
 
 function void moveTo(Name:string, Dur:number, Target:vector2) {
     let ID = Elements:get(Name)
+    
     let Object = EGP:egpobject(ID)
     let Pos = EGP:egpPos(ID)
+    
     let Direction = (Target - Pos):normalized()
     let Distance = Target:distance(Pos)
     let Repeats = repeats(Dur)
+    
+    let StepX = Direction:x()*Distance/Repeats
+    let StepY = Direction:y()*Distance/Repeats
+    
     let Animation = function() {
-        Object["x", number] = Object["x", number] + Direction:x()*Distance/Repeats
-        Object["y", number] = Object["y", number] + Direction:y()*Distance/Repeats
+        Object["x", number] = Object["x", number] + StepX
+        Object["y", number] = Object["y", number] + StepY
     }
     startAnimation(Name+"_move", Animation, Dur)
 }
@@ -218,7 +223,5 @@ function void glitchText(Name:string, Dur:number) {
 
     startAnimation(Name+"_glitch", Animation, Dur)
 }
-
-
 
 
