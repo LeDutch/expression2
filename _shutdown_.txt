@@ -1,149 +1,96 @@
-@name Tomato Centrelink
-@persist 
-@model models/agency/electrical/monitor01.mdl 
+@name Tomato Expressions
+@inputs 
+@outputs 
+@persist Toggle:number
+@strict
 
-#[
-    Webmat: ../data/tau/cache/files/1a2b6f5882d9172b7dbf5f3578db8605.png
-    Webmat ID: 9257078
-    Model: models/agency/electrical/monitor01.mdl 
-    
-    By job - minimum/maximum payment range. Avg in the middle.
-    Questionnaire to fill out
-    
-    Height of EGP is 310 pixels
-    
-]#
-
-#include "lib/tomato/1.1/tomato_core"
-#include "lib/tomato/1.1/tomato_ui"
-#include "lib/tomato/1.1/tomato_sprites"
-
-function start() {
-    EGP:egpClear()
-    Elements = table()
-    EGP:egpDrawTopLeft(1)
-    stopAllTimers()
-    
-    box(table("w"=512, "h"=310, "rgb"=vec(121, 201, 197), "outline"=1, "size"=4))
-    
-    sprite("Logo", table(
-        "x"=4, "y"=4,
-        "w"=504, "h"=302, 
-        "uv_start"=vec2(0, 110),
-        "uv_size"=vec2(433, 280),
-        "sheet_size"=vec2(433, 419),
-        "precache"="9257078", 
-        "material"="../data/tau/cache/files/1a2b6f5882d9172b7dbf5f3578db8605.png"
-    ))
-    
-    text("Interact", table(
-        "halign"=1, "valign"=1,
-        "text"="Press 'E' to interact",
-        "x"=256-310/2, "y"=0,
-        "w"=310, "h"=260
-    ))
-    
-    box("Start", table("a"=0, "w"=512, "h"=310))
+function void entity:msg(Text:string) {
+    if (!This:isValid()) {return}
+    This:tauSendChatMsg("{cyan Skin Changer}: " + Text)
 }
 
-function egpobject:header(Text:string) {
-    box("Header", table( 
-        "x"=0, "y"=0,
-        "w"=This["w", number], "h"=50, 
-        "rgb"=vec(63, 154, 174)
-    )):parentTo(This)
-    text("HeaderText", table(
-        "valign"=1,
-        "text"=Text,
-        "size"=23,
-        "x"=10, "y"=0,
-        "w"=390, "h"=50
-    )):parentTo(This)
-    box("Exit", table( 
-        "x"=This["w", number], "y"=24,
-        "w"=40, "h"=40, 
-        "rgb"=vec(249, 110, 91),
-        "material"="materials/zerochain/zrush/ui/zrush_cancel_icon.png"
-    ))
+function void setPlayerSkin(Skin:number) {
+    let Player = owner()
+    if (Skin < 0) { Skin = 0 }
+    Player:setSkin(Skin)
 }
 
-function egpobject:form() {
-    text(table(
-        "valign"=1,
-        "text"="Are you a TAU citizen or permanent resident?",
-        "size"=18,
-        "r"=0, "g"=0, "b"=0,
-        "x"=20, "y"=50,
-        "w"=300, "h"=100
-    )):parentTo(This)
-    text(table(
-        "valign"=1,
-        "text"="Are you currently looking for work?",
-        "size"=18,
-        "r"=0, "g"=0, "b"=0,
-        "x"=20, "y"=100,
-        "w"=300, "h"=100
-    )):parentTo(This)
-    
-    checkBox("Q1", table("coords"=vec2(380,100+14), "scale"=0.5))
-    checkBox("Q2", table("coords"=vec2(380,140+14), "scale"=0.5))
-    
-    box("Submit", table(
-        "x"=This["w", number]/2-75, "y"=This["h", number]-50,
-        "w"=150, "h"=50, "radius"=2,
-        "rgb"=vec(121, 201, 197)
-    )):parentTo(This)
-    text("SubmitText", table(
-        "text"="Submit",
-        "x"=This["w", number]/2-75, "y"=This["h", number]-50,
-        "w"=150, "h"=50, 
-        "valign"=1, "halign"=1
-    )):parentTo(This)
-}
-
-function menu() {
-    let Menu = box("MenuPanel", table("x"=256-200, "y"=14, "w"=400, "h"=0))
-    transform("MenuPanel", 1, vec2(400, 226))
-    
-    timer(1, function() {
-        Menu:header("Centrelink Payments")
-        Menu:form()
-        
-        box("MenuMask", table("x"=256-200, "y"=14, "w"=400, "h"=226))
-        fadeOut("MenuMask", 1)
-        timer(1, function() {
-            EGP:delete("MenuMask")
+event entityDamage(Victim:entity, D:damage) {
+    if (Victim == owner()) {
+        #let Skin = D:toNumber() > 0 ? 3 : 6
+        Victim:selectWeapon("cw_kk_hk416")
+        setPlayerSkin(3)
+        timer(5, function() {
+            setPlayerSkin(0)
         })
-    })
-    
-}
-
-if (initial()) {
-    start()
-}
-
-if(userInput()) {
-    let Cursor = cursorObj()
-    print(Cursor)
-    switch (Cursor) {
-        case "Start",
-            EGP:delete("Interact", "Start")
-            loadingSpinner("StartSpinner", table("primary"=vec(255,255,255), "coords"=vec2(256,130), "size"=12))
-            timer(4, function() {
-                stopSpinner("StartSpinner")
-                menu()
-            })
-            timer("proximity", 1, 0, function() {
-                if (!isPlayerNearby(100)) {
-                    stoptimer("proximity")
-                    start()
-                }
-            })
-        break
-        case "Exit",
-            start()
-        break
     }
-    
-    
+}
+
+event chat(Ply:entity, Message:string, _:number) {
+    if (Message:length() > 1) {
+        if (Message[1] == "!") {
+            if (Ply == owner()) {
+                let Args = Message:sub(2):explode(" ")
+                let Command = Args:shiftString():lower()
+                hideChat(1)
+                switch (Command) {
+                    case "exp",
+                    case "expressions",
+                        Toggle = !Toggle
+                        Ply:msg("Toggled skin commands")
+                    break
+                    case "skin",
+                        let Number = Args[1, string]:toNumber()
+                        setPlayerSkin(Number)
+                        Ply:msg("Changed skin to " + Number)
+                    break
+                    case "smile",
+                    case "happy",
+                        setPlayerSkin(0)
+                    break
+                    case "ew",
+                    case "disgusted",
+                        setPlayerSkin(1)
+                    break
+                    case "sleepy",
+                    case "sleep",
+                        setPlayerSkin(2)
+                    break
+                    case "upset",
+                    case "cry",
+                        setPlayerSkin(3)
+                    break
+                    case "curious",
+                        setPlayerSkin(4)
+                    break
+                    case "retard",
+                    case "derp",
+                        setPlayerSkin(5)
+                    break
+                    case "adorable",
+                    case "aw",
+                        setPlayerSkin(6)
+                    break
+                    case "dank",
+                        setPlayerSkin(7)
+                    break
+                    case "rainbow",
+                    case "cycle",
+                        timer(1, 7, function() {
+                            let Rand = randint(1,7)
+                            setPlayerSkin(Rand)
+                        })
+                    break
+                    default,
+                        Ply:msg("Not a valid command")
+                    break
+                    case "weapon",
+                        print(Ply:weapon())
+                        print(Ply:getWeaponColor())
+                        Ply:setBloodColor(2)
+                    break
+                }
+            }
+        }
+    }
 }
