@@ -1,6 +1,6 @@
 @name Tomato Poker Logic
 @persist [Players CommunityCards Deck AllIn]:table
-@persist [GameState CoinSeat BuyIn InPlay ActionSeat Pot CurrentBet MinBet]:number
+@persist [GameState CoinSeat BuyIn InPlay ActionSeat Pot CurrentBet MinBet RoundEnded LastRaise]:number
 @persist [SeatsInPlay]:array
 
 #include "lib/tomato/1.1/tomato_ui"
@@ -77,6 +77,8 @@ if (first() || dupefinished()) {
     InPlay = 0
     BuyIn = 100000
     MinBet = BuyIn / 100
+    RoundEnded = 0
+    LastRaise = MinBet
 }
 
 # =================== Poker Helper Functions =============== #
@@ -492,8 +494,8 @@ function void checkOrCall(Seat:number) {
                 Description = "called $" + CurrentBet
             }
             Name = bet(Player)
-            if(Player["Chips", number] < CurrentBet) {
-                Description = "went all in (" + Player["Chips", number]+")."
+            if(Player["Chips", number] == 0) {
+                Description = "went all in (" + Player["CurrentBet", number] + ")."
             }
         }
     }
@@ -509,12 +511,19 @@ function void raise(Seat:number, Amount:number) {
     let Description = "raised $" + Amount
     let Name = "Player " + Seat
     let DidRaise = 0
+    let BetIncreased = 0
     foreach(_:string, Player:table = Players) {
         if (Player["Seat", number] == Seat) {
+            let PrevBet = CurrentBet
             if (Player["Chips", number] < MinBet) {
                 let AllInBet = Player["CurrentBet", number] + Player["Chips", number]
+                let IsFullRaise = AllInBet >= (CurrentBet + LastRaise)
                 if (AllInBet > CurrentBet) {
                     CurrentBet = AllInBet
+                    BetIncreased = 1
+                }
+                if (IsFullRaise) {
+                    LastRaise = CurrentBet - PrevBet
                     DidRaise = 1
                 }
                 Name = bet(Player)
@@ -525,7 +534,13 @@ function void raise(Seat:number, Amount:number) {
                     checkOrCall(Seat)
                     return
                 }
+                if (Amount < CurrentBet + LastRaise) {
+                    checkOrCall(Seat)
+                    return
+                }
                 CurrentBet = Amount
+                BetIncreased = CurrentBet > PrevBet
+                LastRaise = CurrentBet - PrevBet
                 DidRaise = 1
                 Name = bet(Player)
                 if(Player["Chips", number] < CurrentBet) {
@@ -534,8 +549,13 @@ function void raise(Seat:number, Amount:number) {
             }
         }
         else {
-            if (DidRaise) {
+            if (BetIncreased && Player["CurrentBet", number] < CurrentBet) {
                 Player["Action", number] = 0
+            }
+            else {
+                if (DidRaise) {
+                    Player["Action", number] = 0
+                }
             }
         }
     }
@@ -613,7 +633,7 @@ function payWinners(Winners:table) {
     updatePot(Pot)
 }
 
-function void paySidePots() {
+function void paySidePots(ShowHands:number) {
     let Bets = table()
     let Levels = array()
     let Hands = table()
@@ -673,6 +693,7 @@ function void paySidePots() {
         if (PotAmount > 0 && Eligible:count()) {
             let Winners = findWinners(Eligible, Hands)
             let Share = floor(PotAmount / Winners:count())
+            let Remainder = PotAmount - Share * Winners:count()
             foreach(_:number, WinnerID:string = Winners) {
                 let Seat = Players[WinnerID, table]["Seat", number]
                 UpdatePlayerChips(Seat, Share)
@@ -682,6 +703,34 @@ function void paySidePots() {
                     WinnerList:pushString(WinnerID)
                 }
                 TotalWins[WinnerID, number] = TotalWins[WinnerID, number] + Share
+            }
+            if (Remainder > 0) {
+                let WinnerSeats = array()
+                foreach(_:number, WinnerID:string = Winners) {
+                    WinnerSeats:pushNumber(Players[WinnerID, table]["Seat", number])
+                }
+                WinnerSeats = sortAscending(WinnerSeats)
+                let StartIndex = 1
+                foreach(I:number, Seat:number = WinnerSeats) {
+                    if (Seat > CoinSeat) {
+                        StartIndex = I
+                        break
+                    }
+                }
+                for (I=0, Remainder-1) {
+                    let Seat = WinnerSeats[((StartIndex + I - 1) % WinnerSeats:count()) + 1, number]
+                    foreach(WinnerID:string, Player:table = Players) {
+                        if (Player["Seat", number] == Seat) {
+                            UpdatePlayerChips(Seat, 1)
+                            TotalPaid += 1
+                            if (!TotalWins[WinnerID, number]) {
+                                TotalWins[WinnerID, number] = 0
+                                WinnerList:pushString(WinnerID)
+                            }
+                            TotalWins[WinnerID, number] = TotalWins[WinnerID, number] + 1
+                        }
+                    }
+                }
             }
         }
         Prev = Level
@@ -719,7 +768,9 @@ function void paySidePots() {
         let HandDesc = Hands[WinnerID, table]["Description", string]
         if (HandDesc == "") { HandDesc = "a hand" }
         broadcast(Name + " has won " + abbreviateNum(TotalWins[WinnerID, number]) + " with " + HandDesc)
-        revealHand(WinnerID)
+        if (ShowHands) {
+            revealHand(WinnerID)
+        }
     }
     else {
         let I = 0
@@ -730,10 +781,12 @@ function void paySidePots() {
             let HandDesc = Hands[WinnerID, table]["Description", string]
             if (HandDesc == "") { HandDesc = "a hand" }
             broadcast(Name + " has won " + abbreviateNum(TotalWins[WinnerID, number]) + " with " + HandDesc)
-            I++
-            timer(I, function() {
-                revealHand(WinnerID)
-            })
+            if (ShowHands) {
+                I++
+                timer(I, function() {
+                    revealHand(WinnerID)
+                })
+            }
         }
     }
 
@@ -791,31 +844,9 @@ function void processLeavingPlayers() {
     }
 }
 
-function number isBot(Player:table) {
-    let Entity = Player["Entity", entity]
-    return !Entity:isValid()
-}
-
-function void botAct(Seat:number) {
-    let Player = playerFromSeat(Seat)
-    if (!Player["InPlay", number]) { return }
-    if (Player["Chips", number] <= 0) { return }
-    let Roll = randint(1, 3)
-    if (Roll == 1) {
-        checkOrCall(Seat)
-    }
-    elseif (Roll == 2) {
-        foldHand(Seat)
-    }
-    else {
-        let Target = max(CurrentBet + MinBet, MinBet * 2)
-        raise(Seat, Target)
-    }
-}
-
-function void newAction() {
+function number newAction() {
     SeatsInPlay = sortAscending(seatsWithAction())
-    if (SeatsInPlay:count() <= 1) { return }
+    if (SeatsInPlay:count() == 0) { return 0 }
     let Count = SeatsInPlay:count()
     
     let NextSeat = function(Current:number) {
@@ -833,27 +864,49 @@ function void newAction() {
     let HasActioned = function(Seat:number) {
         foreach(_:string, Player:table = Players) {
             if(Player["Seat", number] == Seat) {
+                if (!Player["InPlay", number]) { return 1 }
+                if (Player["Chips", number] == 0) { return 1 }
+                if (Player["CurrentBet", number] < CurrentBet) { return 0 }
                 return Player["Action", number]
             }
         }
         return 0
     }
-    ActionSeat = NextSeat(ActionSeat)[number]
-    if(!HasActioned(ActionSeat)[number]) {
-        let CurrentPlayer = playerFromSeat(ActionSeat)
-        drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
-
-        let BotPlayer = playerFromSeat(ActionSeat)
-        if (isBot(BotPlayer)) {
-            let BotTimer = "bot_" + ActionSeat
-            timer(BotTimer, 1, function() {
-                botAct(ActionSeat)
-                timer(1.2, function() {
-                    newAction()
-                })
-            })
-            return
+    let FoundSeat = 0
+    if (Count == 1) {
+        let OnlySeat = SeatsInPlay[1, number]
+        if (!HasActioned(OnlySeat)[number]) {
+            FoundSeat = OnlySeat
         }
+    }
+    else {
+        let Seat = ActionSeat
+        for (_=1, Count) {
+            Seat = NextSeat(Seat)[number]
+            if (!HasActioned(Seat)[number]) {
+                FoundSeat = Seat
+                break
+            }
+        }
+    }
+    if (FoundSeat) {
+        ActionSeat = FoundSeat
+        for (Seat=2, 8) {
+            deleteButtons(Seat)
+        }
+        let CurrentPlayer = playerFromSeat(ActionSeat)
+        timer(0.2, function() {
+            if (InPlay) {
+                drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
+            }
+        })
+        return FoundSeat
+    }
+    else {
+        stoptimer("action")
+        stoptimer("fold")
+        updatePot(Pot)
+        return 0
     }
 }
 
@@ -908,6 +961,7 @@ function string updateGameState() {
             CurrentBet = 0
             Pot = 0
             InPlay = 0
+            RoundEnded = 0
             for (Seat=2, 8) {
                 deleteButtons(Seat)
                 deleteShowHand(Seat)
@@ -918,12 +972,15 @@ function string updateGameState() {
             updatePot(Pot)
 
             timer(1, function() {
-                if (Players:count() < 2) {
-                    InPlay = 0
-                    return
-                }
                 for (Seat=2, 8) {
                     initHand(Seat)
+                }
+                if (Players:count() < 2) {
+                    InPlay = 0
+                    timer(3, function() {
+                        startingShowcase()
+                    })
+                    return
                 }
             })
 
@@ -940,6 +997,10 @@ function string updateGameState() {
     }
 
     let EndRound = function() {
+        if (RoundEnded) { return }
+        RoundEnded = 1
+        stoptimer("action")
+        stoptimer("fold")
         foreach(_:string, Player:table = Players) {
             drawShowHandButton(Player["Seat", number])
         }
@@ -958,27 +1019,36 @@ function string updateGameState() {
         }
         if (seatsInPlay():count() <= 1) {
             if (seatsInPlay():count()) {
-                ActionSeat = seatsInPlay()[1, number]
-                payWinners(
-                    table(
-                        table("Seat" = ActionSeat, "MaxPot" = 0)
-                    )
-                )
+                paySidePots(0)
             }
             EndRound()
             return
         }
         let CurrentPlayer = playerFromSeat(ActionSeat)
-        if (!isBot(CurrentPlayer)) {
-            drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
+        for (Seat=2, 8) {
+            deleteButtons(Seat)
         }
+        timer(0.2, function() {
+            if (InPlay) {
+                drawButtons(CurrentPlayer, ActionSeat, CurrentBet)
+            }
+        })
         let HasActioned = function(Seat:number) {
             foreach(_:string, Player:table = Players) {
                 if(Player["Seat", number] == Seat) {
+                    if (!Player["InPlay", number]) { return 1 }
+                    if (Player["Chips", number] == 0) { return 1 }
+                    if (Player["CurrentBet", number] < CurrentBet) { return 0 }
                     return Player["Action", number]
                 }
             }
             return 0
+        }
+        let AllActioned = function() {
+            foreach(_:number, Seat:number = SeatsInPlay) {
+                if (!HasActioned(Seat)[number]) { return 0 }
+            }
+            return 1
         }
         let RestartTimer = function(Name:string, Delay:number, Function:function) {
             if(timerExists(Name)) {
@@ -997,36 +1067,40 @@ function string updateGameState() {
             if (InPlay) {
                 if((seatsInPlay()):count() == 1) {
                     # Insert winning logic here
-                    ActionSeat = seatsInPlay()[1, number]
-                    payWinners(
-                        table(
-                            table("Seat" = ActionSeat, "MaxPot" = 0)
-                        )
-                    )
+                    paySidePots(0)
                     EndRound()
                 }
-                elseif(!HasActioned(ActionSeat)[number]) {
-                    RestartTimer("action", 16, function() {ActionAnimation()})
-                    RestartTimer("fold", 15, function() {
-                        foldHand(ActionSeat)
-                        newAction()
-                    })
-                }
-                else {
+                elseif(AllActioned()[number]) {
                     stoptimer("action")
                     stoptimer("fold")
                     updatePot(Pot)
                     updateGameState()
                 }
+                elseif(!HasActioned(ActionSeat)[number]) {
+                    RestartTimer("action", 16, function() {ActionAnimation()})
+                    RestartTimer("fold", 15, function() {
+                        foldHand(ActionSeat)
+                        if (!newAction()) {
+                            updateGameState()
+                        }
+                    })
+                }
+                else {
+                    if (!newAction()) {
+                        updateGameState()
+                    }
+                }
             }
         }
-        timer("action", 22, function() {
+        RestartTimer("action", 22, function() {
             ActionAnimation()
         })
-        timer("fold", 19, function() {
+        RestartTimer("fold", 19, function() {
             foldHand(ActionSeat)
             timer(1.2, function() {
-                newAction()
+                if (!newAction()) {
+                    updateGameState()
+                }
             })
         })
     }
@@ -1042,6 +1116,7 @@ function string updateGameState() {
         ]#
         
         CurrentBet = 0
+        LastRaise = MinBet
         foreach(_:string, Player:table = Players) {
             Player["Action", number] = 0
             Player["CurrentBet", number] = 0
@@ -1064,6 +1139,7 @@ function string updateGameState() {
             if (NewState == "Pre-Flop") {
                 # Pre-Flop
                 CurrentBet = MinBet
+                LastRaise = MinBet
                 let SmallBlind = MinBet/2
                 blind(SeatsInPlay[Index % Count + 1, number], SmallBlind)
                 blind(SeatsInPlay[(Index + 1) % Count + 1, number], MinBet)
@@ -1088,7 +1164,7 @@ function string updateGameState() {
                 ActionSeat = PostFlop(SeatsInPlay, Index)[number]
             }
         }
-        timer(1, function() {
+        timer(1.2, function() {
             Action()
         })
     }
@@ -1120,6 +1196,7 @@ function string updateGameState() {
             CommunityCards = table()
             Deck["initialize", function]()
             Deck["shuffle", function]()
+            RoundEnded = 0
             foreach(_:string, Player:table = Players) {
                 Player["InPlay", number] = 1
                 Player["Cards", table] = table()
@@ -1173,7 +1250,7 @@ function string updateGameState() {
                 })
                 return ""
             }
-            paySidePots()
+            paySidePots(1)
             EndRound()
         break
         default,

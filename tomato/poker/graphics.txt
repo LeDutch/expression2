@@ -597,3 +597,39 @@ function void drawTable() {
         })
     })
 }
+
+function void startingShowcase() {
+    let ShowcaseCards = table(
+        table(
+            card("8", "Spade"), card("8", "Club"), card("A", "Club"), card("A", "Spade"), card("J", "Diamond")
+        ),
+        table(
+            card("A", "Heart"), card("A", "Club"), card("K", "Club"), card("K", "Spade"), card("K", "Diamond")
+        ),
+        table(
+            card("10", "Club"), card("10", "Spade"), card("9", "Club"), card("9", "Spade"), card("2", "Diamond")
+        ),
+        table(
+            card("A", "Spade"), card(" K", "Spade"), card("Q", "Spade"), card("J", "Spade"), card("10", "Spade")
+        ),
+        table(
+            card("A", "Diamond"), card("2", "Heart"), card("3", "Club"), card("4", "Spade"), card("5", "Spade")
+        ),
+        table(
+            card("J", "Diamond"), card("J", "Heart"), card("3", "Diamond"), card("7", "Club"), card("9", "Diamond")
+        )
+    ) 
+    let RandomCardIndex = randint(1,ShowcaseCards:count())
+    let StartingShowcase = function() {
+        let I = 1
+        timer(0.15, 5, function() {
+            drawCommunityCard(array("Flop1", "Flop2", "Flop3", "Turn", "River")[I, string], 
+                ShowcaseCards[RandomCardIndex, table][I, table])
+            I++
+        })
+        timer(4, function() {
+            delCommunityCards()
+        })
+    }
+    StartingShowcase()
+}

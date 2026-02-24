@@ -1,96 +1,94 @@
-@name Tomato Expressions
+@name Test
 @inputs 
 @outputs 
-@persist Toggle:number
+@persist 
 @strict
 
-function void entity:msg(Text:string) {
-    if (!This:isValid()) {return}
-    This:tauSendChatMsg("{cyan Skin Changer}: " + Text)
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_ui"
+#include "lib/tomato/1.1/tomato_animations"
+
+if (initial()) {
+    # Background
+    box(table("x"=0.0, "y"=0.0, "w"=515.0, "h"=515.0, "r"=106, "g"=23, "b"=23)) 
+    
+    box("Menu", table("x"=400.0, "y"=200.0, "w"=100.0, "h"=250.0, "r"=255, "g"=255, "b"=255)) 
+        
+    let Parent = box("TheBox", table("x"=10, "y"=10, "w"=20, "h"=20, "r"=163, "g"=104, "b"=47))
+    let Child = box("TheMiniBox", table("x"=100, "y"=100, "w"=20, "h"=20, "r"=255, "g"=255, "b"=255))
+    
+    Parent:giveChild(Child)
+    
+    Child:giveParent(Parent)
+    
+    
+    #Elements:get("TheBox"):giveChild(Elements:get("TheMiniBox"))
+    
+    checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
+    
+    
+    dropDown("TheDropDown", 
+    		array("This is an option", "2awdsad", "3asds", "4asdq"), 
+    		table(
+    		"coords"=vec2(50,350), 
+    		"text"="Testing",
+      "scale"=1.5
+    	))
+    
+    slider("TheSlider", table(
+    		"coords"=vec2(200,400), 
+    		"w"=150, 
+    		"scale"=1.2, 
+    		"text"="Test Bar",
+    		"min"=50,
+    		"max"=150,
+    		"interval"=10
+    ))
+     
+    scrollBar("Scrollbar", table(
+      "x"=360,
+      "y"=200,
+      "yoffset"=10,
+      "menu"="Menu",
+      "h"=150,
+    		"w"=7, 
+    		"scale"=1.2, 
+    		"min"=50,
+    		"max"=150,
+    		"interval"=10,
+      "radius"=0
+    ))
+    
+    
+    checkBox("TheCheckbox", table("coords"=vec2(250,250), "scale"=0.5))
+    
+    #loadingSpinner("Test", table("coords"=vec2(150,150), "size"=12))
+    
+    circle("Fade", table("x"=340.0, "y"=85.0, "w"=16.0, "h"=28.0, "r"=217, "g"=217, "b"=217))
 }
 
-function void setPlayerSkin(Skin:number) {
-    let Player = owner()
-    if (Skin < 0) { Skin = 0 }
-    Player:setSkin(Skin)
-}
-
-event entityDamage(Victim:entity, D:damage) {
-    if (Victim == owner()) {
-        #let Skin = D:toNumber() > 0 ? 3 : 6
-        Victim:selectWeapon("cw_kk_hk416")
-        setPlayerSkin(3)
-        timer(5, function() {
-            setPlayerSkin(0)
-        })
-    }
-}
-
-event chat(Ply:entity, Message:string, _:number) {
-    if (Message:length() > 1) {
-        if (Message[1] == "!") {
-            if (Ply == owner()) {
-                let Args = Message:sub(2):explode(" ")
-                let Command = Args:shiftString():lower()
-                hideChat(1)
-                switch (Command) {
-                    case "exp",
-                    case "expressions",
-                        Toggle = !Toggle
-                        Ply:msg("Toggled skin commands")
-                    break
-                    case "skin",
-                        let Number = Args[1, string]:toNumber()
-                        setPlayerSkin(Number)
-                        Ply:msg("Changed skin to " + Number)
-                    break
-                    case "smile",
-                    case "happy",
-                        setPlayerSkin(0)
-                    break
-                    case "ew",
-                    case "disgusted",
-                        setPlayerSkin(1)
-                    break
-                    case "sleepy",
-                    case "sleep",
-                        setPlayerSkin(2)
-                    break
-                    case "upset",
-                    case "cry",
-                        setPlayerSkin(3)
-                    break
-                    case "curious",
-                        setPlayerSkin(4)
-                    break
-                    case "retard",
-                    case "derp",
-                        setPlayerSkin(5)
-                    break
-                    case "adorable",
-                    case "aw",
-                        setPlayerSkin(6)
-                    break
-                    case "dank",
-                        setPlayerSkin(7)
-                    break
-                    case "rainbow",
-                    case "cycle",
-                        timer(1, 7, function() {
-                            let Rand = randint(1,7)
-                            setPlayerSkin(Rand)
-                        })
-                    break
-                    default,
-                        Ply:msg("Not a valid command")
-                    break
-                    case "weapon",
-                        print(Ply:weapon())
-                        print(Ply:getWeaponColor())
-                        Ply:setBloodColor(2)
-                    break
-                }
+if (userInput()) {
+    let Cursor = cursorObj()
+    print(Cursor)
+    switch (Cursor) {
+        case "TheBox",
+            moveTo("TheBox", 0.5, vec2(randint(20,480), randint(20,480)))
+        break
+        case "Fade",
+            fadeOut("Fade", 0.5)
+        break
+        case "TheDropDown",
+            print(UI["TheDropDown", table]["value", string])
+        break
+        case "TheCheckbox",
+            let Checked = UI["TheCheckbox", table]["value", number]
+            print(UI["TheCheckbox", table])
+            if (Checked) {
+                loadingSpinner("TheSpinner", table("coords"=vec2(150,150), "size"=12))
             }
-        }
+            else {
+                stopSpinner("TheSpinner")
+            }
+        break
     }
 }

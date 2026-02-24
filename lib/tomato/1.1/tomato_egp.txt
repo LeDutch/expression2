@@ -37,12 +37,6 @@ function void egpobject:giveParent(Parent:egpobject) {
 }
 
 function void egpobject:giveChild(Child:egpobject) {
-    # This == Parent
-    const Pos = vec2(This["x", number], This["y", number])
-    const ChildPos = vec2(Child["x", number], Child["y", number])
-    const NewPos = (ChildPos - Pos):normalized()*Pos:distance(ChildPos)
-    Child["x", number] = NewPos:x()
-    Child["y", number] = NewPos:y()
     Child:parentTo(This)
 }
 
@@ -174,7 +168,6 @@ function egpobject box(Name:string, Args:table) {
     const Radius  = Args["radius", number]
     
     const Parent = Args["parent", string]
-    const Material = Args["material", string]
     const Precache = Args["precache", string]
     
     const RGB = Args["rgb", vector]
@@ -208,7 +201,6 @@ function egpobject box(Name:string, Args:table) {
             Precached:pushEgpobject(Object)
         #else
             print("This E2 uses a webmat on TAU which has not been loaded")
-            print(String)
         #endif
     }
     
@@ -315,12 +307,12 @@ if (initial()) {
 
 # Webmats - is also done in the regular box() function. LEGACY
 function void preCache(String:string, Object:egpobject) {
+    let Material = Object["material", string]
+    timer(_TICKINTERVAL, function() {
+        Object["material", string] = Material
+    })
      #ifdef tauPrecacheMaterial(String)
-        let Material = Object["material", string]
         tauPrecacheMaterial(String)
-        timer(_TICKINTERVAL, function() {
-            Object["material", string] = Material
-        })
         Precached:pushEgpobject(Object)
     #else
         print("This E2 uses a webmat on TAU which has not been loaded")

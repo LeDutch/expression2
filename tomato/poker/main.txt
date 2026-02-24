@@ -1,4 +1,5 @@
 @name Tomato Poker v2
+@persist DebugMode:number
 
 #[ =================== G'day ============================ #
  Coded by Bob Tomato, feel free to add me :) 
@@ -12,51 +13,7 @@
 if (first() || dupefinished()) {
     concmd("wire_egp_model models/props/de_tides/restaurant_table.mdl")
     concmd("wire_egp_createflat 0")
-}
-
-function void startingShowcase() {
-    let ShowcaseCards = table(
-        table(
-            card("8", "Spade"), card("8", "Club"), card("A", "Club"), card("A", "Spade"), card("J", "Diamond")
-        ),
-        table(
-            card("A", "Heart"), card("A", "Club"), card("K", "Club"), card("K", "Spade"), card("K", "Diamond")
-        ),
-        table(
-            card("10", "Club"), card("10", "Spade"), card("9", "Club"), card("9", "Spade"), card("2", "Diamond")
-        ),
-        table(
-            card("A", "Spade"), card(" K", "Spade"), card("Q", "Spade"), card("J", "Spade"), card("10", "Spade")
-        ),
-        table(
-            card("A", "Diamond"), card("2", "Heart"), card("3", "Club"), card("4", "Spade"), card("5", "Spade")
-        ),
-        table(
-            card("J", "Diamond"), card("J", "Heart"), card("3", "Diamond"), card("7", "Club"), card("9", "Diamond")
-        )
-    ) 
-    let RandomCardIndex = randint(1,ShowcaseCards:count())
-    let StartingShowcase = function() {
-        let I = 1
-        timer(0.15, 5, function() {
-            drawCommunityCard(array("Flop1", "Flop2", "Flop3", "Turn", "River")[I, string], 
-                ShowcaseCards[RandomCardIndex, table][I, table])
-            I++
-        })
-        timer(4, function() {
-            delCommunityCards()
-        })
-    }
-    StartingShowcase()
-    timer("game", 15, 0, function() {
-        if (!InPlay) {
-            StartingShowcase()
-        }
-        else {
-            stoptimer("game")
-            updateGameState()
-        }
-    })
+    DebugMode = 1
 }
 
 if (initial()) {
@@ -67,6 +24,15 @@ if (initial()) {
     drawTable()
     timer(6, function() {
         startingShowcase()
+    })
+    timer("game", 15, 0, function() {
+        if (!InPlay) {
+            startingShowcase()
+        }
+        else {
+            stoptimer("game")
+            updateGameState()
+        }
     })
 }
 
@@ -83,7 +49,9 @@ if (userInput()) {
         let SeatNumber = Cursor:sub(6):toNumber()
         if (RevealedPlayer["Seat", number] == SeatNumber) {
             leaveTable(CurrentUser)
-            newAction()
+            if (!newAction()) {
+                updateGameState()
+            }
         }
     }
     elseif (Cursor:startsWith("ShowHand")) {
@@ -125,13 +93,15 @@ if (userInput()) {
         let Action = Cursor:sub(7, LastChar)
         let Seat = Cursor:sub(LastChar+1):toNumber()
         let SeatEntity = getSeatEntity(Seat)
-        if (CurrentUser == SeatEntity) {
+        if (CurrentUser == SeatEntity || (DebugMode && CurrentUser == owner())) {
             switch (Action) {
                 case "Fold",
                     timerAdjust("action", 0.5, 1)
                     stoptimer("fold")
                     foldHand(Seat)
-                    newAction()
+                    if (!newAction()) {
+                        updateGameState()
+                    }
                 break
                 case "Raise",
                     SeatEntity:msg("Type the amount to raise in chat.")
@@ -140,7 +110,9 @@ if (userInput()) {
                     timerAdjust("action", 0.5, 1)
                     stoptimer("fold")
                     checkOrCall(Seat)
-                    newAction()
+                    if (!newAction()) {
+                        updateGameState()
+                    }
                 break
                 default,
                 break
@@ -186,6 +158,10 @@ event chat(Player:entity, Message:string, _:number) {
         let Command = Arguments:shiftString()
         if(Player == owner()) {
             switch (Command) {
+                case "debug",
+                    DebugMode = !DebugMode
+                    Player:msg("Debug mode: " + (DebugMode ? "ON" : "OFF"))
+                break
                 case "next",
                     updateGameState()
                 break
@@ -224,21 +200,27 @@ event chat(Player:entity, Message:string, _:number) {
                     timerAdjust("action", 0.5, 1)
                     stoptimer("fold")
                     checkOrCall(ActionSeat)
-                    newAction()
+                    if (!newAction()) {
+                        updateGameState()
+                    }
                 break
                 case "botfold",
                     timerAdjust("action", 0.5, 1)
                     stoptimer("fold")
                     foldHand(ActionSeat)
                     timer(1.2, function() {
-                        newAction()
+                        if (!newAction()) {
+                            updateGameState()
+                        }
                     })
                 break
                 case "botraise",
                     timerAdjust("action", 0.5, 1)
                     stoptimer("fold")
                     raise(ActionSeat, MinBet*5)
-                    newAction()
+                    if (!newAction()) {
+                        updateGameState()
+                    }
                 break
                 case "kick",
                     let Seat = Arguments[1,string]:toNumber()
@@ -319,7 +301,9 @@ event chat(Player:entity, Message:string, _:number) {
                 timerAdjust("action", 0.5, 1)
                 stoptimer("fold")
                 raise(Seat, RaiseAmount)
-                newAction()
+                if (!newAction()) {
+                    updateGameState()
+                }
             }
             else {
                 Player:msg("The raise must be at least "+abbreviateNum(MinBet*2))

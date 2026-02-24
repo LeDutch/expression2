@@ -1,0 +1,609 @@
+@name The Docs Black Jack
+@model models/props/cs_office/radio.mdl
+@persist [Deck PlayerHands PlayerStatus Money ActiveHand DealerHand]:table
+@persist [GameState ErrorMsg]:string 
+@persist [AutoMode ActivePlayerIdx HousePool GlobalBet BuyInAmt]:number
+@persist [Dark Green Red White Primary]:vector
+@persist Players:array
+@strict
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_egp"
+#include "lib/tomato/1.1/tomato_animations"
+#include "lib/tomato/1.1/tomato_ui"
+
+#---------- Global Vars ----------#
+
+if (first() || dupefinished()) {
+    Deck = table()
+    PlayerHands = table()
+    PlayerStatus = table()
+    Money = table()
+    ActiveHand = table()
+    DealerHand = table()
+    
+    GameState = "JOINING"
+    ErrorMsg = ""
+    
+    AutoMode = 0
+    ActivePlayerIdx = 0
+    HousePool = 0
+    GlobalBet = 5000
+    BuyInAmt = 5000
+    
+    White = vec(255,255,255)
+    Dark = vec(50,57,69)
+    Primary = vec(82, 109, 130)
+    Green = vec(0,127,31)
+    Red = vec(127,0,0)
+    
+    Players = array()
+}
+
+#---------- UI Helpers -----------#
+
+function void createButton(Name:string, Coords:vector2, Size:vector2, Color:vector, Label:string, TextSize:number, Parent:string, Rot:number) {
+    let Box = box(Name, table("x"=Coords:x(), "y"=Coords:y(), "w"=Size:x(), "h"=Size:y(), "r"=Color:x(), "g"=Color:y(), "b"=Color:z(), "a"=255, "radius"=4, "parent"=Parent))
+    EGP:egpAngle(Elements:get(Name), Rot)
+    # Text parented to button: centered box (0, 0, w, h) with halign=1
+    text(Name+"_text", table("text"=Label, "x"=0, "y"=0, "w"=Size:x(), "h"=Size:y(), 
+    "r"=255, "g"=255, "b"=255, "size"=TextSize, "halign"=1, "valign"=1)):parentTo(Box)
+}
+
+function void createButton(Name:string, Coords:vector2, Size:vector2, Color:vector, Label:string, TextSize:number) {
+    createButton(Name, Coords, Size, Color, Label, TextSize, "", 0)
+}
+
+function number inArray(Arr:array, Item:string) {
+    foreach(_:number, Val:string = Arr) {
+        if (Val == Item) { return 1 }
+    }
+    return 0
+}
+
+function number sliderCursorX(Value:number, Min:number, Max:number, X:number, W:number, Scale:number) {
+    let H = 10 * Scale
+    let Radius = (H - H / 4) / 2
+    let MinX = X + Radius
+    let MaxX = X + W - Radius
+    let Percent = (Value - Min) / (Max - Min)
+    return clamp(MinX + (MaxX - MinX) * Percent, MinX, MaxX)
+}
+
+#---------- Format Helpers -----------#
+
+function string formatNumber(Number:number) {
+    if (Number >= 1000000) { return (round(Number / 100000) / 10) + "M" }
+    elseif (Number >= 1000) { return (round(Number / 100) / 10) + "K" }
+    return toString(round(Number))
+}
+
+function string formatName(Text:string, Chars:number) {
+    if (Text:length() > Chars) { return Text:sub(1, Chars-3) + "..." }
+    return Text
+}
+
+#---------- Deck Helpers -----------#
+
+function table deckCreate() {
+    let Deck = table()
+    
+    let Card_create = function(Rank:string, Suit:string) {
+        let Card = table()
+        Card["Rank"] = Rank
+        Card["Suit"] = Suit
+        Card["toString"] = function() {
+            return Card["Rank", string] + " of " + Card["Suit", string]
+        }
+        return Card
+    }
+    Deck["Cards"] = table()
+    
+    Deck["initialize"] = function() {
+        let Suits = array("Hearts", "Diamonds", "Clubs", "Spades")
+        let Ranks = array("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
+        
+        foreach(_:number, Suit:string = Suits) {
+            foreach(_:number, Rank:string = Ranks) {
+                let Card = Card_create(Rank, Suit)[table]
+                Deck["Cards", table]:pushTable(Card)
+            }
+        }
+    }
+    
+    Deck["shuffle"] = function() {
+        let Cards = Deck["Cards", table]
+        let Count = Cards:count()
+        for (I = Count, 1, -1) {
+            let J = randint(1, I)
+            let Temp = Cards[I, table]
+            Cards[I] = Cards[J, table]
+            Cards[J] = Temp
+        }
+    }
+    
+    Deck["draw"] = function() {
+        let Cards = Deck["Cards", table]
+        if (Cards:count()) {
+            let FirstCard = Cards[1, table]
+            Deck["Cards", table]:shift()
+            return FirstCard
+        }
+        return table()
+    }
+    
+    return Deck
+}
+
+function void resetDeck() {
+    Deck = deckCreate()
+    Deck["initialize", function]()
+    Deck["shuffle", function]()
+}
+
+function table drawCard() {
+    return Deck["draw", function]()[table]
+}
+
+#---------- Hand Helpers -----------#
+
+function void handAdd(Hand:table, Card:table) {
+    Hand[toString(Hand:count() + 1), table] = Card
+}
+
+function table handGet(Hand:table, Index:number) {
+    let Card = Hand[toString(Index), table]
+    return Card ? Card : table()
+}
+
+function table handRemove(Hand:table, Index:number) {
+    let Key = toString(Index)
+    let Card = Hand[Key, table]
+    Hand:remove(Key)
+    return Card ? Card : table()
+}
+
+# =================== Game Logic Functions ================= #
+
+function number getCardValue(Card:table) {
+    let Rank = Card["Rank", string]
+    if(Rank == "A") { return 11 }
+    if(Rank == "J" || Rank == "Q" || Rank == "K") { return 10 }
+    return Rank:toNumber()
+}
+
+function string cardShort(Card:table) {
+    if (Card:count() == 0) { return "??" }
+    let Rank = Card["Rank", string]
+    let Suit = Card["Suit", string]
+    let SuitChar = (Suit == "Hearts") ? "H" : (Suit == "Diamonds") ? "D" : (Suit == "Clubs") ? "C" : "S"
+    return Rank + SuitChar
+}
+
+function number calculateHand(Hand:table) {
+    let Total = 0, Aces = 0
+    foreach(_:string, Card:table = Hand) {
+        let Val = getCardValue(Card)
+        Total = Total + Val
+        if (Val == 11) { Aces = Aces + 1 }
+    }
+    while(Total > 21 && Aces > 0) { Total = Total - 10, Aces = Aces - 1 }
+    return Total
+}
+
+function void dealCard(P_ID:string, HandIdx:number) {
+    let Key = P_ID+"_"+HandIdx, Hand = PlayerHands[Key, table]
+    if (!Hand) { Hand = table() }
+    let Card = drawCard()
+    if (Card:count()) { handAdd(Hand, Card) }
+    PlayerHands[Key, table] = Hand
+    soundPlay(1, 0, "ambient/levels/canals/box_drop5.wav")
+}
+
+function void dealInitial() {
+    DealerHand = table()
+    handAdd(DealerHand, drawCard()), handAdd(DealerHand, drawCard())
+    for(I = 1, Players:count()) {
+        const P = Players[I, entity], ID = P:id():toString()
+        if(P:isValid()) {
+            ActiveHand[ID, number] = 1, PlayerHands[ID+"_1", table] = table(), PlayerHands[ID+"_2", table] = table()
+            dealCard(ID, 1), dealCard(ID, 1), PlayerStatus[ID, string] = "PLAYING"
+            if(calculateHand(PlayerHands[ID+"_1", table]) == 21) { PlayerStatus[ID, string] = "BLACKJACK" }
+        }
+    }
+}
+
+# =================== Graphics Section (EGP3) =================== #
+
+function void screen_header() {
+    box("Table", table("x"=0, "y"=0, "w"=512, "h"=512, "r"=15, "g"=60, "b"=15, "a"=255))
+    box("Head", table("x"=0, "y"=0, "w"=512, "h"=36, "r"=0, "g"=0, "b"=0, "a"=220))
+    
+    let PoolTxt = "POOL: $" + HousePool
+    let HeaderCol = (ErrorMsg != "") ? Red : White
+    let OwnerTxt = "Owner: " + owner():name()
+    let HeaderStr = (ErrorMsg != "") ? ErrorMsg : GameState + " | " + PoolTxt + " | " + OwnerTxt
+    # Full width header to prevent cutoff
+    text("Stat", table("text"=HeaderStr, "x"=0, "y"=0, "w"=512, "h"=36, "r"=HeaderCol:x(), "g"=HeaderCol:y(), "b"=HeaderCol:z(), "size"=18, "halign"=1, "valign"=1))
+    
+    # Sliders (Tomato UI)
+    slider("SBet", table(
+        "coords"=vec2(206, 64),
+        "w"=100,
+        "scale"=1,
+        "text"="BET",
+        "min"=1000,
+        "max"=10000,
+        "interval"=1000,
+        "value"=sliderCursorX(GlobalBet, 1000, 10000, 206, 100, 1.4),
+        "primary"=Primary,
+        "light"=White
+    ))
+
+    slider("SBuy", table(
+        "coords"=vec2(40, 64),
+        "w"=100,
+        "scale"=1,
+        "text"="BUY-IN",
+        "min"=1000,
+        "max"=10000,
+        "interval"=1000,
+        "value"=sliderCursorX(BuyInAmt, 1000, 10000, 40, 100, 1.4),
+        "primary"=Green,
+        "light"=White
+    ))
+
+    # Header Buttons
+    createButton("BtnBuyIn", vec2(8, 6), vec2(70, 24), Green, "BUY-IN", 10)
+    
+    if (GameState == "JOINING" || GameState == "PAYOUT") {
+        createButton("BtnCashOut", vec2(434, 6), vec2(70, 24), Red, "CASH-OUT", 10)
+        createButton("BtnStart", vec2(10, 440), vec2(90, 26), Green, "START GAME", 11)
+        EGP:egpAngle(Elements:get("BtnStart"), 0)
+    } else {
+        text("CreditTxt", table("text"="Made by The Doc", "x"=405, "y"=0, "w"=100, "h"=36, "r"=255, "g"=255, "b"=255, "size"=9, "halign"=1, "valign"=1))
+    }
+
+    createButton("BtnJoin", vec2(412, 440), vec2(90, 26), Primary, "JOIN", 11)
+    createButton("BtnLeaveGlobal", vec2(412, 470), vec2(90, 26), vec(80,80,80), "LEAVE", 11)
+    EGP:egpAngle(Elements:get("BtnJoin"), 0)
+    EGP:egpAngle(Elements:get("BtnLeaveGlobal"), 0)
+
+    let AMCol = AutoMode ? Green : Dark
+    let AMLabel = "AUTO: " + (AutoMode ? "ON" : "OFF")
+    createButton("BtnAuto", vec2(10, 470), vec2(90, 26), AMCol, AMLabel, 11)
+}
+
+function void screen_dealer() {
+    # Absolute positioning to ensure centering: 256 - 60 = 196
+    box("DSlot", table("x"=196, "y"=95, "w"=120, "h"=100, "r"=0, "g"=0, "b"=0, "a"=180))
+    
+    let DealerTotal = 0
+    if (GameState == "PLAYERS") {
+        if (DealerHand:count() > 0) { DealerTotal = getCardValue(handGet(DealerHand, 1)) }
+        text("DTotalDisp", table("text"="Dealer: "+DealerTotal, "x"=206, "y"=75, "w"=100, "h"=20, "r"=255, "g"=230, "b"=0, "size"=14, "halign"=1, "valign"=0))
+    } else {
+        DealerTotal = calculateHand(DealerHand)
+        let Str = (GameState == "DEALER" || GameState == "PAYOUT") ? "Dealer: "+DealerTotal : "Dealer: --"
+        text("DTotalDisp", table("text"=Str, "x"=206, "y"=75, "w"=100, "h"=20, "r"=255, "g"=230, "b"=0, "size"=14, "halign"=1, "valign"=0))
+    }
+
+    for (J = 1, DealerHand:count()) {
+        let Card = handGet(DealerHand, J)
+        let CStrVal = (GameState != "PAYOUT" && GameState != "DEALER" && J == 2) ? "??" : cardShort(Card)
+        # Center cards around 256
+        let PosX = 256 + (J - (DealerHand:count() + 1) / 2) * 35
+        # TextLayout: x is relative to 256
+        text("DCard"+J, table("text"=CStrVal, "x"=PosX-20, "y"=120, "w"=40, "h"=40, "r"=255, "g"=255, "b"=255, "size"=26, "halign"=1, "valign"=1))
+    }
+}
+
+#---------- Player Rendering Module -----------#
+
+# Refined PARENTED approach:
+# - Buttons are now INSIDE the slot boxes.
+# - Player info (Name, Credits, Status) is shifted to the left (player perspective).
+# - Hand totals are at the top of the box.
+
+function void render_player(I:number, SC:vector2, Rot:number) {
+    const P = Players[I, entity], SID = P:id():toString()
+    if(!P:isValid()) { return }
+    
+    let SlotKey = "PSlot"+I
+    # Slot size: 120 width x 140 height (relative to player)
+    box(SlotKey, table("x"=SC:x(), "y"=SC:y(), "w"=120, "h"=140, "r"=20, "g"=20, "b"=20, "a"=220, "radius"=8, "halign"=1, "valign"=1))
+    EGP:egpAngle(Elements:get(SlotKey), Rot)
+
+    let PName = formatName(P:name(), 12), PCol = (ActivePlayerIdx == I) ? vec(0, 255, 100) : White
+    let Credits = Money[SID, number] ?: 0, Status = PlayerStatus[SID, string] ?: "WAIT"
+    let StatCol = (Status == "BUST") ? vec(255, 0, 0) : (Status == "BLACKJACK" || Status == "STAY") ? Primary : White
+    let CredCol = (Credits <= 0) ? vec(255, 50, 50) : vec(0, 255, 0)
+    
+    # Hand Totals - Top Section (Local Y negative)
+    for(HIdx=1, 2) {
+        let Hand = PlayerHands[SID+"_"+HIdx, table]
+        if(!Hand || Hand:count() == 0) { continue }
+        stext("PTot"+I+"_"+HIdx, table("text"=calculateHand(Hand):toString(), "x"=0, "y"=-50+(HIdx-1)*18, "w"=100, "h"=20, "r"=255, "g"=255, "b"=255, "size"=16, "halign"=1, "valign"=1, "parent"=SlotKey))
+    }
+
+    # Action Buttons - Middle Section (Local Y near center)
+    if (GameState == "PLAYERS" && ActivePlayerIdx == I) {
+        let AHIdx = ActiveHand[SID, number], CurH = PlayerHands[SID+"_"+AHIdx, table]
+        # HIT on left (-X), STAY on right (+X). Parented to SlotKey, so use local coords.
+        createButton("BtnHit"+I, vec2(-30, -6), vec2(50, 24), Green, "HIT", 11, SlotKey, 0)
+        createButton("BtnStand"+I, vec2(30, -6), vec2(50, 24), Red, "STAY", 11, SlotKey, 0)
+        if (CurH:count() == 2) { 
+            createButton("BtnDouble"+I, vec2(0, 22), vec2(110, 22), Primary, "DOUBLE", 10, SlotKey, 0) 
+        }
+    }
+
+    # Player Info - Bottom Section (Local Y positive)
+    # Move to left: use negative X offset and halign=0
+    stext("PName"+I, table("text"=PName, "x"=-50, "y"=40, "w"=100, "h"=20, "r"=PCol:x(), "g"=PCol:y(), "b"=PCol:z(), "size"=14, "halign"=0, "valign"=1, "parent"=SlotKey))
+    stext("PCreds"+I, table("text"="$"+formatNumber(Credits), "x"=-50, "y"=56, "w"=100, "h"=14, "r"=CredCol:x(), "g"=CredCol:y(), "b"=CredCol:z(), "size"=11, "halign"=0, "valign"=1, "parent"=SlotKey))
+    stext("PStat"+I, table("text"=Status, "x"=10, "y"=56, "w"=40, "h"=14, "r"=StatCol:x(), "g"=StatCol:y(), "b"=StatCol:z(), "size"=9, "halign"=0, "valign"=1, "parent"=SlotKey))
+}
+
+function void screen_players() {
+    # Two players per side, 5px padding from border, equally spaced
+    let Pad = 5
+    let SlotW = 120
+    let SlotH = 140
+    let RotW = SlotH # rotated 90 degrees
+    let RotH = SlotW
+    let XLeft = Pad + RotW/2
+    let XRight = 512 - Pad - RotW/2
+    let YTop = Pad + RotH/2
+    let YBottom = 512 - Pad - RotH/2
+    let SeatCenters = array(
+        vec2(XLeft, YTop),
+        vec2(XLeft, YBottom),
+        vec2(XRight, YTop),
+        vec2(XRight, YBottom)
+    )
+    for(I=1, Players:count()) {
+        if (I <= 2) { render_player(I, SeatCenters[I, vector2], -90) }
+        else { render_player(I, SeatCenters[I, vector2], 90) }
+    }
+}
+
+function void renderScreen() {
+    EGP:egpClear()
+    screen_header()
+    screen_dealer()
+    screen_players()
+}
+
+function void queueRender() {
+    timer("render", 0.05, 1, function() {
+        renderScreen()
+    })
+}
+
+function void autoStart() { 
+    if(Players:count() > 0 && GameState == "JOINING") {
+        let LowF = 0
+        for(I=1, Players:count()) { if((Money[Players[I, entity]:id():toString(), number] ?: 0) < GlobalBet) { LowF = 1, break } }
+        
+        if(!LowF) {
+            for(I=1, Players:count()) { Money[Players[I, entity]:id():toString(), number] = Money[Players[I, entity]:id():toString(), number] - GlobalBet }
+            resetDeck()
+            dealInitial(), GameState = "PLAYERS", ActivePlayerIdx = 1, ErrorMsg = "", soundPlay(2, 0, "buttons/button14.wav"), queueRender()
+        } else {
+            ErrorMsg = "AUTO: FUNDS LOW", AutoMode = 0, soundPlay(2, 0, "buttons/button10.wav"), queueRender()
+        }
+    }
+}
+
+function void resetGame() { 
+    GameState = "JOINING", DealerHand = table(), PlayerHands:clear(), PlayerStatus:clear(), ActivePlayerIdx = 0, ErrorMsg = ""
+    queueRender()
+    if(AutoMode && Players:count() > 0) { timer("AutoStart", 1, 1, function() { autoStart() }) }
+}
+
+function void resolvePayouts() {
+    let DT = calculateHand(DealerHand)
+    for(I = 1, Players:count()) {
+        const ID = Players[I, entity]:id():toString()
+        for(HIdx=1, 2) {
+            let Hand = PlayerHands[ID+"_"+HIdx, table]
+            if(Hand:count() == 0) { continue }
+            let TotSum = calculateHand(Hand)
+            if(TotSum > 21 || (DT <= 21 && TotSum < DT)) { HousePool = HousePool + GlobalBet } 
+            elseif(PlayerStatus[ID, string] == "BLACKJACK") { Money[ID, number] = Money[ID, number] + floor(GlobalBet * 2.5) } 
+            elseif(DT > 21 || TotSum > DT) { Money[ID, number] = Money[ID, number] + GlobalBet * 2 } 
+            elseif(TotSum == DT) { Money[ID, number] = Money[ID, number] + GlobalBet }
+        }
+    }
+    timer("ResetGame", 5, 1, function() { resetGame() })
+    queueRender()
+}
+
+function void dealerTurn() {
+    if(calculateHand(DealerHand) < 17) { handAdd(DealerHand, drawCard()), timer("DealerTurn", 1.5, 1, function() { dealerTurn() }), soundPlay(1, 0, "ambient/levels/canals/box_drop5.wav") } 
+    else { GameState = "PAYOUT", timer("ResolvePayouts", 1, 1, function() { resolvePayouts() }) }
+    queueRender()
+}
+
+function void nextTurn() {
+    ActivePlayerIdx = ActivePlayerIdx + 1
+    if(ActivePlayerIdx > Players:count()) { GameState = "DEALER", timer("DealerTurn", 1, 1, function() { dealerTurn() }) } 
+    else { if(PlayerStatus[Players[ActivePlayerIdx, entity]:id():toString(), string] == "BLACKJACK") { timer("NextTurn", 0.5, 1, function() { nextTurn() }) } }
+    queueRender()
+}
+
+function void handleChat(Player:entity, Message:string) {
+    if (Player != owner()) { return }
+    let Msg = Message:lower()
+    if(Msg == "!payday") {
+        hideChat(1)
+        if(HousePool > 0 && Players:count() > 0) {
+            let Amt = floor(HousePool / Players:count())
+            for(I=1, Players:count()) {
+                const ID = Players[I, entity]:id():toString()
+                Money[ID, number] = (Money[ID, number] ?: 0) + Amt
+            }
+            printColor(White, "[", Green, "Blackjack", White, "] ", Green, "PAYDAY! ", White, "Each player received $", Amt)
+            HousePool = 0, soundPlay(3, 0, "ambient/levels/labs/coinslot1.wav"), queueRender()
+        } else {
+            printColor(White, "[", Green, "Blackjack", White, "] ", Red, "No funds in pool or no players to pay out.")
+        }
+    }
+}
+
+#---------- Init -----------#
+
+if (initial()) {
+    resetDeck()
+    queueRender()
+}
+
+# =================== Main Loop =========================== #
+
+# SLIDERS - Pull values from UI
+if (UI:exists("SBet")) {
+    let BetSlide = UI["SBet", table]["value", number]
+    if (BetSlide > 0 && BetSlide != GlobalBet) { GlobalBet = BetSlide, soundPlay(3, 0, "buttons/button15.wav") }
+}
+
+if (UI:exists("SBuy")) {
+    let BuySlide = UI["SBuy", table]["value", number]
+    if (BuySlide > 0 && BuySlide != BuyInAmt) { BuyInAmt = BuySlide, soundPlay(3, 0, "buttons/button16.wav") }
+}
+
+function number findPlayerIdx(EP:entity) {
+    for(I=1, Players:count()) {
+        if (Players[I, entity] == EP) { return I }
+    }
+    return 0
+}
+
+function number isActionButton(Obj:string) {
+    if (Obj == "") { return 0 }
+    if (Obj:startsWith("BtnHit") || Obj:startsWith("BtnStand") || Obj:startsWith("BtnDouble") || Obj:startsWith("BtnSplit")) { return 1 }
+    switch (Obj) {
+        case "BtnJoin",
+        case "BtnStart",
+        case "BtnBuyIn",
+        case "BtnCashOut",
+        case "BtnAuto",
+        case "BtnLeaveGlobal",
+            return 1
+    }
+    return 0
+}
+
+# BUTTONS - userInput driven
+if (userInput()) {
+    let EP = CurrentUser
+    let Obj = cursorObj()
+    if (isActionButton(Obj)) {
+        const SID = EP:id():toString()
+        let Dirty = 0
+        
+        switch(Obj) {
+            case "BtnJoin",
+                let AlreadyIn = findPlayerIdx(EP)
+                if(Players:count() < 4 && !AlreadyIn) { Players:pushEntity(EP), Money[SID, number] = Money[SID, number] ?: 0, soundPlay(2, 0, "buttons/button14.wav"), Dirty = 1 }
+            break
+            case "BtnStart",
+                if(EP == owner() && GameState == "JOINING") {
+                    if(Players:count() > 0) {
+                        let LowF = 0
+                        for(I=1, Players:count()) { if((Money[Players[I, entity]:id():toString(), number] ?: 0) < GlobalBet) { LowF = 1, break } }
+                        
+                        if(!LowF) {
+                            for(I=1, Players:count()) { Money[Players[I, entity]:id():toString(), number] = Money[Players[I, entity]:id():toString(), number] - GlobalBet }
+                            resetDeck()
+                            dealInitial(), GameState = "PLAYERS", ActivePlayerIdx = 1, ErrorMsg = "", soundPlay(2, 0, "buttons/button14.wav"), Dirty = 1
+                        } else { ErrorMsg = "SOME PLAYERS LACK FUNDS", soundPlay(2, 0, "buttons/button10.wav"), Dirty = 1 }
+                    }
+                }
+            break
+            case "BtnAuto",
+                if(EP == owner()) { AutoMode = !AutoMode, soundPlay(2, 0, "buttons/button3.wav"), Dirty = 1 }
+            break
+            case "BtnBuyIn",
+                moneyRequest(EP, BuyInAmt, 10, "Table Credits"), soundPlay(2, 0, "buttons/button17.wav")
+            break
+            case "BtnCashOut",
+                if(GameState == "JOINING") {
+                    let AllCash = Money[SID, number] ?: 0
+                    if(AllCash > 0) { moneyGive(EP, AllCash), Money[SID, number] = 0, soundPlay(2, 0, "buttons/combine_button7.wav"), Dirty = 1 }
+                }
+            break
+            case "BtnLeaveGlobal",
+                let PlayerIdx = findPlayerIdx(EP)
+                
+                if(PlayerIdx > 0) {
+                    let Pot = Money[SID, number] ?: 0
+                    if(GameState != "JOINING") { ErrorMsg = "WAIT UNTIL ROUND ENDS", soundPlay(2, 0, "buttons/button10.wav") }
+                    elseif(Pot > 0) { ErrorMsg = "CASH OUT FIRST", soundPlay(2, 0, "buttons/button10.wav") }
+                    else { Players:remove(PlayerIdx), PlayerHands:remove(SID+"_1"), PlayerHands:remove(SID+"_2"), PlayerStatus:remove(SID) }
+                    Dirty = 1
+                }
+            break
+            default,
+                if (GameState == "PLAYERS") {
+                    let PIdx = findPlayerIdx(EP)
+                    if (PIdx > 0) {
+                        if (Obj == "BtnHit"+PIdx) {
+                            let HIdx = ActiveHand[SID, number]
+                            dealCard(SID, HIdx)
+                            let Total = calculateHand(PlayerHands[SID+"_"+HIdx, table])
+                            if(Total >= 21) {
+                                if (Total == 21) { soundPlay(2, 0, "buttons/button14.wav") }
+                                if (HIdx == 1 && PlayerHands[SID+"_2", table]:count() > 0) { ActiveHand[SID, number] = 2 }
+                                else { PlayerStatus[SID, string] = (Total == 21 ? "STAY" : "BUST"), timer("NextTurn", 1, 1, function() { nextTurn() }) }
+                            }
+                            Dirty = 1
+                        }
+                        elseif (Obj == "BtnStand"+PIdx) {
+                            let HIdx = ActiveHand[SID, number]
+                            if (HIdx == 1 && PlayerHands[SID+"_2", table]:count() > 0) { ActiveHand[SID, number] = 2 }
+                            else { PlayerStatus[SID, string] = "STAY", timer("NextTurn", 0.5, 1, function() { nextTurn() }) }
+                            Dirty = 1
+                        }
+                        elseif (Obj == "BtnDouble"+PIdx) {
+                            let HIdx = ActiveHand[SID, number]
+                            if (Money[SID, number] >= GlobalBet) {
+                                Money[SID, number] = Money[SID, number] - GlobalBet
+                                dealCard(SID, HIdx)
+                                let Total = calculateHand(PlayerHands[SID+"_"+HIdx, table])
+                                if (Total >= 21) {
+                                    if (Total == 21) { soundPlay(2, 0, "buttons/button14.wav") }
+                                    if (HIdx == 1 && PlayerHands[SID+"_2", table]:count() > 0) { ActiveHand[SID, number] = 2 }
+                                    else { PlayerStatus[SID, string] = (Total == 21 ? "STAY" : "BUST"), timer("NextTurn", 1, 1, function() { nextTurn() }) }
+                                } else {
+                                    if (HIdx == 1 && PlayerHands[SID+"_2", table]:count() > 0) { ActiveHand[SID, number] = 2 }
+                                    else { PlayerStatus[SID, string] = "STAY", timer("NextTurn", 0.5, 1, function() { nextTurn() }) }
+                                }
+                                Dirty = 1
+                            }
+                        }
+                        elseif (Obj == "BtnSplit"+PIdx) {
+                            let Hand1 = PlayerHands[SID+"_1", table]
+                            if (Hand1:count() == 2 && Money[SID, number] >= GlobalBet) {
+                                Money[SID, number] = Money[SID, number] - GlobalBet
+                                let SplitCard = handRemove(Hand1, 2)
+                                PlayerHands[SID+"_2", table] = table("1"=SplitCard)
+                                dealCard(SID, 1), dealCard(SID, 2)
+                                Dirty = 1
+                            }
+                        }
+                    }
+                }
+            break
+        }
+        if (Dirty) { queueRender() }
+    }
+}
+
+if(moneyClk()) {
+    Money[moneyClkPlayer():id():toString(), number] = (Money[moneyClkPlayer():id():toString(), number] ?: 0) + moneyClkAmount()
+    queueRender()
+}
+
+event chat(Player:entity, Message:string, _:number) {
+    handleChat(Player, Message)
+}

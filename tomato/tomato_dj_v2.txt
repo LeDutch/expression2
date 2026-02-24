@@ -6,6 +6,7 @@
 #include "lib/tomato/1.1/tomato_ui"
 
 if (initial()) {
+    EGP:egpDrawTopLeft(1)
     let Screen = 512
     let Half = Screen / 2
     let Quarter = Screen / 4

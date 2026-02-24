@@ -1,0 +1,76 @@
+@name Tomato DJ V2
+@inputs [Lamp Gimbal EGP]:wirelink User:entity
+@persist
+
+#include "lib/tomato/1.1/tomato_core"
+#include "lib/tomato/1.1/tomato_ui"
+
+if (initial()) {
+    let Screen = 512
+    let Half = Screen / 2
+    let Quarter = Screen / 4
+    
+    let White = vec(255, 255, 255)
+    let Dark = vec(44, 51, 51)
+    let Primary = vec(14, 131, 136)
+    let Secondary = vec(46, 79, 79)
+    let Light = vec(203, 228, 222)
+    
+    let Theme = table(
+        "primary"=Primary,
+        "secondary"=Secondary,
+        "light"=Light,
+        "dark"=Dark
+    )
+    
+    # Background + title
+    box("Background", table("x"=0, "y"=0, "w"=Screen, "h"=Screen, "r"=Dark:x(), "g"=Dark:y(), "b"=Dark:z()))
+    text("Title", table("text"="DJ BOOTH", "x"=0, "y"=0, "w"=Screen, "h"=40, "r"=Primary:x(), "g"=Primary:y(), "b"=Primary:z(), "size"=40, "halign"=1, "valign"=0))
+    text("Production", table("text"="A Tomato Production", "x"=0, "y"=35, "w"=Screen, "h"=18, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=1, "valign"=0))
+    
+    # Left column: lighting options
+    text("LightingTitle", table("text"="Lighting Options", "x"=0, "y"=80, "w"=Half, "h"=24, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=24, "halign"=1, "valign"=0))
+    
+    checkBox("On/Off", Theme:merge(table("coords"=vec2(Quarter/2, 120), "w"=40, "h"=20)))
+    text("OnOffLabel", table("text"="On/Off", "x"=Quarter/2 + 50, "y"=112, "w"=Half - 60, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    text("BrightnessLabel", table("text"="Change Brightness", "x"=0, "y"=160, "w"=Half, "h"=18, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=18, "halign"=1, "valign"=0))
+    slider("Brightness", Theme:merge(table("coords"=vec2(Quarter/2, 180), "w"=Quarter, "h"=20, "min"=0, "max"=10, "interval"=1)))
+    
+    dropDown("Texture", array("caustics", "bars", "soft", "circles", "tech"), Theme:merge(table("coords"=vec2(Quarter/2, 220), "w"=Quarter, "h"=25, "text"="Texture")))
+    
+    text("RgbLabel", table("text"="Change RGB", "x"=0, "y"=260, "w"=Half, "h"=18, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=18, "halign"=1, "valign"=0))
+    slider("RGB", Theme:merge(table("coords"=vec2(Quarter/2, 280), "w"=Quarter, "h"=20, "min"=0, "max"=255, "interval"=1)))
+    
+    text("FovLabel", table("text"="Change FOV", "x"=0, "y"=320, "w"=Half, "h"=18, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=18, "halign"=1, "valign"=0))
+    slider("FOV", Theme:merge(table("coords"=vec2(Quarter/2, 340), "w"=Quarter, "h"=20, "min"=10, "max"=170, "interval"=1)))
+    
+    # Right column: animations
+    text("AnimTitle", table("text"="Animations", "x"=Half, "y"=80, "w"=Half, "h"=24, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=24, "halign"=1, "valign"=0))
+    
+    text("TimingLabel", table("text"="Change Timing", "x"=Half, "y"=120, "w"=Half, "h"=18, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=18, "halign"=1, "valign"=0))
+    slider("Timing", Theme:merge(table("coords"=vec2(Half + Quarter/2, 140), "w"=Quarter - 20, "h"=20, "min"=0.05, "max"=2, "interval"=0.05)))
+    text("Timer", table("text"="0.05s", "x"=Half + Quarter/2 + 50, "y"=140, "w"=80, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=18, "halign"=0, "valign"=1))
+    
+    checkBox("Rotate", Theme:merge(table("coords"=vec2(Half + Quarter/2, 180), "w"=40, "h"=20)))
+    text("RotateLabel", table("text"="Rotate", "x"=Half + Quarter/2 + 50, "y"=172, "w"=Quarter, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    checkBox("Blink", Theme:merge(table("coords"=vec2(Half + Quarter/2, 220), "w"=40, "h"=20)))
+    text("BlinkLabel", table("text"="Blink", "x"=Half + Quarter/2 + 50, "y"=212, "w"=Quarter, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    checkBox("Colours", Theme:merge(table("coords"=vec2(Half + Quarter/2, 260), "w"=40, "h"=20)))
+    text("ColoursLabel", table("text"="Colours", "x"=Half + Quarter/2 + 50, "y"=252, "w"=Quarter, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    checkBox("AnimFOV", Theme:merge(table("coords"=vec2(Half + Quarter/2, 300), "w"=40, "h"=20)))
+    text("AnimFovLabel", table("text"="FOV", "x"=Half + Quarter/2 + 50, "y"=292, "w"=Quarter, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    checkBox("Pulse", Theme:merge(table("coords"=vec2(Half + Quarter/2, 340), "w"=40, "h"=20)))
+    text("PulseLabel", table("text"="Pulse", "x"=Half + Quarter/2 + 50, "y"=332, "w"=Quarter, "h"=20, "r"=Light:x(), "g"=Light:y(), "b"=Light:z(), "size"=16, "halign"=0, "valign"=1))
+    
+    # Column divider
+    box("Column", table("x"=Half, "y"=120, "w"=1, "h"=250, "r"=Light:x(), "g"=Light:y(), "b"=Light:z()))
+    
+    # Footer
+    box("BangerBox", table("x"=Half - Quarter, "y"=Screen - 100, "w"=Half, "h"=50, "r"=White:x(), "g"=White:y(), "b"=White:z()))
+    text("BangerText", table("text"="Click if it's a banger", "x"=Half - Quarter, "y"=Screen - 90, "w"=Half, "h"=25, "r"=Primary:x(), "g"=Primary:y(), "b"=Primary:z(), "size"=25, "halign"=1, "valign"=0))
+}
